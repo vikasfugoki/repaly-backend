@@ -118,6 +118,26 @@ export class InstagramAccountController {
                 }
        }
 
+    @Put(':mediaId/response-type')
+    async updateMediaResponseType(@Param('mediaId') mediaId: string, @Body() input: Record<string, any>) {
+      try {
+              return await this.instagramAccountService.updateMediaResponseTypeOnTable(mediaId, input);
+      } catch (error) {
+              console.log("Failed to update the table with media response type:", (error as Error).message);
+              throw new Error('Failed to update the table with media response type.')
+      }
+    }
+
+    @Get(':mediaId/media-details')
+    async getMediaResponseType(@Param('mediaId') mediaId:  string) {
+      try {
+            return await this.instagramAccountService.getMediaResponseTypeFromTable(mediaId);
+      } catch (error) {
+            console.log("Failed to get the media details:", (error as Error).message);
+            throw new Error('Failed to get ther media details.')
+      }
+    }
+
    @Get(':mediaId/ai-enabled')
    async getAIEnabledFromTable(@Param('mediaId') mediaId: string) {
        try {
@@ -164,6 +184,8 @@ export class InstagramAccountController {
       throw new Error(`Failed to delete the account ${accountId}`);
     }
   }
+
+
 
 
 }

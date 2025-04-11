@@ -106,6 +106,39 @@ export class InstagramAccountService {
   //   );
   // }
 
+  async updateMediaResponseTypeOnTable(mediaId: string, response: Record<string, any>) {
+
+    try {
+        console.log("received input:", response);
+        if (!response) {
+            throw new Error('Input is undefined or null');
+        }
+        response['id'] = mediaId;
+        return await this.instagramMediaRepositoryService.updateMediaDetails(response);
+    } catch (error) {
+        console.error(`Error inserting response details for ${mediaId}:`, error);
+        throw error;
+    }   
+  }
+
+  async getMediaResponseTypeFromTable(mediaId: string) {
+    try {
+        const response = await this.instagramMediaRepositoryService.getMedia(mediaId);
+        // const tagAndValuePair = response?.Item?.tag_and_value_pair ?? {};
+        // const ai_enabled = response?.Item?.ai_enabled ?? {};
+
+        // return {
+        //   tag_and_value_pair: tagAndValuePair,
+        //   ai_enabled: ai_enabled
+        // };
+        return response?.Item ?? {};
+
+    } catch (error) {
+        console.error(`Error getting media details for media ${mediaId}:`, error);
+        throw error;
+    }
+  }
+
   async getTagAndValuePairFromTable(mediaId: string) {
       const response = await this.instagramMediaRepositoryService.getMedia(mediaId);
       const tagAndValuePair = response?.Item?.tag_and_value_pair ?? {};

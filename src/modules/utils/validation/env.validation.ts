@@ -14,4 +14,5 @@ export const envValidationSchema = Joi.object({
   INSTAGRAM_BASE_URL: Joi.string().required(),
   INSTAGRAM_CLIENT_ID: Joi.string().required(),
   INSTAGRAM_CLIENT_SECRET: Joi.string().required(),
+  GPT_KEY:Joi.string().required()
 });

@@ -15,13 +15,32 @@ export class AuthService {
     private readonly businessDetailsRepositoryService: BusinessDetailsRepositoryService,
   ) {}
 
+  async validateGoogleToken(idToken: string) {
+    try {
+      const payload = await this.googleApiService.verifyIdToken(idToken);
+      return {
+        message: 'Token is valid',
+        user: payload,
+      };
+    } catch (error) {
+      throw new Error('Invalid or expired token');
+    }
+  }
+
   private async getGoogleAccessToken(
     code: string,
   ): Promise<GetAccessTokenResponse> {
     const { access_token, id_token } =
       await this.googleApiService.getAccessToken(code);
-    const { sub, email, name, picture } =
-      await this.googleApiService.getUserDetails(access_token);
+
+     // Validate the ID token
+    const payload = await this.googleApiService.verifyIdToken(id_token);
+
+    // Now you can safely trust the payload
+    const { sub, email, name, picture } = payload;
+    
+    // const { sub, email, name, picture } =
+    //   await this.googleApiService.getUserDetails(access_token);
     const user = await this.googleUserRepository.getGoogleUser(sub);
     if (!user.Item) {
       const user_id = uuidv4();
@@ -34,9 +53,9 @@ export class AuthService {
       const userDetails = {
         id: sub,
         user_id: user_id,
-        email: email,
-        name: name,
-        picture: picture,
+        email: email ?? '',
+        name: name ?? '',
+        picture: picture ?? '',
       };
       await this.googleUserRepository.createGoogleUser(userDetails);
       return {

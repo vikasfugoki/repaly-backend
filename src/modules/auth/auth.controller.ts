@@ -1,7 +1,7 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post, Headers, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { GetAccessTokenRequest } from '@lib/dto';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -13,9 +13,20 @@ export class AuthController {
     return response;
   }
 
+  // @Post('validate-token')
+  // @HttpCode(HttpStatus.OK)
+  // validateToken() {
+  //   return { message: 'Token is valid' };
+  // }
+
+  @ApiBearerAuth()
   @Post('validate-token')
   @HttpCode(HttpStatus.OK)
-  validateToken() {
-    return { message: 'Token is valid' };
+  async validateToken(@Headers('authorization') authHeader: string) {
+    const token = authHeader?.replace('Bearer ', '');
+    if (!token) {
+      throw new UnauthorizedException('No token provided');
+    }
+    return await this.authService.validateGoogleToken(token);
   }
 }

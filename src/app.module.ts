@@ -25,6 +25,8 @@ import { InstagramApiService } from './modules/utils/instagram/api.service';
 import { InstagramUrlService } from './modules/utils/instagram/url.service';
 import { EnvironmentService } from './modules/utils/environment/environment.service';
 import { DynamoDBService } from '@database/dynamodb/dynamodb.service';
+import { AIController } from './modules/aiModel/aiModel.contorller';
+import { AIServices } from './modules/aiModel/aiModel.service';
 
 @Module({
   imports: [
@@ -40,6 +42,7 @@ import { DynamoDBService } from '@database/dynamodb/dynamodb.service';
     AccountController,
     ExchangePlatformCodeController,
     InstagramAccountController,
+    AIController
   ],
   providers: [
     AppService,
@@ -60,6 +63,7 @@ import { DynamoDBService } from '@database/dynamodb/dynamodb.service';
     GoogleUrlService,
     UserRepositoryService,
     InstagramMediaRepositoryService,
+    AIServices
   ],
   exports: [DynamoDBService],
 })

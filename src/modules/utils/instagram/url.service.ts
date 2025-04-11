@@ -16,6 +16,10 @@ export class InstagramUrlService {
     return this.environmentService.getEnvVariable('INSTAGRAM_REDIRECT_URL');
   }
 
+  getGptKey() {
+    return this.environmentService.getEnvVariable('GPT_KEY');
+  }
+
   getMediaUrl(userId: string) {
     const baseURL = this.getInstagramBaseURL();
     const url = baseURL + `/${userId}` + '/media';
