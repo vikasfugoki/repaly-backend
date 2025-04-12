@@ -1,5 +1,6 @@
 import { Body, Controller, HttpCode, HttpStatus, Post, Headers, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { Public } from './public.decorator';
 import { GetAccessTokenRequest } from '@lib/dto';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
@@ -7,6 +8,8 @@ import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Public()
   @Post('get-access-token')
   async getAccessToken(@Body() input: GetAccessTokenRequest) {
     const response = await this.authService.getAccessToken(input);
@@ -19,6 +22,8 @@ export class AuthController {
   //   return { message: 'Token is valid' };
   // }
 
+
+  @Public()
   @ApiBearerAuth()
   @Post('validate-token')
   @HttpCode(HttpStatus.OK)
