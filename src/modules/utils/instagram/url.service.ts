@@ -26,6 +26,12 @@ export class InstagramUrlService {
     return url;
   }
 
+  getStoryUrl(userId: string) {
+    const baseURL = this.getInstagramBaseURL();
+    const url = baseURL + `/${userId}` + '/stories';
+    return url;
+  }
+
   getMediaInsightUrl(mediaId: string) {
     const baseURL = this.getInstagramBaseURL();
     const url = baseURL + `/${mediaId}` + '/insights';

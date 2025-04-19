@@ -8,6 +8,8 @@ import {
   InstagramMediaInsight,
 } from '@lib/dto';
 import { InstagramMediaAnalyticsRepositoryService } from '@database/dynamodb/repository-services/instagram.mediaAnalytics.service';
+import { InstagramStoryRepositoryService } from '@database/dynamodb/repository-services/instagram.story.service';
+import { log } from 'console';
 
 @Injectable()
 export class InstagramAccountService {
@@ -16,6 +18,7 @@ export class InstagramAccountService {
     private readonly instagramApiService: InstagramApiService,
     private readonly instagramAccountRepositoryService: InstagramAccountRepositoryService,
     private readonly instagramMediaRepositoryService: InstagramMediaRepositoryService,
+    private readonly instagramStoryRepositoryService: InstagramStoryRepositoryService
   ) {}
 
   private buildInsights(
@@ -217,12 +220,28 @@ export class InstagramAccountService {
       return mediaWithInsights;
       }
 
+  async addInstagramStoryAutomation(storyId: string, input: Record<string, any>) {
+
+    try {
+      console.log("tag value:", input)
+      if (input === undefined || input === null) {
+        throw new Error('Input is undefined or null');
+      }
+      input['id'] = storyId;
+      return await this.instagramStoryRepositoryService.updateStoryDetails(input);
+
+    } catch (error) {
+      console.error(`Error inserting automation details for ${storyId}:`, error);
+      throw error;
+  }
+  }
+
   async addInstagramMediaAutomation(mediaId: string, input: Record<string, any>) {
 
       try {
           console.log("received input:", input);
-          if (!input) {
-              throw new Error('Input is undefined or null');
+          if (input === undefined || input === null) {
+            throw new Error('Input is undefined or null');
           }
           input['id'] = mediaId;
           return await this.instagramMediaRepositoryService.updateMediaDetails(input);
@@ -265,7 +284,7 @@ export class InstagramAccountService {
 
         // Fetch account details
         const account = await this.instagramAccountRepositoryService.getAccount(accountId);
-        if (!account) throw new Error('Token not found');
+        if (!account) throw new Error('Account not found');
 
         // Get recent media with insights
         const mediaWithInsights = await this.getRecentMedia(accountId, account.access_token);
@@ -362,6 +381,10 @@ export class InstagramAccountService {
         await this.instagramMediaRepositoryService.deleteAccount(accountId);
         console.log(`deleted from 'instagram_media_repository'`);
 
+        // delete all the story for given accountId from the "instagram_story_repository"
+        await this.instagramStoryRepositoryService.deleteAccount(accountId);
+        console.log(`deleted from 'instagram_story_repository'`);
+
         return {success: true, message: `account has been removed.`}
         
       } catch (error) {
@@ -369,5 +392,99 @@ export class InstagramAccountService {
         return {success: false, message: `Failed to delete the account`};
       }
     }
+
+    async getRecentStory(accountId: string, access_token: string) {
+
+      try {
+         // Fetch all the story from Instagram API
+        //  console.log(accountId, access_token);
+         const storyList = await this.instagramApiService.getStories(accountId, access_token);
+         console.log(storyList);
+  
+         // Ensure storyList is always an array
+         if (!Array.isArray(storyList)) {
+            console.warn(`Expected an array, but received:`, storyList);
+            return [];
+         }
+  
+         return storyList;
+      } catch (error) {
+        console.error(`Failed to fetch recent stroy for accountId ${accountId}:`, (error as Error).message);
+        throw new Error('Unable to retrieve recent story');
+      }
+    }
+
+    // story function
+    async updateAccountStoryOnTable(accountId: string) {
+      try {
+        console.log(`Updating story for accountId: ${accountId}`);
+
+        // Fetch account details
+        const account = await this.instagramAccountRepositoryService.getAccount(accountId);
+        if (!account) throw new Error('Account not found');
+        
+        const storyDetails = await this.getRecentStory(accountId, account.access_token);
+        if (!storyDetails || storyDetails.length === 0) {
+            console.warn(`No story found for accountId: ${accountId}`);
+            return [];
+        }
+
+        const now = new Date();
+        // Insert into 'instagram_media_repository' DynamoDB table
+        for (const story of storyDetails) {
+          const storyTimestamp = new Date(story.timestamp);
+          const hoursDiff = (now.getTime() - storyTimestamp.getTime()) / (1000 * 60 * 60);
+          const isActive = hoursDiff <= 24;
+          const storyWithExtras = {
+            ...story,
+            accountId,
+            IsActive: isActive,
+            tag_and_value_pair: {},
+          };
+          return await this.instagramStoryRepositoryService.updateStoryDetails(storyWithExtras);
+        }
+
+      } catch (error) {
+        console.error(`Error updating stroy for ${accountId}:`, error);
+        return { success: false, message: `Error updating story in the table` };
+      }
+    }
+
+    async getInstagramStoryFromTable(accountId: string) {
+      try {
+        console.log("accountId:", accountId);
+        const response = await this.instagramStoryRepositoryService.getStoryByAccountId(accountId);
+
+        console.log(`DynamoDB Response:`, response);
+
+        // Extract items from response if they exist
+      const items = response?.Items || [];
+
+      // Ensure response is an array and limit its length to 15
+      if (Array.isArray(items)) {
+        return items
+            .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+            // .slice(0, 15);
+    } else {
+        console.warn("Unexpected response type, expected an array:", response);
+        return [];
+    }
+      } catch (error) {
+        console.error(`Error getting media details for ${accountId}:`, error);
+        throw error;
+    }
+      
+  }
+
+  async getStoryDetailsFromTable(storyId: string) {
+    try {
+        const response = await this.instagramStoryRepositoryService.getStory(storyId);
+        return response?.Item ?? {};
+
+    } catch (error) {
+        console.error(`Error getting media details for media ${storyId}:`, error);
+        throw error;
+    }
+  }
 
 }

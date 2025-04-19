@@ -14,7 +14,11 @@ export class AIController {
     @Post('generate-tags')
     async generateTags(@Body() body: { captions: string }){
         try {
-            const prompt = `Given the following Instagram caption: "${body.captions}". Generate a clean list of 10 relevant hashtags (without # symbol), separated by commas. Example: sunset, travel, vacation`;
+            const prompt = `
+                The following Instagram caption is about a product: "${body.captions}"
+
+                Generate a list of 10 short phrases (1–2 words each) that users are likely to comment on this post. These should reflect common customer questions or tags like: price, pp, size, color, available, how much, cod, dm, etc. Do NOT include hashtags or emojis. Return as a comma-separated list.
+                `;
             return await this.aiServices.callGpt(prompt);
         } catch (error) {
             console.error('Error generating tags:', error);

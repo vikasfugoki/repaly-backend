@@ -28,19 +28,24 @@ export class AIServices{
             
             case 'comment':
                 if (responseTarget == "comment") {
-                const prompt = `You are an assistant for an Instagram seller account. 
+                const prompt = `You are an assistant managing replies for an Instagram seller account.
 
-                                Generate a short and friendly comment reply based on the following:
-                                - Caption: "${captions}"
-                                - Tags: ${tags.join(", ")}
-                                - Inquiry details: 
-                                - Product Details: ${inquiries?.product_details ?? ""}
-                                - Mobile Number: ${inquiries?.mobile_no ?? ""}
-                                - Website URL: ${inquiries?.website_url ?? ""}
+                      Generate a short, friendly, and helpful comment reply to a user's inquiry based on the following:
 
-                                Use the tags to determine which information to include. If a tag like "price" or "available" exists, and its corresponding detail is available in the inquiry, include it in the reply.
+                      - Caption: "${captions}"
+                      - Tags: ${tags.join(", ")}
+                      - Product Details: ${inquiries?.product_details ?? ""}
+                      - Mobile Number: ${inquiries?.mobile_no ?? ""}
+                      - Website URL: ${inquiries?.website_url ?? ""}
 
-                                Avoid emojis and hashtags. Keep the comment natural and helpful. Return only a single string message without formatting it as a list or bullet points.`
+                      Use the tags to decide what information to include. For example:
+                      - If the tag includes "price", and a price is available in the product details, mention it.
+                      - If the tag includes "available", confirm availability if known.
+                      - If the tag includes "color", "size", or similar, provide options if available.
+                      - If contact info is requested (e.g., "dm", "whatsapp", "contact"), include the mobile number or website.
+
+                      Avoid emojis, hashtags, or promotional language. Write a natural-sounding, friendly sentence that directly answers the comment. Return only the reply string — no bullet points, formatting, or extra output.
+                      `
 
                 return await this.callGpt(prompt);
                 }

@@ -15,6 +15,7 @@ import { BusinessDetailsRepositoryService } from './lib/database/dynamodb/reposi
 import { UserController } from './modules/user/user.controller';
 import { UserService } from './modules/user/user.service';
 import { InstagramMediaRepositoryService } from '@database/dynamodb/repository-services/instagram.media.service';
+import { InstagramStoryRepositoryService } from '@database/dynamodb/repository-services/instagram.story.service';
 import { InstagramAccountService } from './modules/instagram/instagram.service';
 import { InstagramAccountController } from './modules/instagram/instagram.controller';
 import { AccountController } from './modules/account/account.controller';
@@ -27,6 +28,7 @@ import { EnvironmentService } from './modules/utils/environment/environment.serv
 import { DynamoDBService } from '@database/dynamodb/dynamodb.service';
 import { AIController } from './modules/aiModel/aiModel.contorller';
 import { AIServices } from './modules/aiModel/aiModel.service';
+
 
 @Module({
   imports: [
@@ -63,6 +65,7 @@ import { AIServices } from './modules/aiModel/aiModel.service';
     GoogleUrlService,
     UserRepositoryService,
     InstagramMediaRepositoryService,
+    InstagramStoryRepositoryService,
     AIServices
   ],
   exports: [DynamoDBService],

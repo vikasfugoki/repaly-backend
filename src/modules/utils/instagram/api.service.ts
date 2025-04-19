@@ -7,6 +7,7 @@ import {
   InstagramMediaResponse,
   InstagramOauthResponse,
   InstagramUserInfoResponse,
+  InstagramStoriesResponse
 } from '@lib/dto';
 import { EnvironmentService } from '../environment/environment.service';
 
@@ -76,6 +77,28 @@ export class InstagramApiService {
         (error as Error).message,
       );
       throw new Error('Failed to get Instagram access token');
+    }
+  }
+
+  async getStories(userId: string, access_token: string) {
+    const url = this.urlService.getStoryUrl(userId);
+    console.log("url:",url);
+    const params = {
+      fields:
+      'id,media_type,media_url,timestamp',
+      access_token,
+      limit: 15
+    };
+
+    try {
+      const response = await axios.get<InstagramStoriesResponse>(url, {
+        params,
+      });
+      console.log(response);
+      return response.data.data;
+    } catch (error) {
+      console.log('Failed to fetch stories', (error as Error).message);
+      throw new Error('Failed to fetch stories');
     }
   }
 

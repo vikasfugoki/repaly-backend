@@ -76,3 +76,14 @@ export class TagAndValuePair {
 export class InstagramAddTagAndValueRequest {
   tagAndValuePair: TagAndValuePair[];
 }
+
+export class InstagramStoryResponse {
+  id: string;
+  media_type: string;
+  media_url: string;
+  timestamp: string;
+}
+
+export class InstagramStoriesResponse {
+  data:  InstagramStoryResponse[];
+}

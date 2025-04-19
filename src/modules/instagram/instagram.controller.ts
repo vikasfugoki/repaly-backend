@@ -185,7 +185,60 @@ export class InstagramAccountController {
     }
   }
 
+  //  STORY Api
+  @Put(':accountId/update-story')
+  async updateAccountStory(@Param('accountId') accountId: string) {
+    try{
+        return await this.instagramAccountService.updateAccountStoryOnTable(accountId);
+        } catch (error) {
+            console.log("Failed to update the story-table with recent media:", (error as Error).message);
+            throw new Error('Failed to update the story-table with recent media.')
+            }
 
+    }
+
+    // get all the story given the accountId
+    @Get(':accountId/get-story')
+    async getAccountStory(@Param('accountId') accountId: string) {
+
+      try {
+        return await this.instagramAccountService.getInstagramStoryFromTable(accountId);
+      } catch (error) {
+        console.log('Failed to get STORY from dynamodb table:', (error as Error).message);
+        throw new Error('Failed to get STORY from dynamodb table');
+      }  
+    }
+
+    @Get(':storyId/story-details')
+    async getStoryDetails(@Param('storyId') mediaId:  string) {
+      try {
+            return await this.instagramAccountService.getStoryDetailsFromTable(mediaId);
+      } catch (error) {
+            console.log("Failed to get the STORY details:", (error as Error).message);
+            throw new Error('Failed to get ther STORY details.')
+      }
+    }
+
+    @Put(':storyId/apply-automation-story')
+      async putStoryAutomation(
+        @Param('storyId') storyId: string,
+        @Body() input: Record<string, any>
+      ) {
+        try {
+          // // Convert input to JSON string
+          // const jsonInput = JSON.stringify(input);
+          
+          // Pass the JSON string to the service method
+          return await this.instagramAccountService.addInstagramStoryAutomation(storyId, input);
+        } catch (error) {
+          console.log('Failed to apply automation:', (error as Error).message);
+          throw new Error('Failed to apply automation');
+        }
+      }
+
+
+
+  
 
 
 }
