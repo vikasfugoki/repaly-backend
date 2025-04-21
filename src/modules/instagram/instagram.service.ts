@@ -300,7 +300,7 @@ export class InstagramAccountService {
 
         // Insert into 'instagram_analytics_repository' DynamoDB table
         for (const media of mediaWithInsights) {
-            await this.instagramMediaAnalyticsRepositoryService.addMedia(media);
+            await this.instagramMediaAnalyticsRepositoryService.updateAnalyticsDetails(media);
         }
 
         console.log("media fetched and inserted successfully.");
@@ -323,16 +323,27 @@ export class InstagramAccountService {
         
         // Log the full item for debugging
         console.log("Full item:", item);
+
+        const potential_buyers = (item?.comment_counts?.potential_buyers ?? 0);
+        const DMs_by_us = (item?.comment_counts?.tagged_comment_dm ?? 0);
+        const inquiry = (item?.comment_counts?.inquiry ?? 0);
+        const negative_comments = (item?.comment_counts?.negative ?? 0);
+        const positive_comments = (item?.comment_counts?.positive ?? 0);
+        const tagged_comment = (item?.comment_counts?.tagged_comment ?? 0);
+        const tagged_comment_dm = (item?.comment_counts?.tagged_comment_dm ?? 0);
+
+        const comment_by_us = potential_buyers + inquiry + negative_comments + positive_comments + tagged_comment + tagged_comment_dm;
     
         // Extract only numerical stats
         const stats = {
-          comment_by_us: item?.comment_by_us ?? 0,
-          potential_buyers: item?.potential_buyers ?? 0,
-          DMs_by_us: item?.DMs_by_us ?? 0,
-          lead_generated: item?.lead_generated ?? 0,
-          negative_comments: item?.negative_comments ?? 0,
-          positive_comments: item?.positive_comments ?? 0,
-          tagged: item?.tagged ?? 0
+          comment_by_us: comment_by_us,
+          potential_buyers: potential_buyers,
+          DMs_by_us: DMs_by_us,
+          inquiry: inquiry,
+          negative_comments: negative_comments,
+          positive_comments: positive_comments,
+          tagged_comment: tagged_comment,
+          tagged_comment_dm:  tagged_comment_dm
         };
     
         console.log("Extracted stats:", stats);
@@ -349,7 +360,8 @@ export class InstagramAccountService {
         const item = await this.instagramMediaAnalyticsRepositoryService.getMediaAnalytics(mediaId);
     
         // Dynamically get the comments based on the type
-        const comments = item?.[type] ?? [];
+        // const comments = item?.[type] ?? [];
+        const comments =  item?.comments_by_type?.[type] ?? [];
     
         return comments;
       } catch (error) {
@@ -357,6 +369,75 @@ export class InstagramAccountService {
         return { success: false, message: `Error fetching ${type} comments for media` };
       }
     }
+
+    async getCommentTimeSeriesByIntervals(mediaId: string) {
+      try {
+        // Fetch the full item
+        const item = await this.instagramMediaAnalyticsRepositoryService.getMediaAnalytics(mediaId);
+        const commentTimeseries = item?.comment_timeseries;
+    
+        if (!commentTimeseries) {
+          return { by_10m: [], by_1h: [] };
+        }
+    
+        const intervals = {
+          by_10m: 600,   // 10 minutes in seconds
+          by_1h: 3600    // 1 hour in seconds
+        };
+    
+        const result: Record<string, any[]> = {
+          by_10m: [],
+          by_1h: []
+        };
+    
+        // Helper function to aggregate by interval
+        const aggregateByInterval = (intervalKey: string, intervalSize: number) => {
+          const bucketCounts: Record<number, Record<string, number>> = {};
+    
+          for (const type in commentTimeseries) {
+            const entries = commentTimeseries[type];
+    
+            for (const entry of entries) {
+              const ts = entry.ts;
+              const bucketTs = ts - (ts % intervalSize);
+    
+              if (!bucketCounts[bucketTs]) {
+                bucketCounts[bucketTs] = {};
+              }
+    
+              bucketCounts[bucketTs][type] = (bucketCounts[bucketTs][type] ?? 0) + entry.count;
+            }
+          }
+    
+          // Sort and format
+          const formatted = Object.keys(bucketCounts)
+            .map(ts => {
+              const bucket: any = { ts: Number(ts) };
+    
+              for (const type in commentTimeseries) {
+                bucket[type] = bucketCounts[ts][type] ?? 0;
+              }
+    
+              return bucket;
+            })
+            .sort((a, b) => a.ts - b.ts);
+    
+          result[intervalKey] = formatted;
+        };
+    
+        // Generate both 10m and 1h data
+        for (const [key, size] of Object.entries(intervals)) {
+          aggregateByInterval(key, size);
+        }
+    
+        return result;
+    
+      } catch (error) {
+        console.error(`Failed to fetch comment timeseries for media ${mediaId}:`, error);
+        return { success: false, message: 'Error fetching comment timeseries data' };
+      }
+    }
+    
 
     // function to delete the Instagram account
     async deleteInstagramAccount(accountId: string) {

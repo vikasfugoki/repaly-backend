@@ -109,4 +109,53 @@ export class InstagramMediaAnalyticsRepositoryService {
     return this.dynamoDbService.dynamoDBDocumentClient.send(params);
   }
 
+  async updateAnalyticsDetails(mediaDetails: Record<string, any>) {
+    try {
+
+      mediaDetails = {id: mediaDetails.id, accountId: mediaDetails.accountId}
+      const { id, ...updateFields } = mediaDetails; // Extract id and other fields separately
+  
+      if (!id) {
+        throw new Error('id is required to insert or update media details in Analytics table');
+      }
+  
+      // Construct the UpdateExpression and ExpressionAttributeValues for dynamic fields
+      const updateExpression: string[] = [];
+      const expressionAttributeValues: Record<string, any> = {};
+      const expressionAttributeNames: Record<string, string> = {};
+  
+      // Loop through fields to create the update expression
+      for (const [key, value] of Object.entries(updateFields)) {
+        const placeholder = `#${key}`;
+        expressionAttributeNames[placeholder] = key;
+        expressionAttributeValues[`:${key}`] = value;
+        updateExpression.push(`${placeholder} = :${key}`);
+      }
+  
+      if (updateExpression.length === 0) {
+        throw new Error('No valid fields to update');
+      }
+  
+      // Define the update parameters for DynamoDB UpdateItem
+      const params = {
+        TableName: this.tableName,
+        Key: { id }, // Assuming 'id' is the primary key
+        UpdateExpression: `SET ${updateExpression.join(', ')}`,
+        ExpressionAttributeNames: expressionAttributeNames,
+        ExpressionAttributeValues: expressionAttributeValues,
+  //       ReturnValues: ``, // Correct ReturnValues value
+      };
+  
+      // Execute the update operation using UpdateCommand
+      const result = await this.dynamoDbService.dynamoDBDocumentClient.send(new UpdateCommand(params));
+  
+      // Return the updated item (result.Attributes contains the updated item)
+      console.log(`Media details updated in Analytics table:`, result);  // Ensure result has Attributes
+      return { success: true, message: 'Media details updated successfully in Analytics Table' };
+    } catch (error) {
+      console.error(`Error inserting media details in Analytics table:`, error);
+      throw new Error('Failed to insert media details in Analytics table');
+    }
+  }
+
 }

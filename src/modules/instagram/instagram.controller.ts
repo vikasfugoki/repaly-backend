@@ -148,6 +148,8 @@ export class InstagramAccountController {
                 }
        }
 
+
+  // get the overall stats related to media
   @Get(':mediaId/analytics-stats')
   async getMediaStats(@Param('mediaId') mediaId: string) {
     try {
@@ -165,12 +167,25 @@ export class InstagramAccountController {
   ) {
     try {
       // Call the new generic service method
-      // type : {all_positive_comments, all_negative_comments, all_potential_buyers, all_leads, all_tagged}
-      const comments = await this.instagramAccountService.getCommentsFromAnalyticsTable(mediaId, `all_${type}`);
+      // type : {inquiry, positive, negative, potential_buyers, tagged_comment, tagged_comment_dm}
+      const comments = await this.instagramAccountService.getCommentsFromAnalyticsTable(mediaId, `${type}`);
       return comments;
     } catch (error) {
       console.log(`Failed to fetch ${type} comments for ${mediaId}:`, (error as Error).message);
       throw new Error(`Failed to fetch ${type} comments for ${mediaId}`);
+    }
+  }
+
+  @Get(':mediaId/comment-timeseries')
+  async getCommentTimeSeries(
+    @Param('mediaId') mediaId: string,
+  ) {
+    try {
+      const result = await this.instagramAccountService.getCommentTimeSeriesByIntervals(mediaId);
+      return result;
+    } catch (error) {
+      console.error(`Error fetching time series for  comments on media ${mediaId}:`, error);
+      throw new Error(`Error fetching time series for  comments on media`);
     }
   }
 
