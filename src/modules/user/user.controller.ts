@@ -1,17 +1,34 @@
-import { Body, Controller, Post, Get, Param } from '@nestjs/common';
+import { Body, Controller, Post, Get, Req, HttpException, HttpStatus } from '@nestjs/common';
 import { UserService } from './user.service';
 import { AddBusinessDetailsRequest } from '@lib/dto';
 import { ApiTags } from '@nestjs/swagger';
+import {UserRepositoryService} from '@database/dynamodb/repository-services/user.service';
 
 @ApiTags('User')
 @Controller('user')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly userService: UserService,
+    private readonly userDetailsService: UserRepositoryService
+  ) {}
 
   @Post('business-details')
-  async addBusinessDetails(@Body() input: AddBusinessDetailsRequest) {
+  async addBusinessDetails(@Body() input: AddBusinessDetailsRequest, @Req() req) {
     try {
-      await this.userService.addBusinessDetails(input);
+      const platformId = req.user.user.sub;
+      const userItem = await this.userDetailsService.getUserByPlatformId(platformId);
+      if (!userItem) {
+            throw new HttpException('User is not allowed to make this request', HttpStatus.FORBIDDEN);
+          }
+      // const influexId = (await this.userService.getUserProfileInfo(userId)).id;
+      const influexId = userItem.id ?? "";
+
+      console.log(platformId, influexId);
+
+      await this.userService.addBusinessDetails({
+        ...input,
+        user_id: influexId,
+      });
+
       return { msg: 'Successfully added business details.' };
     } catch (error) {
       console.log((error as Error).message);
@@ -19,9 +36,12 @@ export class UserController {
     }
   }
 
-  @Get(':userId/profile')
-  async getUserProfile(@Param('userId') userId: string){
+  @Get('profile')
+  async getUserProfile(@Req() req){
       try {
+            // console.log(req);
+            const userId = req.user.user.sub; // googel user id
+            console.log(`userId: ${userId}`);
             return await this.userService.getUserProfileInfo(userId);
           } catch (error) {
               console.log("Failed to get profile information:", (error as Error).message);

@@ -1,15 +1,19 @@
-import { Body, Controller, Delete, Get, Param, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBody, ApiParam} from '@nestjs/swagger';
 import { InstagramAccountService } from './instagram.service';
+import { InstagramOwnershipGuard } from '../auth/instagram-ownership.guard';
+import { InstagramResourceType } from '../auth/instagram-resource-type.decorator';
 
 
 @ApiTags('Instagram Account')
 @Controller('instagram')
+@UseGuards(InstagramOwnershipGuard)
 export class InstagramAccountController {
   constructor(
     private readonly instagramAccountService: InstagramAccountService,
   ) {}
 
+  @InstagramResourceType('account')
   @Post(':accountId/media')
   async getAccountMedia(@Param('accountId') accountId: string) {
     try {
@@ -57,6 +61,7 @@ export class InstagramAccountController {
   //   }
   // }
 
+  @InstagramResourceType('account')
   @Get(':accountId/recent-media')
   async getAccountRecentMedia(@Param('accountId') accountId: string){
       try {
@@ -69,6 +74,7 @@ export class InstagramAccountController {
               }
       }
 
+      @InstagramResourceType('media')
       @Put(':mediaId/apply-automation')
       async putAutomation(
         @Param('mediaId') mediaId: string,
@@ -86,7 +92,7 @@ export class InstagramAccountController {
         }
       }
       
-
+    @InstagramResourceType('account')
     @Get(':accountId/get-media')
     async getAccountMediaFromTable(@Param('accountId') accountId: string) {
       try {
@@ -96,7 +102,8 @@ export class InstagramAccountController {
         throw new Error('Failed to get media from dynamodb table');
       }
     }
-
+  
+  @InstagramResourceType('account')
   @Put(':accountId/update-media')
   async updateAccountMedia(@Param('accountId') accountId: string) {
         try{
@@ -108,6 +115,7 @@ export class InstagramAccountController {
 
         }
 
+   @InstagramResourceType('media')
    @Get(':mediaId/tag-value')
    async getTagAndValueFromTable(@Param('mediaId') mediaId: string) {
        try {
@@ -117,7 +125,8 @@ export class InstagramAccountController {
                 throw new Error('Failed to get the tag_and_value for given media.')
                 }
        }
-
+    
+    @InstagramResourceType('media')
     @Put(':mediaId/response-type')
     async updateMediaResponseType(@Param('mediaId') mediaId: string, @Body() input: Record<string, any>) {
       try {
@@ -128,6 +137,7 @@ export class InstagramAccountController {
       }
     }
 
+    @InstagramResourceType('media')
     @Get(':mediaId/media-details')
     async getMediaResponseType(@Param('mediaId') mediaId:  string) {
       try {
@@ -138,6 +148,7 @@ export class InstagramAccountController {
       }
     }
 
+   @InstagramResourceType('media')
    @Get(':mediaId/ai-enabled')
    async getAIEnabledFromTable(@Param('mediaId') mediaId: string) {
        try {
@@ -150,6 +161,7 @@ export class InstagramAccountController {
 
 
   // get the overall stats related to media
+  @InstagramResourceType('media')
   @Get(':mediaId/analytics-stats')
   async getMediaStats(@Param('mediaId') mediaId: string) {
     try {
@@ -160,6 +172,7 @@ export class InstagramAccountController {
     }
   }
 
+  @InstagramResourceType('media')
   @Get(':mediaId/comments/:type')
   async getMediaComments(
     @Param('mediaId') mediaId: string,
@@ -176,6 +189,7 @@ export class InstagramAccountController {
     }
   }
 
+  @InstagramResourceType('media')
   @Get(':mediaId/comment-timeseries')
   async getCommentTimeSeries(
     @Param('mediaId') mediaId: string,
@@ -189,6 +203,7 @@ export class InstagramAccountController {
     }
   }
 
+  @InstagramResourceType('account')
   @Delete(':accountId/delete-account')
   async deleteAccount(@Param('accountId') accountId: string) {
     try {
@@ -201,6 +216,7 @@ export class InstagramAccountController {
   }
 
   //  STORY Api
+  @InstagramResourceType('account')
   @Put(':accountId/update-story')
   async updateAccountStory(@Param('accountId') accountId: string) {
     try{
@@ -213,6 +229,7 @@ export class InstagramAccountController {
     }
 
     // get all the story given the accountId
+    @InstagramResourceType('account')
     @Get(':accountId/get-story')
     async getAccountStory(@Param('accountId') accountId: string) {
 
@@ -224,6 +241,7 @@ export class InstagramAccountController {
       }  
     }
 
+    @InstagramResourceType('story')
     @Get(':storyId/story-details')
     async getStoryDetails(@Param('storyId') mediaId:  string) {
       try {
@@ -234,6 +252,7 @@ export class InstagramAccountController {
       }
     }
 
+    @InstagramResourceType('story')
     @Put(':storyId/apply-automation-story')
       async putStoryAutomation(
         @Param('storyId') storyId: string,
@@ -249,12 +268,7 @@ export class InstagramAccountController {
           console.log('Failed to apply automation:', (error as Error).message);
           throw new Error('Failed to apply automation');
         }
-      }
-
-
-
-  
-
+      } 
 
 }
 

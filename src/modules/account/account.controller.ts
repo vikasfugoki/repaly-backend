@@ -1,13 +1,16 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, Req, HttpException, HttpStatus } from '@nestjs/common';
 import { AccountService } from './account.service';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 // import { GetAccountResponse } from '@lib/dto';
 import { InstagramAccountRepositoryDTO } from '../../lib/database/dto/instagram.account.repository.dto';
+import {UserRepositoryService} from '@database/dynamodb/repository-services/user.service';
 
 @ApiTags('Account')
 @Controller('account')
 export class AccountController {
-  constructor(private readonly accountService: AccountService) {}
+  constructor(private readonly accountService: AccountService,
+    private readonly userDetailsService: UserRepositoryService
+  ) {}
 
   @Get()
   @ApiOkResponse({
@@ -15,11 +18,16 @@ export class AccountController {
     // type: GetAccountResponse,
     type: [InstagramAccountRepositoryDTO]
   })
-  async getAccount(
-    @Query('userId') userId: string,
-  ): Promise<InstagramAccountRepositoryDTO[]> {
+  async getAccount(@Req() req): Promise<InstagramAccountRepositoryDTO[]> {
     try {
-      const response = await this.accountService.getAccount(userId);
+      const platformId = req.user.user.sub; // googel user id
+      const userItem = await this.userDetailsService.getUserByPlatformId(platformId);
+            if (!userItem) {
+                  throw new HttpException('User is not allowed to make this request', HttpStatus.FORBIDDEN);
+                }
+
+      const influexId = userItem.id ?? "";
+      const response = await this.accountService.getAccount(influexId);
       return response;
     } catch (error) {
       console.error('Error fetching media:', error);

@@ -7,7 +7,7 @@ export class InstagramStoryRepositoryService {
     private readonly tableName = 'instagram_story_repository';
     constructor(private readonly dynamoDbService: DynamoDBService) {}
 
-    getStory(story_id: string) {
+    async getStory(story_id: string) {
         const params = new GetCommand({
           TableName: this.tableName,
           Key: { story_id: story_id },

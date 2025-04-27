@@ -18,7 +18,7 @@ class QueryDto {
 
 export class AddBusinessDetailsRequest {
   @ApiProperty()
-  @IsNotEmpty()
+  // @IsNotEmpty()
   user_id: string;
 
   @ApiProperty({ type: [QueryDto] })

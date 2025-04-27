@@ -3,7 +3,7 @@ import { IsNotEmpty, IsString } from 'class-validator';
 
 export class ExchangePlatformCodeRequest {
   @ApiProperty()
-  @IsNotEmpty()
+  // @IsNotEmpty()
   userId: string;
 
   @ApiProperty()
