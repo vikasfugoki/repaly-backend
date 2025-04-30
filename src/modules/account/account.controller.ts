@@ -2,7 +2,7 @@ import { Controller, Get, Query, Req, HttpException, HttpStatus } from '@nestjs/
 import { AccountService } from './account.service';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 // import { GetAccountResponse } from '@lib/dto';
-import { InstagramAccountRepositoryDTO } from '../../lib/database/dto/instagram.account.repository.dto';
+import { InstagramAccountRepositoryDTO, OmitInstagramAccountRepositoryDTO } from '../../lib/database/dto/instagram.account.repository.dto';
 import {UserRepositoryService} from '@database/dynamodb/repository-services/user.service';
 
 @ApiTags('Account')
@@ -16,9 +16,9 @@ export class AccountController {
   @ApiOkResponse({
     description: 'Returns a list of user accounts for different platforms.',
     // type: GetAccountResponse,
-    type: [InstagramAccountRepositoryDTO]
+    type: [OmitInstagramAccountRepositoryDTO]
   })
-  async getAccount(@Req() req): Promise<InstagramAccountRepositoryDTO[]> {
+  async getAccount(@Req() req): Promise<OmitInstagramAccountRepositoryDTO[]> {
     try {
       const platformId = req.user.user.sub; // googel user id
       const userItem = await this.userDetailsService.getUserByPlatformId(platformId);
@@ -27,6 +27,7 @@ export class AccountController {
                 }
 
       const influexId = userItem.id ?? "";
+      console.log(`influex id: ${influexId}`);
       const response = await this.accountService.getAccount(influexId);
       return response;
     } catch (error) {

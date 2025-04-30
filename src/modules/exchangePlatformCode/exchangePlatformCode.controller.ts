@@ -29,10 +29,15 @@ export class ExchangePlatformCodeController {
         ...input,
         userId: influexId,
       };
-      return await this.exchangePlatformCodeService.exchangeInstagramCode(input);
+      return await this.exchangePlatformCodeService.exchangeInstagramCode(updatedInput);
     } catch (error) {
-      console.log((error as Error).message);
-      throw new Error('Error: Failed to exchange code.');
+      console.error(error);  
+      if (error instanceof HttpException) {
+        // Let NestJS handle known HTTP exceptions (e.g., 409 Conflict)
+        throw error;
+      }
+      // Unexpected errors: return generic 500
+      throw new HttpException('Error: Failed to exchange code.', HttpStatus.INTERNAL_SERVER_ERROR);
     }
     
   }

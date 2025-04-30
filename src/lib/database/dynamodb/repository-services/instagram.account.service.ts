@@ -68,7 +68,8 @@ export class InstagramAccountRepositoryService {
         await this.dynamoDbService.dynamoDBDocumentClient.send(params);
       return (response.Items as InstagramAccountRepositoryDTO[]) ?? [];
     } catch (error) {
-      console.error('Error fetching Instagram account by userId:', error);
+      console.error(`user_id: ${user_id}`);
+      console.error(`Error fetching Instagram account by userId ${user_id}:`, error);
       throw new Error('Failed to fetch Instagram accounts');
     }
   }

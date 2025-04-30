@@ -34,4 +34,17 @@ export class AuthController {
     }
     return await this.authService.validateGoogleToken(token);
   }
+
+  @Post('user-login')
+  async loginUsingPassword(@Body() input: Record<string, any>) {
+    const username = input['username'];
+    const password = input['password'];
+
+    if (username === 'test_user' && password === 'test_password') {
+      return { success: true };
+    }
+
+    return { success: false };
+  }
+
 }

@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, ConflictException, HttpException, HttpStatus, ConsoleLogger } from '@nestjs/common';
 import { InstagramApiService } from '../utils/instagram/api.service';
 import { InstagramAccountRepositoryService } from '@database/dynamodb/repository-services/instagram.account.service';
 import { ExchangePlatformCodeRequest } from '@lib/dto';
@@ -11,6 +11,8 @@ export class ExchangePlatformCodeService {
   ) {}
   async exchangeInstagramCode(input: ExchangePlatformCodeRequest) {
     const { userId, platformName, code } = input;
+
+    console.log(`here are we:`, userId, platformName, code);
 
     if (platformName !== 'instagram') {
       throw new HttpException(
