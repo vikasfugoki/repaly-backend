@@ -32,6 +32,7 @@ export class GoogleApiService {
       throw new Error('Failed to get Google user info.');
     }
   }
+  
   async getAccessToken(code: string): Promise<GoogleAccessTokenResponse> {
     const oAuthUrl = this.urlService.getGoogleOauthURL();
     const client_id =
@@ -70,13 +71,28 @@ export class GoogleApiService {
     }
   }
 
+  // async verifyIdToken(idToken: string): Promise<TokenPayload> {
+  //   const ticket = await this.client.verifyIdToken({
+  //     idToken,
+  //     audience: process.env.GOOGLE_CLIENT_ID,
+  //   });
+  //   const payload = ticket.getPayload();
+  //   if (!payload) throw new Error('Invalid token payload');
+  //   return payload;
+  // }
+
   async verifyIdToken(idToken: string): Promise<TokenPayload> {
-    const ticket = await this.client.verifyIdToken({
-      idToken,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    });
-    const payload = ticket.getPayload();
-    if (!payload) throw new Error('Invalid token payload');
-    return payload;
+    try {
+      const ticket = await this.client.verifyIdToken({
+        idToken,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+      const payload = ticket.getPayload();
+      if (!payload) throw new Error('Invalid token payload');
+      return payload;
+    } catch (err) {
+      console.error('verifyIdToken failed:', err);
+      throw new Error('Invalid or expired token');
+    }
   }
 }

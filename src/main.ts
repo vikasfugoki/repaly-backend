@@ -13,6 +13,13 @@ async function bootstrap() {
     origin: '*',
   });
 
+  // app.enableCors({
+  //   origin: true,
+  //   credentials: true,
+  //   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  //   allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning', 'x-requested-with'],
+  // });
+
   const config = new DocumentBuilder()
     .setTitle('NestJS DynamoDB API')
     .setDescription('API documentation for the NestJS app with DynamoDB')
@@ -31,8 +38,9 @@ async function bootstrap() {
 
   const reflector = app.get(Reflector);
   app.useGlobalGuards(new JwtAuthGuard(app.get(AuthService), reflector));
-
+  
   await app.listen(+(process.env.PORT || '3000'));
+
   console.log(
     `\n\n Application is running on: ${(await app.getUrl()).replace('[::1]', 'localhost')} \n\n`,
   );

@@ -17,7 +17,8 @@ export class ExchangePlatformCodeController {
   @HttpCode(200)
   async exchangeInstagramCode(@Body() input: ExchangePlatformCodeRequest, @Req() req) {
     try{
-      const platformId = req.user.user.sub;
+      // const platformId = req.user.user.sub;
+      const platformId = req.user.id;
       const userItem = await this.userDetailsService.getUserByPlatformId(platformId);
       if (!userItem) {
             throw new HttpException('User is not allowed to make this request', HttpStatus.FORBIDDEN);

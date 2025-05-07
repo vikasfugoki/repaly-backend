@@ -8,6 +8,8 @@ import { InstagramAccountRepositoryService } from './lib/database/dynamodb/repos
 import { AuthController } from './modules/auth/auth.controller';
 import { AuthService } from './modules/auth/auth.service';
 import { GoogleApiService } from './modules/utils/google/api.service';
+import { FacebookApiService } from './modules/utils/facebook/api.service';
+import { FacebookUrlService } from './modules/utils/facebook/url.service';
 import { GoogleUrlService } from './modules/utils/google/url.service';
 import { UserRepositoryService } from './lib/database/dynamodb/repository-services/user.service';
 import { GoogleUserRepositoryService } from './lib/database/dynamodb/repository-services/google.user.service';
@@ -29,12 +31,20 @@ import { DynamoDBService } from '@database/dynamodb/dynamodb.service';
 import { AIController } from './modules/aiModel/aiModel.contorller';
 import { AIServices } from './modules/aiModel/aiModel.service';
 
+// Import the JwtModule
+import { JwtModule } from '@nestjs/jwt';
+import { FacebookUserRepositoryService } from '@database/dynamodb/repository-services/facebook.user.service';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       validationSchema: envValidationSchema,
+    }),
+    // Add JwtModule here
+    JwtModule.register({
+      secret: process.env.JWT_SECRET || 'defaultSecret', // or any secret you use
+      signOptions: { expiresIn: '1h' },  // JWT expiration time
     }),
   ],
   controllers: [
@@ -44,7 +54,7 @@ import { AIServices } from './modules/aiModel/aiModel.service';
     AccountController,
     ExchangePlatformCodeController,
     InstagramAccountController,
-    AIController
+    AIController,
   ],
   providers: [
     AppService,
@@ -63,10 +73,13 @@ import { AIServices } from './modules/aiModel/aiModel.service';
     GoogleUserRepositoryService,
     GoogleApiService,
     GoogleUrlService,
+    FacebookApiService,
+    FacebookUrlService,
+    FacebookUserRepositoryService,
     UserRepositoryService,
     InstagramMediaRepositoryService,
     InstagramStoryRepositoryService,
-    AIServices
+    AIServices,
   ],
   exports: [DynamoDBService],
 })

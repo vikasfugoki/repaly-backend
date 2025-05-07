@@ -7,7 +7,8 @@ import {
   InstagramMediaResponse,
   InstagramOauthResponse,
   InstagramUserInfoResponse,
-  InstagramStoriesResponse
+  InstagramStoriesResponse,
+  InstagramMediaInsight
 } from '@lib/dto';
 import { EnvironmentService } from '../environment/environment.service';
 
@@ -121,29 +122,57 @@ export class InstagramApiService {
     }
   }
 
+  // async getMediaInsight(
+  //   mediaId: string,
+  //   access_token: string,
+  //   media_type?: string,
+  // ) {
+  //   const url = this.urlService.getMediaInsightUrl(mediaId);
+  //   const metric =
+  //     'reach,shares,comments,likes,saved' +
+  //     (media_type === 'VIDEO'
+  //       ? ',ig_reels_avg_watch_time,ig_reels_video_view_total_time'
+  //       : '');
+  //   const params = {
+  //     metric,
+  //     access_token,
+  //   };
+  //   try {
+  //     const response = await axios.get<InstagramMediaInsightResponse>(url, {
+  //       params,
+  //     });
+  //     return response.data.data;
+  //   } catch (error) {
+  //     console.log('Failed to get media insights', (error as Error).message);
+  //   }
+  // }
+
   async getMediaInsight(
     mediaId: string,
     access_token: string,
     media_type?: string,
-  ) {
-    const url = this.urlService.getMediaInsightUrl(mediaId);
-    const metric =
-      'reach,shares,comments,likes,saved' +
-      (media_type === 'VIDEO'
-        ? ',ig_reels_avg_watch_time,ig_reels_video_view_total_time'
-        : '');
-    const params = {
-      metric,
-      access_token,
-    };
-    try {
-      const response = await axios.get<InstagramMediaInsightResponse>(url, {
-        params,
-      });
-      return response.data.data;
-    } catch (error) {
-      console.log('Failed to get media insights', (error as Error).message);
-    }
+  ): Promise<InstagramMediaInsight[]> {
+    const defaultMetrics = [
+      'reach',
+      'shares',
+      'comments',
+      'likes',
+      'saved',
+      ...(media_type === 'VIDEO'
+        ? ['ig_reels_avg_watch_time', 'ig_reels_video_view_total_time']
+        : []),
+    ];
+  
+    const mockInsights: InstagramMediaInsight[] = defaultMetrics.map((metric) => ({
+      name: metric,
+      period: 'lifetime',
+      values: [{ value: 0 }],
+      title: metric.replace(/_/g, ' ').toUpperCase(),
+      description: `Mocked value for ${metric}`,
+      id: mediaId, // Assign mediaId here
+    }));
+  
+    return mockInsights;
   }
 
   async getUserDetails(

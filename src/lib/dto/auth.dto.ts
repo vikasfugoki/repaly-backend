@@ -28,6 +28,12 @@ export class GoogleAccessTokenResponse {
   token_type: string;
 }
 
+export class FacebookAccessTokenResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+}
+
 // [TBD]: Validate response and fix response dto
 export class GoogleUserInfoResponse {
   sub: string;
@@ -38,4 +44,11 @@ export class GoogleUserInfoResponse {
   email: string;
   email_verified: boolean;
   locale: string;
+}
+
+export class FacebookUserInfoResponse {
+  id: string;
+  name: string;
+  email: string;
+  picture: string;
 }

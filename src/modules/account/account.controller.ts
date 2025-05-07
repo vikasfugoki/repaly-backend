@@ -20,7 +20,8 @@ export class AccountController {
   })
   async getAccount(@Req() req): Promise<OmitInstagramAccountRepositoryDTO[]> {
     try {
-      const platformId = req.user.user.sub; // googel user id
+      // const platformId = req.user.user.sub; // googel user id
+      const platformId = req.user.id;
       const userItem = await this.userDetailsService.getUserByPlatformId(platformId);
             if (!userItem) {
                   throw new HttpException('User is not allowed to make this request', HttpStatus.FORBIDDEN);
