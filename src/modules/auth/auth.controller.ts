@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, HttpStatus, Post, Headers, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post, Headers, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Public } from './public.decorator';
 import { GetAccessTokenRequest } from '@lib/dto';
@@ -57,18 +57,32 @@ async validateToken(@Headers('authorization') authHeader: string) {
   }
 }
 
-@Public()
-@Post('google-login')
-async loginGoogle(@Body() input: GetAccessTokenRequest) {
-  const result = await this.authService.loginWithGoogleCode(input?.code);
-  return result;
-}
+// @Public()
+// @Post('google-login')
+// async loginGoogle(@Body() input: GetAccessTokenRequest) {
+//   const result = await this.authService.loginWithGoogleCode(input?.code);
+//   return result;
+// }
+
+// @Public()
+// @Post('facebook-login')
+// async loginFacebook(@Body() input: GetAccessTokenRequest) {
+//   const result = await this.authService.loginWithFacebookCode(input?.code);
+//   return result;
+// }
 
 @Public()
-@Post('facebook-login')
-async loginFacebook(@Body() input: GetAccessTokenRequest) {
-  const result = await this.authService.loginWithFacebookCode(input?.code);
-  return result;
+@Post('get-access-token')
+async loginSocial(@Body() input: GetAccessTokenRequest) {
+  const { code, platformName } = input;
+
+  if (platformName === 'google') {
+    return this.authService.loginWithGoogleCode(code);
+  } else if (platformName === 'facebook') {
+    return this.authService.loginWithFacebookCode(code);
+  } else {
+    throw new BadRequestException('Unsupported provider');
+  }
 }
 
   // @Public()

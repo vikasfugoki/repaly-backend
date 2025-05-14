@@ -4,7 +4,7 @@ import { DynamoDBService } from '../dynamodb.service';
 
 @Injectable()
 export class FacebookUserRepositoryService {
-    private readonly tableName = 'google_user_repository';
+    private readonly tableName = 'facebook_user_repository';
     constructor(private readonly dynamoDbService: DynamoDBService) {}
 
     async createFacebookUser(userDetails: {

@@ -268,7 +268,18 @@ export class InstagramAccountController {
           console.log('Failed to apply automation:', (error as Error).message);
           throw new Error('Failed to apply automation');
         }
-      } 
+      }
+      
+      @InstagramResourceType('story')
+      @Get(':storyId/story-analytics')
+      async getStoryAnalytics(@Param('storyId') storyId: string) {
+        try {
+          return await this.instagramAccountService.getStoryStatsFromTable(storyId);
+        } catch (error) {
+          console.log('Failed to get story analytics :', (error as Error).message);
+          throw new Error('Failed to get story analytics');
+        }
+      }
 
 }
 

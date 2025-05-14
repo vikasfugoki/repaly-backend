@@ -254,9 +254,18 @@ export class AuthService {
   async checkOwnership(
     userId: string, resourceId: string,
     type: 'media' | 'story' | 'account',
+    loginSource: 'google' | 'facebook'
   ): Promise<boolean>  {
 
-    const linkedInstagramAccountIds = await this.getInstagramAccountIdFromGoogleUserId(userId);
+
+    let linkedInstagramAccountIds: string[] = [];
+
+    if (loginSource === 'google') {
+      linkedInstagramAccountIds = await this.getInstagramAccountIdFromGoogleUserId(userId);
+    } else if (loginSource === 'facebook') {
+      linkedInstagramAccountIds = await this.getInstagramAccountIdFromFacebookUserId(userId);
+    }
+
     let targetInstagramAccountId: string | null = null;
 
     console.log(`linked instagram accounts: ${linkedInstagramAccountIds}`);
@@ -277,6 +286,7 @@ export class AuthService {
         const storyResult = await this.instagramStoryRepositoryService.getStory(resourceId);
         targetInstagramAccountId = storyResult?.Item?.accountId;
         console.log(`inside story`);
+        break;
       
       default:
         throw new Error(`Unsupported resource type: ${type}`);
@@ -307,6 +317,19 @@ export class AuthService {
 
   }
 
+  async getInstagramAccountIdFromFacebookUserId(userId: string): Promise<string[]> {
+    
+    // get attached instagram account_id with the GoogleUserId
+    const influex_user_id = (await this.facebookUserRepository.getFacebookUser(userId)).Item?.user_id;
+    console.log(`getting influex user id: ${influex_user_id}`);
+    if (!influex_user_id) return [];
+    const accounts = await this.instagramAccountRepositoryService.getAccountDetailsByUserId(influex_user_id);
+    const instagram_account_ids = accounts.map(account => account.id);
+    console.log(`accounts ids: ${instagram_account_ids}`);
+    return instagram_account_ids;
+
+}
+
 
   // facebook login
   async getFacebookPayload(accessToken: string): Promise<{ message: string; user: any }> {
@@ -330,6 +353,8 @@ export class AuthService {
   }
 
   async loginWithFacebookCode(code: string) {
+
+    console.log("facebook auth code:", code);
     const {
       userId,
       isBusinessDetailsFilled,
@@ -346,6 +371,8 @@ export class AuthService {
     code: string,
   ): Promise<GetAccessTokenResponse> {
     const { access_token } = await this.facebookApiService.getAccessToken(code);
+
+    console.log("facebook access token:", access_token);
   
     // Validate the access token
     const payload = await this.getFacebookPayload(access_token);

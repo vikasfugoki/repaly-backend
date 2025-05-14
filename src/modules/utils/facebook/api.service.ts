@@ -15,7 +15,7 @@ export class FacebookApiService {
     async getUserDetails(access_token: string): Promise<FacebookUserInfoResponse> {
          
         try {
-          const response = await axios.get<FacebookUserInfoResponse>(this.environmentService.getEnvVariable('FACEBOOK_API_URL'), {
+          const response = await axios.get<any>(this.environmentService.getEnvVariable('FACEBOOK_API_URL'), {
             params: {
               access_token,
               fields: 'id,name,email,picture', // Fields to fetch
@@ -42,8 +42,8 @@ export class FacebookApiService {
                 },
               });
 
-              console.log('facebook token response:', tokenResponse.data);
-              return tokenResponse.data;
+              console.log('facebook token response:', tokenResponse);
+              return {"access_token": tokenResponse.data.access_token};
           
         } catch (error) {
           console.error('Error getting Facebook access token:', error?.response?.data || error.message);

@@ -9,6 +9,7 @@ import {
 } from '@lib/dto';
 import { InstagramMediaAnalyticsRepositoryService } from '@database/dynamodb/repository-services/instagram.mediaAnalytics.service';
 import { InstagramStoryRepositoryService } from '@database/dynamodb/repository-services/instagram.story.service';
+import { InstagramStoryAnalyticsRepositoryService } from '@database/dynamodb/repository-services/instagram.storyAnalytics.service';
 import { log } from 'console';
 
 @Injectable()
@@ -18,7 +19,8 @@ export class InstagramAccountService {
     private readonly instagramApiService: InstagramApiService,
     private readonly instagramAccountRepositoryService: InstagramAccountRepositoryService,
     private readonly instagramMediaRepositoryService: InstagramMediaRepositoryService,
-    private readonly instagramStoryRepositoryService: InstagramStoryRepositoryService
+    private readonly instagramStoryRepositoryService: InstagramStoryRepositoryService,
+    private readonly instagramStoryAnalyticsRepositoryService: InstagramStoryAnalyticsRepositoryService
   ) {}
 
   private buildInsights(
@@ -466,6 +468,10 @@ export class InstagramAccountService {
         await this.instagramStoryRepositoryService.deleteAccount(accountId);
         console.log(`deleted from 'instagram_story_repository'`);
 
+        // delete all the story-analytics for given accountId from the "instagram_story_analytics_repository"
+        await this.instagramStoryAnalyticsRepositoryService.deleteAccount(accountId);
+        console.log(`deleted from 'instagram_story_analytics_repository'`);
+
         return {success: true, message: `account has been removed.`}
         
       } catch (error) {
@@ -522,8 +528,18 @@ export class InstagramAccountService {
             IsActive: isActive,
             tag_and_value_pair: {},
           };
-          return await this.instagramStoryRepositoryService.updateStoryDetails(storyWithExtras);
+          await this.instagramStoryRepositoryService.updateStoryDetails(storyWithExtras);
         }
+
+        for (const story of storyDetails) { 
+          await this.instagramStoryAnalyticsRepositoryService.updateStoryAnalytics({
+            "id": story?.id,
+            "account_id": accountId 
+          });
+
+          console.log("story fetched and inserted successfully.");
+          return { success: true, message: "Story updated successfully" };
+      }
 
       } catch (error) {
         console.error(`Error updating stroy for ${accountId}:`, error);
@@ -563,8 +579,35 @@ export class InstagramAccountService {
         return response?.Item ?? {};
 
     } catch (error) {
-        console.error(`Error getting media details for media ${storyId}:`, error);
+        console.error(`Error getting story details for media ${storyId}:`, error);
         throw error;
+    }
+  }
+
+  async getStoryStatsFromTable(storyId: string) {
+    try {
+      const now = new Date();
+      const detailsResponse = await this.instagramStoryRepositoryService.getStory(storyId);
+      const timestamp = detailsResponse?.Item?.timestamp;
+      
+      if (!timestamp) {
+        console.warn(`No timestamp found for storyId: ${storyId}`);
+        return {};
+      }
+  
+      const storyTimestamp = new Date(timestamp);
+      const hoursDiff = (now.getTime() - storyTimestamp.getTime()) / (1000 * 60 * 60);
+      const isActive = hoursDiff <= 24;
+  
+      if (isActive) {
+        const analyticsResponse = await this.instagramStoryAnalyticsRepositoryService.getStoryAnalytics(storyId);
+        return analyticsResponse?.Item ?? {};;
+      }
+  
+      return {};
+    } catch (error) {
+      console.error(`Failed to get story-analytics for ${storyId}:`, error);
+      return {};
     }
   }
 

@@ -28,7 +28,10 @@ import {
       );
       
       const request = context.switchToHttp().getRequest();
-      const user = request.user.user.sub; // assumes you've authenticated and attached user
+      // const user = request.user.user.sub; // assumes you've authenticated and attached user
+      console.log("request inside instagram guard:", request);
+      const user = request.user.id;
+      const loginSource = request.user.loginSource;
       const params = request.params;
 
       let resourceId: string;
@@ -48,7 +51,7 @@ import {
 
       console.log(user, resourceId, resourceType);
   
-      const ownsResource = await this.authService.checkOwnership(user, resourceId, resourceType);
+      const ownsResource = await this.authService.checkOwnership(user, resourceId, resourceType, loginSource);
   
       if (!ownsResource) {
         throw new UnauthorizedException('You do not own this resource');

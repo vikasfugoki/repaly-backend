@@ -3,13 +3,15 @@ import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { BusinessDetailsRepositoryService } from '@database/dynamodb/repository-services/businessDetails.service';
 import {UserRepositoryService} from '@database/dynamodb/repository-services/user.service';
 import {GoogleUserRepositoryService} from  '@database/dynamodb/repository-services/google.user.service';
+import { FacebookUserRepositoryService } from '@database/dynamodb/repository-services/facebook.user.service';
 
 @Injectable()
 export class UserService {
   constructor(
     private readonly businessDetailsService: BusinessDetailsRepositoryService,
     private readonly userDetailsService: UserRepositoryService,
-    private readonly googleUserDetailsService: GoogleUserRepositoryService
+    private readonly googleUserDetailsService: GoogleUserRepositoryService,
+    private readonly facebookUserRepositoryService: FacebookUserRepositoryService
   ) {}
 
   addBusinessDetails(input: AddBusinessDetailsRequest) {
@@ -43,6 +45,16 @@ export class UserService {
         email: googleItem?.Item?.email ?? "",
         picture: googleItem?.Item?.picture ?? "",
         name: googleItem?.Item?.name ?? "",
+      };
+    }
+
+    if (platform_name === "facebook") {
+      const facebookItem = await this.facebookUserRepositoryService.getFacebookUser(platform_id);
+      return {
+        id: facebookItem?.Item?.id ?? "",
+        email: facebookItem?.Item?.email ?? "",
+        picture: facebookItem?.Item?.picture ?? "",
+        name: facebookItem?.Item?.name ?? "",
       };
     }
   

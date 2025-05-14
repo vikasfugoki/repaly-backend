@@ -30,6 +30,7 @@ import { EnvironmentService } from './modules/utils/environment/environment.serv
 import { DynamoDBService } from '@database/dynamodb/dynamodb.service';
 import { AIController } from './modules/aiModel/aiModel.contorller';
 import { AIServices } from './modules/aiModel/aiModel.service';
+import { InstagramStoryAnalyticsRepositoryService } from '@database/dynamodb/repository-services/instagram.storyAnalytics.service';
 
 // Import the JwtModule
 import { JwtModule } from '@nestjs/jwt';
@@ -79,6 +80,7 @@ import { FacebookUserRepositoryService } from '@database/dynamodb/repository-ser
     UserRepositoryService,
     InstagramMediaRepositoryService,
     InstagramStoryRepositoryService,
+    InstagramStoryAnalyticsRepositoryService,
     AIServices,
   ],
   exports: [DynamoDBService],
