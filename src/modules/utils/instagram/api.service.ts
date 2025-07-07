@@ -180,13 +180,15 @@ export class InstagramApiService {
   ): Promise<InstagramUserInfoResponse> {
     const url = this.urlService.getMe();
     const params = {
-      fields: 'username,name,biography,profile_picture_url,media_count',
+      fields: 'user_id,username,name,biography,profile_picture_url,media_count',
       access_token,
     };
     try {
       const response = await axios.get<InstagramUserInfoResponse>(url, {
         params,
       });
+      console.log("details from the longlive token: ", response.data);
+      
       return response.data;
     } catch (error) {
       console.log('Failed to get user details.', (error as Error).message);

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { InstagramApiService } from '../utils/instagram/api.service';
 import { InstagramAccountRepositoryService } from '@database/dynamodb/repository-services/instagram.account.service';
 import {InstagramMediaRepositoryService} from '@database/dynamodb/repository-services/instagram.media.service';
@@ -10,7 +10,14 @@ import {
 import { InstagramMediaAnalyticsRepositoryService } from '@database/dynamodb/repository-services/instagram.mediaAnalytics.service';
 import { InstagramStoryRepositoryService } from '@database/dynamodb/repository-services/instagram.story.service';
 import { InstagramStoryAnalyticsRepositoryService } from '@database/dynamodb/repository-services/instagram.storyAnalytics.service';
+import { InstagramDMService } from '@database/dynamodb/repository-services/instagram.dm.service';
 import { log } from 'console';
+import { FacebookApiService } from '../utils/facebook/api.service';
+import { InstagramAdsService } from '@database/dynamodb/repository-services/instagram.ads.service';
+import { InstagramFbAccessTokenService } from '@database/dynamodb/repository-services/instagram.fbAccessToken.service';
+import  { InstagramAdAnalyticsRepositoryService } from '@database/dynamodb/repository-services/instagram.adAnalytics.service';
+
+
 
 @Injectable()
 export class InstagramAccountService {
@@ -20,7 +27,12 @@ export class InstagramAccountService {
     private readonly instagramAccountRepositoryService: InstagramAccountRepositoryService,
     private readonly instagramMediaRepositoryService: InstagramMediaRepositoryService,
     private readonly instagramStoryRepositoryService: InstagramStoryRepositoryService,
-    private readonly instagramStoryAnalyticsRepositoryService: InstagramStoryAnalyticsRepositoryService
+    private readonly instagramStoryAnalyticsRepositoryService: InstagramStoryAnalyticsRepositoryService,
+    private readonly instagramDMService: InstagramDMService,
+    private readonly instagramAdsService: InstagramAdsService,
+    private readonly instagramFbAccessTokenService: InstagramFbAccessTokenService,
+    private readonly facebookApiService: FacebookApiService,
+    private readonly instagramAdAnalyticsRepositoryService: InstagramAdAnalyticsRepositoryService
   ) {}
 
   private buildInsights(
@@ -267,8 +279,11 @@ export class InstagramAccountService {
 
         // Ensure response is an array and limit its length to 15
         if (Array.isArray(items)) {
+            // return items
+            //     .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+            //     .slice(0, 15);
             return items
-                .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+                .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
                 .slice(0, 15);
         } else {
             console.warn("Unexpected response type, expected an array:", response);
@@ -449,15 +464,16 @@ export class InstagramAccountService {
         await this.instagramAccountRepositoryService.deleteAccount(accountId);
         console.log(`deleted from 'instagram_account_repository'`);
 
-        const mediaList = await this.instagramMediaRepositoryService.getMediaIdsByAccountId(accountId);
-        console.log(`media id list: ${mediaList}`);
+        // const mediaList = await this.instagramMediaRepositoryService.getMediaIdsByAccountId(accountId);
+        // console.log(`media id list: ${mediaList}`);
         
 
-        const deletePromises = mediaList.map((mediaId) => 
-          this.instagramMediaAnalyticsRepositoryService.deleteMedia(mediaId) // Reusing existing delete function
-        );
+        // const deletePromises = mediaList.map((mediaId) => 
+        //   this.instagramMediaAnalyticsRepositoryService.deleteMedia(mediaId) // Reusing existing delete function
+        // );
 
-        await Promise.all(deletePromises);
+        // await Promise.all(deletePromises);
+        await this.instagramMediaAnalyticsRepositoryService.deleteAccount(accountId);
         console.log(`deleted from 'instagram_analytics_repository'`);
         
         // // delete the all media which have the given accountId from the 'instagram_media_repository'
@@ -472,7 +488,23 @@ export class InstagramAccountService {
         await this.instagramStoryAnalyticsRepositoryService.deleteAccount(accountId);
         console.log(`deleted from 'instagram_story_analytics_repository'`);
 
-        return {success: true, message: `account has been removed.`}
+        // delete all the conversation for given accountId from the "instagram_dm_categorization_repository"
+        await this.instagramDMService.deleteAccount(accountId);
+        console.log(`deleted from 'instagram_dm_categorization_repository'`);
+
+        // delete the instagram account and the attached facebook access_token from the "facebook_access_token_repository"
+        await this.instagramFbAccessTokenService.deleteAccount(accountId);
+        console.log(`delete from 'facebook_access_token_repository'`)
+
+        // delete all the ads related details for given accountId from "instagram_ads_repository"
+        await this.instagramAdsService.deleteAccount(accountId);
+        console.log(`deleted from 'instagram_ads_repository'`);
+        // delete all the ads analytics related details for given accountId from "instagram_ads_analytics_repository"
+        await this.instagramAdAnalyticsRepositoryService.deleteAccount(accountId);
+        console.log(`deleted from 'instagram_ads_analytics_repository'`);
+
+        return {success: true, message: `account has been removed.`};
+        
         
       } catch (error) {
         console.error(`Failed to delete the account ${accountId}`);
@@ -516,17 +548,24 @@ export class InstagramAccountService {
             return [];
         }
 
+        
+
         const now = new Date();
         // Insert into 'instagram_media_repository' DynamoDB table
         for (const story of storyDetails) {
           const storyTimestamp = new Date(story.timestamp);
           const hoursDiff = (now.getTime() - storyTimestamp.getTime()) / (1000 * 60 * 60);
           const isActive = hoursDiff <= 24;
+          const response = await this.instagramStoryRepositoryService.getStory(story.id);
+          const existingStory = response?.Item || null;
+
           const storyWithExtras = {
             ...story,
             accountId,
             IsActive: isActive,
-            tag_and_value_pair: {},
+            tag_and_value_pair: existingStory && 'tag_and_value_pair' in existingStory
+                                ? existingStory.tag_and_value_pair
+                                : {},
           };
           await this.instagramStoryRepositoryService.updateStoryDetails(storyWithExtras);
         }
@@ -538,8 +577,10 @@ export class InstagramAccountService {
           });
 
           console.log("story fetched and inserted successfully.");
-          return { success: true, message: "Story updated successfully" };
+          
       }
+
+      return { success: true, message: "Story updated successfully" };
 
       } catch (error) {
         console.error(`Error updating stroy for ${accountId}:`, error);
@@ -610,5 +651,416 @@ export class InstagramAccountService {
       return {};
     }
   }
+
+  async getDMCategorization(accountId: string) {
+    
+    try {
+        const conversations = await this.instagramDMService.getConversationsByAccountId(accountId);
+        const items = conversations.Items || [];
+
+        const simplified = items.map((item) => ({
+          id: item.id,
+          sender_username: item.sender_username,
+          recipient_username: item.recipient_username,
+          sender_pic_url: item.sender_pic_url,
+          recipient_pic_url: item.recipient_pic_url,
+          category: item.category,
+          sender_data: item.sender_data,
+          sender_id: item.senderId,
+          recipient_id: item.recipientId
+        }));
+
+        return simplified;
+    } catch (error) {
+      console.error(`Failed to get DM categorization for ${accountId}:`, error);
+      return {};
+    }
+  }
+
+  async getDMConversation(conversationId: string) {
+
+    try {
+      const conversation = await this.instagramDMService.getConversations(conversationId);
+      return conversation?.Item ?? [];
+    } catch (error) {
+      console.error(`Failed to get conversation details for ${conversationId}:`, error);
+      throw error;
+    }  
+  }
+
+  async updateDMCategory(conversationId: string, response: Record<string, any>) {
+    try {
+      console.log("received input:", response);
+        if (!response) {
+            throw new Error('Input is undefined or null');
+        }
+        response['id'] = conversationId;
+        return await this.instagramDMService.updateConversationDetails(response);
+
+    } catch (error) {
+      console.error(`Failed to PUT conversation category for ${conversationId}:`, error);
+      throw error;
+    }
+  }
+
+  async getSummaries(mediaId: string) {
+    try {
+
+      const mediaItem = await this.instagramMediaAnalyticsRepositoryService.getMediaAnalytics(mediaId);
+
+      if (!mediaItem) {
+        throw new Error(`Media item not found for mediaId: ${mediaId}`);
+      }
+  
+      const negativeSummary = mediaItem.negative_summary || "No negative summary available.";
+      const inquirySummary = mediaItem.inquiry_summary || "No inquiry summary available.";
+  
+      return {
+        negative_summary: negativeSummary,
+        inquiry_summary: inquirySummary,
+      };
+  
+
+
+    } catch (error) {
+      console.error(`Failed to get summaries details for ${mediaId}:`, error);
+      throw error;
+    }  
+  }
+
+    // story apis
+    async updateAdsOnTable(accountId: string, input: Record<string, any>) {
+      try {
+        const isAccountIdPresent = await this.instagramFbAccessTokenService.isIdPresent(accountId);
+        if (isAccountIdPresent == false) {
+            if (input?.code != null) {
+              console.log("instagram authorization code:", input.code);
+              const tokenResponse = await this.facebookApiService.getAccessTokenAds(input.code);
+              console.log("access token using authorization code:", tokenResponse);
+              // await this.instagramFbAccessTokenService.insertFacebookDetails({"id": accountId, "access_token": tokenResponse.access_token});
+
+              const ads_lst = await this.facebookApiService.getAdAccounts(tokenResponse.access_token);
+
+              // pro user id
+              const account = await this.instagramAccountRepositoryService.getAccount(accountId);
+              const pro_user_id = account?.pro_user_id;
+
+              console.log("pro user id:", pro_user_id);
+
+              if (!pro_user_id) {
+                return {
+                  statusCode: 400,
+                  message: `pro_user_id is not present for the given Instagram account.`,
+                  success: false,
+                };
+              }
+
+              // Add accountId to each ad in the list
+              const enriched_ads_lst = ads_lst.map(ad => ({
+                ...ad,
+                account_id: accountId,
+              }));
+
+              console.log('Enriched ads list:', enriched_ads_lst);
+
+              for (const ad of enriched_ads_lst) {
+                console.log("this is one of the enriched ad:", ad);
+                let ad_details = await this.facebookApiService.getAdCreatives(ad.id, tokenResponse.access_token);
+                for (const ad_detail of ad_details) {
+                  console.log("ad details:", ad_detail);
+
+                  // ✅ Validation: accountId must match instagram_user_id
+                  const igUserId = ad_detail?.instagram_user_id;
+                  if (igUserId !== pro_user_id) {
+                    throw new BadRequestException(
+                      "Facebook account is not connected to this Instagram user. Only accounts linked to the Instagram profile are allowed."
+                    );
+                  }
+
+                  const new_ad_detail = {...ad_detail, "accountId": ad.account_id, "adId": ad.id}
+                  
+
+                  const ad_analytics_detail =  {"id": new_ad_detail.id,
+                                                "accountId": new_ad_detail.accountId,
+                                                "effective_instagram_media_id": new_ad_detail?.effective_instagram_media_id,
+                                                "adId": new_ad_detail.adId
+                  }
+
+                  if (new_ad_detail?.effective_instagram_media_id != null) {
+                    await this.instagramAdsService.updateAdsDetails(new_ad_detail)
+                    await this.instagramAdAnalyticsRepositoryService.updateAdAnalytics(ad_analytics_detail);
+                  }
+                  
+                }
+              }
+
+              console.log('ads being inserted successfully!!!!')
+              await this.instagramFbAccessTokenService.insertFacebookDetails({"id": accountId, "access_token": tokenResponse.access_token});
+
+            }
+        }
+        else {
+          
+            const facebookItem = await this.instagramFbAccessTokenService.getFacebookDetails(accountId);
+            const access_token = await facebookItem?.Item?.access_token;
+
+            const ads_lst = await this.facebookApiService.getAdAccounts(access_token);
+
+            // Add accountId to each ad in the list
+            const enriched_ads_lst = ads_lst.map(ad => ({
+              ...ad,
+              account_id: accountId,
+            }));
+
+            console.log('Enriched ads list:', enriched_ads_lst);
+
+            for (const ad of enriched_ads_lst) {
+              console.log("this is one of the enriched ad:", ad);
+              let ad_details = await this.facebookApiService.getAdCreatives(ad.id, access_token);
+              for (const ad_detail of ad_details) {
+                console.log("ad details:", ad_details);
+                const new_ad_detail = {...ad_detail, "accountId": ad.account_id, "adId": ad.id}
+                console.log("new ad details:", new_ad_detail);
+
+                if (new_ad_detail?.effective_instagram_media_id != null) {
+                  await this.instagramAdsService.updateAdsDetails(new_ad_detail)
+                }
+              }
+            }
+            console.log('ads being inserted successfully!!!!')
+
+        }
+
+        return {success: true, message: `ads being inserted successfully!!!!`};
+
+      } catch (error) {
+        console.error(`Failed to update ad details ${accountId}:`, error);
+        throw error;
+      }
+    }
+
+  async getAdsFromTable(accountId: string) {
+      try {
+        const isAccountPresent = await this.instagramFbAccessTokenService.isIdPresent(accountId);
+        if (isAccountPresent == false) {
+            return {
+              "is_facebook_added": isAccountPresent,
+              "ads": []
+            };
+        }
+
+        // You can fetch actual ads here if the account is present
+        const ads = await this.instagramAdsService.getAdsByAccountId(accountId);     
+
+        return {
+          is_facebook_added: true,
+          ads: ads?.Items || []
+        };
+
+      } catch (error) {
+        console.error(`Failed to get ad details for account: ${accountId}`, error);
+        throw error;
+      }
+  }
+
+  async isFacebookLinked(accountId: string) {
+    try {
+      const isAccountPresent = await this.instagramFbAccessTokenService.isIdPresent(accountId);
+      if (isAccountPresent == true) {
+        return {success: true, is_facebook_added: true };
+      }
+      return {success: true, is_facebook_added: false };
+    } catch (error) {
+      console.error(`Failed to facebook account linked status to instagram account: ${accountId}`, error);
+      throw error;
+    }
+  }
+
+  async getAdDetails(adId: string) {
+    try {
+      const ad_detail = this.instagramAdsService.getAds(adId);
+      return ad_detail;
+    } catch (error) {
+      console.error(`Failed to get details for ad: ${adId}`, error);
+      throw error;
+    }
+  }
+
+  async addInstagramAdAutomation(adId: string, input: Record<string, any>) {
+      try {
+        console.log("tag value:", input)
+        if (input === undefined || input === null) {
+          throw new Error('Automation is undefined or null');
+        }
+        input['id'] = adId;
+        return await this.instagramAdsService.updateAdsDetails(input);
+
+      } catch (error) {
+        console.error(`Error inserting automation details for ${adId}:`, error);
+        throw error;
+      }
+  }
+
+
+  async getAdStatsFromTable(adId: string) {
+    try {
+      const result = await this.instagramAdAnalyticsRepositoryService.getAdAnalytics(adId);
+      console.log("result ad stats:", result);
+      const item = result?.Item
+      console.log("item ad stats:", item);
+
+      return {
+        positive_counts: item?.positive_count,
+        negative_counts: item?.negative_count,
+        potential_buyers_count: item?.potential_buyers_count,
+        inquiry_count: item?.inquiry_count
+      };
+  
+    } catch (error) {
+      console.error(`Error getting ad analytic stats details for ${adId}:`, error);
+      throw error;
+    }
+  }
+
+  async getCommentsFromAdAnalyticsTable(adId: string, type: "positive" | "negative" | "potential_buyers" | "inquiry") {
+    try {
+          const result = await this.instagramAdAnalyticsRepositoryService.getAdAnalytics(adId);
+        const item = result?.Item;
+
+        if (!item) {
+          console.warn(`No analytics found for adId: ${adId}`);
+          return [];
+        }
+
+        const key = `${type}_comments`; // Dynamically build the field name
+        const comments = item?.[key] ?? [];
+
+        return comments;
+    }
+     catch (error) {
+      console.error(`Failed to fetch ${type} comments for media ${adId}`);
+      return { success: false, message: `Error fetching ${type} comments for ad` };
+     }
+  }
+
+  
+// async dmReply(accountId: string, input: { type: string; recipientId: string; content: string }) {
+//     try {
+//       console.log("accountId:", accountId);
+//       console.log("input:", input);
+  
+//       const account = await this.instagramAccountRepositoryService.getAccount(accountId);
+//       if (!account) throw new Error('Token not found');
+//       const { access_token } = account;
+  
+//       console.log(`access token: ${access_token}`);
+  
+//       // Construct the message payload
+//       const payload = {
+//         recipient: {
+//           id: input.recipientId
+//         },
+//         message: {
+//           text: input.content
+//         }
+//       };
+  
+//       const response = await fetch(`https://graph.instagram.com/v23.0/${accountId}/messages`, {
+//         method: 'POST',
+//         headers: {
+//           'Authorization': `Bearer ${access_token}`,
+//           'Content-Type': 'application/json'
+//         },
+//         body: JSON.stringify(payload)
+//       });
+  
+//       const result = await response.json();
+//       console.log('result:', result);
+
+//       if (!response.ok) {
+//        console.error(`Instagram API error:`, result);
+//        return { success: false, message: result.error?.message || 'Unknown error' };
+//      }
+  
+//     return { success: true, message: 'Message sent successfully', data: result };
+  
+//     } catch (error) {
+//        console.error(`Failed to send message for ${accountId}`, error);
+//       return { success: false, message: `Failed to send message for ${accountId}` };
+//     }
+//   }
+
+async dmReply(
+  accountId: string,
+    input: { type: 'text' | 'image' | 'video' | 'audio'; recipientId: string; content: string }
+  ): Promise<{ success: boolean; message: string; data?: any }> {
+  try {
+    console.log("accountId:", accountId);
+    console.log("input:", input);
+
+    const account = await this.instagramAccountRepositoryService.getAccount(accountId);
+    if (!account) {
+      throw new Error('Access token not found for account');
+    }
+
+    const { access_token, pro_user_id: igId } = account;
+    if (!igId) {
+      throw new Error('Instagram ID (pro_user_id) is missing for this account');
+    }
+
+    // Construct the payload
+    const payload =
+      input.type === 'text'
+        ? {
+            recipient: { id: input.recipientId },
+            message: { text: input.content }
+          }
+        : {
+            recipient: { id: input.recipientId },
+            message: {
+              attachment: {
+                type: input.type,
+                payload: { url: input.content }
+              }
+            }
+          };
+
+    const response = await fetch(`https://graph.instagram.com/v23.0/${igId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${access_token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await response.json();
+    console.log('Instagram API result:', result);
+
+    if (!response.ok) {
+      console.error('Instagram API error:', result);
+      return {
+        success: false,
+        message: result.error?.message || 'Unknown error from Instagram API',
+        data: result
+      };
+    }
+
+    return {
+      success: true,
+      message: 'Message sent successfully',
+      data: result
+    };
+
+  } catch (error: any) {
+    console.error(`Failed to send message for account ${accountId}:`, error?.message || error);
+    return {
+      success: false,
+      message: `Failed to send message for account ${accountId}`,
+      data: error?.response?.data || null
+    };
+  }
+}
+
 
 }

@@ -22,7 +22,7 @@ import {
       }
 
       const handler = context.getHandler();
-      const resourceType = this.reflector.get<'media' | 'story' | 'account'>(
+      const resourceType = this.reflector.get<'media' | 'story' | 'account' | 'conversation' | 'ad'>(
         'instagramResourceType',
         handler,
       );
@@ -44,6 +44,12 @@ import {
           break;
         case 'account':
           resourceId = params.accountId || params.id;
+          break;
+        case 'conversation':
+          resourceId = params.conversationId || params.id;
+          break;
+        case 'ad':
+          resourceId = params.adId || params.id;
           break;
         default:
           throw new UnauthorizedException('Unknown resource type');

@@ -3,26 +3,35 @@ import { GetCommand, UpdateCommand, DeleteCommand, QueryCommand, PutCommand } fr
 import { DynamoDBService } from '../dynamodb.service';
 
 @Injectable()
-export class InstagramStoryAnalyticsRepositoryService {
-    private readonly tableName = 'instagram_story_analytics_repository';
+export class InstagramAdAnalyticsRepositoryService {
+    private readonly tableName = 'instagram_ad_analytics_repository';
     constructor(private readonly dynamoDbService: DynamoDBService) {}
 
-    async getStoryAnalytics(story_id: string) {
+    async getAdAnalytics(id: string) {
         const params = new GetCommand({
           TableName: this.tableName,
-          Key: { story_id: story_id },
+          Key: { id: id },
         });
         return this.dynamoDbService.dynamoDBDocumentClient.send(params);
       }
 
-    
+      getAdsByEffectiveMediaId(effective_instagram_media_id: string) {
+        const params = new QueryCommand({
+            TableName: this.tableName,
+            IndexName: 'effective_instagram_media_id-index',
+            KeyConditionExpression: 'effective_instagram_media_id = :id',
+            ExpressionAttributeValues: { ':id': effective_instagram_media_id },
+        });
+        return this.dynamoDbService.dynamoDBDocumentClient.send(params);
+        }
+
       async deleteAccount(accountId: string) {
         try{
         // Step 1: Query the table to get all items associated with accountId
         const queryParams = new QueryCommand({
           TableName: this.tableName,
-          IndexName: "account_id-index",
-          KeyConditionExpression: "account_id = :accountId",
+          IndexName: "accountId-index",
+          KeyConditionExpression: "accountId = :accountId",
           ExpressionAttributeValues: {
             ":accountId": accountId,
           },
@@ -41,7 +50,7 @@ export class InstagramStoryAnalyticsRepositoryService {
           const deleteParams = new DeleteCommand({
             TableName: this.tableName,
             Key: {
-              story_id: item.story_id,
+              id: item.id,
             },
           });
     
@@ -49,22 +58,22 @@ export class InstagramStoryAnalyticsRepositoryService {
         });
     
         await Promise.all(deletePromises);
-        return { message: `Deleted ${deletePromises.length} records for accountId: ${accountId} from 'instagram_story_repository' table` };
+        return { message: `Deleted ${deletePromises.length} records for accountId: ${accountId} from 'instagram_ad_analytics_repository' table` };
       } catch (error) {
-        console.error(`Error deleting for accountId ${accountId} from 'instagram_story_repository' table:`, error);
-        throw new Error(`Failed to delete all story for ${accountId} from 'instagram_story_repository' table.`);
+        console.error(`Error deleting for accountId ${accountId} from 'instagram_ad_analytics_repository' table:`, error);
+        throw new Error(`Failed to delete all ad for ${accountId} from 'instagram_ad_analytics_repository' table.`);
       } 
       }
 
-      async updateStoryAnalytics(storyDetails: Record<string, any>) {
+      async updateAdAnalytics(storyDetails: Record<string, any>) {
         try {
           const { id, ...rest } = storyDetails; // Extract id and other fields separately
       
           if (!id) {
-            throw new Error('id is required to insert or update story details');
+            throw new Error('id is required to insert or update ad details');
           }
 
-          const story_id = id; // Rename for DynamoDB compatibility
+        //   const id = id; // Rename for DynamoDB compatibility
           const updateFields = { ...rest };
       
           // Construct the UpdateExpression and ExpressionAttributeValues for dynamic fields
@@ -87,7 +96,7 @@ export class InstagramStoryAnalyticsRepositoryService {
           // Define the update parameters for DynamoDB UpdateItem
           const params = {
             TableName: this.tableName,
-            Key: { story_id }, // Assuming 'id' is the primary key
+            Key: { id }, // Assuming 'id' is the primary key
             UpdateExpression: `SET ${updateExpression.join(', ')}`,
             ExpressionAttributeNames: expressionAttributeNames,
             ExpressionAttributeValues: expressionAttributeValues,
@@ -98,14 +107,11 @@ export class InstagramStoryAnalyticsRepositoryService {
           const result = await this.dynamoDbService.dynamoDBDocumentClient.send(new UpdateCommand(params));
       
           // Return the updated item (result.Attributes contains the updated item)
-          console.log(`Story analytics updated:`, result);  // Ensure result has Attributes
-          return { success: true, message: 'Story analytics updated successfully' };
+          console.log(`Ad analytics updated:`, result);  // Ensure result has Attributes
+          return { success: true, message: 'Ad analytics updated successfully' };
         } catch (error) {
-          console.error(`Error inserting stroy details:`, error);
-          throw new Error('Failed to insert story details');
+          console.error(`Error inserting ad details:`, error);
+          throw new Error('Failed to insert ad details');
         }
       }
-
-    
-
 }

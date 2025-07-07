@@ -12,6 +12,7 @@ export class InstagramAccessTokenResponse {
 
 export class InstagramUserInfoResponse {
   id: number;
+  user_id: string;
   username: string;
   name: string;
   biography: string;
@@ -86,4 +87,26 @@ export class InstagramStoryResponse {
 
 export class InstagramStoriesResponse {
   data:  InstagramStoryResponse[];
+}
+
+// message.dto.ts
+export class MessageDto {
+  message: string;
+  sender_name: string;
+  timestamp: string;
+}
+
+
+export class InstagramDmCategorizationDto {
+  id: string;
+  account_id: string;
+  recipient_id: string;
+  sender_id: string;
+  category: string;
+  timestamp: number;
+  sender_pic_url: string;
+  recipient_pic_url: string;
+  sender_username: string;
+  recipient_username: string;
+  conversation: MessageDto[];
 }

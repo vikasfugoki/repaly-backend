@@ -9,7 +9,8 @@ export class InstagramAccountRepositoryDTO {
   biography: string;
   created_time: string;
   updated_time: string;
-  platformName: string
+  platformName: string;
+  pro_user_id: string
 }
 
 export class OmitInstagramAccountRepositoryDTO {
@@ -22,5 +23,6 @@ export class OmitInstagramAccountRepositoryDTO {
   biography: string;
   created_time: string;
   updated_time: string;
-  platformName: string
+  platformName: string;
+  access_token: string;
 }

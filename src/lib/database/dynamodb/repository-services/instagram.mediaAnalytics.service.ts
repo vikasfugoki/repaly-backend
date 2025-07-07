@@ -100,6 +100,50 @@ export class InstagramMediaAnalyticsRepositoryService {
     return this.dynamoDbService.dynamoDBDocumentClient.send(params);
   }
 
+  // delete the all media for given accountId
+  async deleteAccount(accountId: string) {
+    try{
+    // Step 1: Query the table to get all items associated with accountId
+    const queryParams = new QueryCommand({
+      TableName: this.tableName,
+      IndexName: "accountId-index",
+      KeyConditionExpression: "accountId = :accountId",
+      ExpressionAttributeValues: {
+        ":accountId": accountId,
+      },
+    });
+
+    const queryResult = await this.dynamoDbService.dynamoDBDocumentClient.send(queryParams);
+    console.log("No of records:", queryResult.Items?.length || 0);
+
+
+    
+    if (!queryResult.Items || queryResult.Items.length === 0) {
+        console.log(`No records found for accountId: ${accountId}`);
+        return { message: `No records found for accountId: ${accountId}` };
+      }
+  
+
+    // Step 2: Delete each entry found
+    const deletePromises = queryResult.Items.map((item) => {
+      const deleteParams = new DeleteCommand({
+        TableName: this.tableName,
+        Key: {
+          id: item.id, // Primary key
+        },
+      });
+
+      return this.dynamoDbService.dynamoDBDocumentClient.send(deleteParams);
+    });
+
+    await Promise.all(deletePromises);
+    return { message: `Deleted ${deletePromises.length} records for accountId: ${accountId} from 'instagram_media_analytics_repository' table` };
+  } catch (error) {
+    console.error(`Error deleting for accountId ${accountId} from 'instagram_media_analytics_repository' table:`, error);
+    throw new Error(`Failed to delete all media for ${accountId} from 'instagram_media_analytics_repository' table.`);
+  } 
+  }
+
   addMedia(mediaDetails: Record<string, any>) {
     const params = new PutCommand({
       TableName:  this.tableName,

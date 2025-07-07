@@ -28,10 +28,11 @@ export class ExchangePlatformCodeService {
         if (!access_token) throw new Error('Exchange Code Error');
         const response = await this.api.getLongLivedAccessToken(access_token);
         const longLivedToken = response?.access_token;
-        const { username, name, biography, profile_picture_url, media_count } =
+        const { user_id: pro_user_id, username, name, biography, profile_picture_url, media_count } =
           await this.api.getUserDetails(longLivedToken);
         const accountDetails = {
           id: user_id.toString(),
+          pro_user_id: pro_user_id,
           access_token: longLivedToken,
           user_id: userId,
           username,
@@ -41,6 +42,8 @@ export class ExchangePlatformCodeService {
           media_count,
         };
 
+        
+
         let returnMessage = { msg: 'Successfully Created Account and Webhook subscribed' };
 
         const result = await this.instagramRepository.getAccount(accountDetails.id);
@@ -49,6 +52,7 @@ export class ExchangePlatformCodeService {
           returnMessage = { msg: 'Account already attached to another user.' };
         }
 
+        console.log("account details from longlived token:", accountDetails);
         await this.instagramRepository.createAccount(accountDetails);
         // subscribe to webhook
         

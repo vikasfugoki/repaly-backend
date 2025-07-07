@@ -86,4 +86,8 @@ export class InstagramMediaAnalyticsRepositoryDTO {
   comment_counts: CommentCounts;
 
   comment_timeseries: CommentTimeSeries;
+
+  negative_summary:  string;
+
+  inquiry_summary: string;
 }

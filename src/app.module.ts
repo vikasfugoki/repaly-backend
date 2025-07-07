@@ -31,6 +31,10 @@ import { DynamoDBService } from '@database/dynamodb/dynamodb.service';
 import { AIController } from './modules/aiModel/aiModel.contorller';
 import { AIServices } from './modules/aiModel/aiModel.service';
 import { InstagramStoryAnalyticsRepositoryService } from '@database/dynamodb/repository-services/instagram.storyAnalytics.service';
+import { InstagramDMService } from '@database/dynamodb/repository-services/instagram.dm.service';
+import { InstagramAdsService } from '@database/dynamodb/repository-services/instagram.ads.service';
+import { InstagramFbAccessTokenService } from '@database/dynamodb/repository-services/instagram.fbAccessToken.service';
+import { InstagramAdAnalyticsRepositoryService } from '@database/dynamodb/repository-services/instagram.adAnalytics.service';
 
 // Import the JwtModule
 import { JwtModule } from '@nestjs/jwt';
@@ -82,6 +86,10 @@ import { FacebookUserRepositoryService } from '@database/dynamodb/repository-ser
     InstagramStoryRepositoryService,
     InstagramStoryAnalyticsRepositoryService,
     AIServices,
+    InstagramDMService,
+    InstagramAdsService,
+    InstagramFbAccessTokenService,
+    InstagramAdAnalyticsRepositoryService
   ],
   exports: [DynamoDBService],
 })

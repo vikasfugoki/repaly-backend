@@ -129,10 +129,14 @@ async updateMediaDetails(mediaDetails: Record<string, any>) {
     });
 
     const queryResult = await this.dynamoDbService.dynamoDBDocumentClient.send(queryParams);
+    console.log("No of records:", queryResult.Items?.length || 0);
 
+
+    
     if (!queryResult.Items || queryResult.Items.length === 0) {
-      throw new Error(`No records found for accountId: ${accountId}`);
-    }
+        console.log(`No records found for accountId: ${accountId}`);
+        return { message: `No records found for accountId: ${accountId}` };
+      }
 
     // Step 2: Delete each entry found
     const deletePromises = queryResult.Items.map((item) => {

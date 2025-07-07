@@ -281,5 +281,166 @@ export class InstagramAccountController {
         }
       }
 
+      // dm categarization
+      @InstagramResourceType('account')
+      @Get(':accountId/dm-categorization')
+      async getDMCategorization(@Param('accountId') accountId: string) {
+        try {
+              return await this.instagramAccountService.getDMCategorization(accountId);
+        }
+        catch (error) {
+          console.log('Failed to get DM categorization :', (error as Error).message);
+          throw new Error('Failed to get DM categorization');
+        }
+      }
+
+      // conversation
+      @InstagramResourceType('conversation')
+      @Get(':conversationId/get-conversation')
+      async getDMConversation(@Param('conversationId') conversationId: string) {
+        try {
+          return await this.instagramAccountService.getDMConversation(conversationId);
+        }
+        catch (error) {
+          console.log('Failed to get DM conversation :', (error as Error).message);
+          throw new Error('Failed to get DM conversation');
+        }
+      }
+
+      // update conversation category
+      @InstagramResourceType('conversation')
+      @Put(':conversationId/dm-category')
+      async updateDMCategory(@Param('conversationId') conversationId: string, @Body() input: Record<string, any>) {
+        try {
+          return await this.instagramAccountService.updateDMCategory(conversationId, input);
+        } catch (error) {
+          console.log('Failed to PUT DM category :', (error as Error).message);
+          throw new Error('Failed to PUT DM category');
+        }
+      }
+
+
+      // summary
+      @InstagramResourceType('media')
+      @Get(':mediaId/summaries')
+      async getSummaries(@Param('mediaId') mediaId: string) {
+        try {
+          return await this.instagramAccountService.getSummaries(mediaId)
+        } catch (error) {
+          console.log('Failed to fetch summaries :', (error as Error).message);
+          throw new Error('Failed to fetch summaries');
+        }
+      }
+
+      // Ads api
+      @InstagramResourceType('account')
+      @Get(':accountId/get-ads')
+      async getAds(@Param('accountId') accountId: string) {
+        try {
+            return await this.instagramAccountService.getAdsFromTable(accountId);
+        } catch (error) {
+          console.log("Failed to get the ads from the account: ", accountId);
+          throw new Error('Failed to get the ads for the account from the instagram_ads_repository table');
+        }
+      }
+
+
+      // Ads api
+      @InstagramResourceType('account')
+      @Post(':accountId/update-ads')
+      async updateAdsStory(@Param('accountId') accountId: string, @Body() input: Record<string, any>) {
+
+        return this.instagramAccountService.updateAdsOnTable(accountId, input);
+        // try{
+        //     return await this.instagramAccountService.updateAdsOnTable(accountId, input);
+        //     } catch (error) {
+        //         console.log("Failed to update the ads-table with recent media:", (error as Error).message);
+        //         throw new Error('Failed to update the ads-table with recent media.')
+        //     }
+
+        }
+
+      @InstagramResourceType('account')
+      @Get(':accountId/is_facebook_linked')
+      async isFacebookLinked(@Param('accountId') accountId: string) {
+
+          try {
+            return await this.instagramAccountService.isFacebookLinked(accountId);
+          } catch (error) {
+            console.log("Failed to fetch the wether the Facebook account being added or not!");
+            throw new Error('Failed to fetch the wether the Facebook account being added or not!')
+          }
+      }
+
+      @InstagramResourceType('ad')
+      @Get(':adId/get-ad')
+      async getAdDetails(@Param('adId') adId: string) {
+        try {
+          return await this.instagramAccountService.getAdDetails(adId);
+        } catch (error) {
+          console.log(`Failed to fetch the ad details given adID: ${adId}`);
+          throw new Error('Failed to fetch the ad details given adID');
+        }
+      }
+
+      @InstagramResourceType('ad')
+      @Put(':adId/apply-automation-ad')
+      async putAutomationAd(
+        @Param('adId') mediaId: string,
+        @Body() input: Record<string, any>
+      ) {
+        try {
+          // Pass the JSON string to the service method
+          return await this.instagramAccountService.addInstagramAdAutomation(mediaId, input);
+        } catch (error) {
+          console.log('Failed to apply automation:', (error as Error).message);
+          throw new Error('Failed to apply automation');
+        }
+      }
+
+      @InstagramResourceType('ad')
+      @Get(':adId/ad-analytics')
+      async getAdStats(@Param('adId') adId: string) {
+        try {
+          return await this.instagramAccountService.getAdStatsFromTable(adId);
+        } catch (error) {
+          console.log(`Failed to get the analytics stats for ${adId}:`, (error as Error).message);
+          throw new Error(`Failed to get the analttics stats for ${adId}`)
+        }
+      }
+
+      @InstagramResourceType('ad')
+      @Get(':adId/ad-comments/:type')
+      async getAdComments(@Param('adId') adId: string, @Param('type') type: "positive" | "negative" | "potential_buyers" | "inquiry") {
+        try {
+          const comments = await this.instagramAccountService.getCommentsFromAdAnalyticsTable(adId, `${type}`);
+          return comments;
+
+        } catch (error) {
+          console.log(`Failed to fetch ${type} comments for ad ${adId}:`, (error as Error).message);
+          throw new Error(`Failed to fetch ${type} comments for ${adId}`);
+        }
+      }
+
+      @InstagramResourceType('account')
+      @Post(':accountId/dm-reply')
+      async getDmComment(@Param('accountId') accountId: string, @Body() input: { type: 'text' | 'image' | 'video' | 'audio'; recipientId: string; content: string }) {
+        try {
+          return await this.instagramAccountService.dmReply(accountId, input);
+        } catch (error) {
+          console.log(`Failed to reply for ${accountId}:`, (error as Error).message);
+          throw new Error(`Failed to reply for  ${accountId}`);
+        }
+      }
+
+      // async getAccountMedia(@Param('accountId') accountId: string) {
+      //   try {
+      //     return await this.instagramAccountService.getInstagramMedia(accountId);
+      //   } catch (error) {
+      //     console.log('Failed to get Media', (error as Error).message);
+      //     throw new Error('Failed to get Media');
+      //   }
+      // }
+
 }
 

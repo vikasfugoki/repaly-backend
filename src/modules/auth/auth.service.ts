@@ -15,6 +15,8 @@ import { UserService } from '../user/user.service'
 import { request } from 'http';
 import { InstagramMediaRepositoryService } from '@database/dynamodb/repository-services/instagram.media.service';
 import { InstagramStoryRepositoryService } from '@database/dynamodb/repository-services/instagram.story.service';
+import { InstagramDMService } from '@database/dynamodb/repository-services/instagram.dm.service';
+import { InstagramAdsService } from '@database/dynamodb/repository-services/instagram.ads.service';
 
 
 @Injectable()
@@ -30,6 +32,8 @@ export class AuthService {
     private readonly instagramAccountRepositoryService: InstagramAccountRepositoryService,
     private readonly instagramMediaRepositoryService: InstagramMediaRepositoryService,
     private readonly instagramStoryRepositoryService: InstagramStoryRepositoryService,
+    private readonly instagramAdsService: InstagramAdsService,
+    private readonly instagramDMService: InstagramDMService,
     private readonly jwtService: JwtService
   ) {
     this.jwtService = new JwtService({
@@ -253,7 +257,7 @@ export class AuthService {
 
   async checkOwnership(
     userId: string, resourceId: string,
-    type: 'media' | 'story' | 'account',
+    type: 'conversation' | 'media' | 'story' | 'account' | 'ad',
     loginSource: 'google' | 'facebook'
   ): Promise<boolean>  {
 
@@ -286,6 +290,20 @@ export class AuthService {
         const storyResult = await this.instagramStoryRepositoryService.getStory(resourceId);
         targetInstagramAccountId = storyResult?.Item?.accountId;
         console.log(`inside story`);
+        break;
+
+      case 'conversation':
+        const conversationResult = await this.instagramDMService.getConversations(resourceId);
+        console.log(conversationResult?.Item);
+        targetInstagramAccountId = conversationResult?.Item?.accountId;
+        console.log(`inside conversation`);
+        break;
+
+      case 'ad':
+        const adResult = await this.instagramAdsService.getAds(resourceId);
+        console.log(adResult?.Item);
+        targetInstagramAccountId = adResult?.Item?.accountId;
+        console.log('inside ad');
         break;
       
       default:

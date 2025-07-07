@@ -16,6 +16,7 @@ export class InstagramAccountRepositoryService {
 
   createAccount(accountDetails: {
     id: string;
+    pro_user_id: string;
     access_token: string;
     user_id: string;
     username: string;

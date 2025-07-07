@@ -31,20 +31,37 @@ export class AccountService {
   //   }
   // }
 
-  async getInstagramAccount(userId: string) {
-    const instagramAccount =
-      await this.instagramAccountRepositoryService.getAccountDetailsByUserId(
-        userId,
-      );  
+  // async getInstagramAccount(userId: string) {
+  //   const instagramAccount =
+  //     await this.instagramAccountRepositoryService.getAccountDetailsByUserId(
+  //       userId,
+  //     );  
+  //   if (instagramAccount.length > 0) {
+  //     return instagramAccount.map(({ access_token, ...rest }) => ({
+  //       ...rest,
+  //       platformName: 'instagram',
+  //     }));
+  //   }
+  
+  //   return [];
+  // }
+
+
+async getInstagramAccount(userId: string): Promise<OmitInstagramAccountRepositoryDTO[]> {
+    const instagramAccount =
+     await this.instagramAccountRepositoryService.getAccountDetailsByUserId(userId);
+  
     if (instagramAccount.length > 0) {
-      return instagramAccount.map(({ access_token, ...rest }) => ({
-        ...rest,
-        platformName: 'instagram',
-      }));
-    }
+     return instagramAccount.map(account => ({
+       ...account,
+       platformName: 'instagram',
+     }));
+     }
   
     return [];
-  }
+
+}
+  
 
 async getAccount(userId: string): Promise<OmitInstagramAccountRepositoryDTO[]> {
     // const accountResponse: GetAccountResponse = [];
