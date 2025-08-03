@@ -45,6 +45,8 @@ jobs:
       - name: Create .env file
         run: |
           cat <<EOF > .env
+          AWS_ACCESS_ID=${{ secrets.AWS_ACCESS_ID }}
+          AWS_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }}
           ALLOW_ALL_AUTH=${{ secrets.ALLOW_ALL_AUTH }}
           FACEBOOK_ADS_REDIRECT_URL=${{ secrets.FACEBOOK_ADS_REDIRECT_URL }}
           FACEBOOK_API_URL=${{ secrets.FACEBOOK_API_URL }}
