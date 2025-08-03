@@ -946,7 +946,7 @@ export class InstagramAccountService {
         return { success: true, message: "No instagram Ads available in this account!!!"};
         
       } catch (error) {
-        console.error(`Failed to update ad details for ${accountId}:`, error);
+        console.error(`Failed to update ad-details for ${accountId}:`, error);
         throw error;
       }
     }
