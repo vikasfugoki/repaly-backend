@@ -7,7 +7,7 @@ on:
 
 env:
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-  AWS_REGION: ${{ secrets.AWS_REGION }}
+  AWS_REGION: us-west-1
   REPOSITORY_NAME: influex-test
   IMAGE_TAG: github
   LAMBDA_FUNCTION_NAME: StagingContainerBackend
@@ -22,7 +22,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18  # or whatever you use
+          node-version: 22.14  # or whatever you use
 
       - name: Install dependencies
         run: |
@@ -39,7 +39,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: us-west-1
 
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
