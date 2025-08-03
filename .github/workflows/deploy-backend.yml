@@ -69,18 +69,31 @@ jobs:
           JWT_SECRET=${{ secrets.JWT_SECRET }}
           EOF
 
-
-      - name: Build and tag Docker image
+      - name: Build and push Docker image
         run: |
           docker build --platform linux/amd64 -t $REPOSITORY_NAME:$IMAGE_TAG .
           docker tag $REPOSITORY_NAME:$IMAGE_TAG $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPOSITORY_NAME:$IMAGE_TAG
-
-      - name: Push image to Amazon ECR
-        run: |
           docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPOSITORY_NAME:$IMAGE_TAG
 
-      - name: Update Lambda to use new image
+      - name: Verify image in ECR
         run: |
+          echo "Verifying image was pushed successfully..."
+          aws ecr describe-images --repository-name $REPOSITORY_NAME --image-ids imageTag=$IMAGE_TAG
+          echo "Image verified in ECR"
+
+      - name: Get image digest and update Lambda
+        run: |
+          echo "Getting image digest..."
+          IMAGE_DIGEST=$(aws ecr describe-images --repository-name $REPOSITORY_NAME --image-ids imageTag=$IMAGE_TAG --query 'imageDetails[0].imageDigest' --output text)
+          echo "Image digest: $IMAGE_DIGEST"
+          
+          IMAGE_URI_WITH_DIGEST="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPOSITORY_NAME@$IMAGE_DIGEST"
+          echo "Full image URI with digest: $IMAGE_URI_WITH_DIGEST"
+          
+          echo "Updating Lambda function..."
           aws lambda update-function-code \
             --function-name $LAMBDA_FUNCTION_NAME \
-            --image-uri $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPOSITORY_NAME:$IMAGE_TAG
+            --image-uri $IMAGE_URI_WITH_DIGEST \
+            --output json
+          
+          echo "Lambda function updated successfully!"
