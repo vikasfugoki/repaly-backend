@@ -6,7 +6,7 @@ on:
       - main
 
 env:
-  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+  AWS_ACCOUNT_ID: 225989378089
   AWS_REGION: us-west-1
   REPOSITORY_NAME: influex-test
   IMAGE_TAG: github
