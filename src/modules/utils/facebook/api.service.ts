@@ -72,6 +72,28 @@ export class FacebookApiService {
         }
       }
 
+      async getAdsWithCreatives(adAccountId: string, accessToken: string): Promise<any[]> {
+        const allAds: any[] = [];
+        let nextUrl: string | null = `https://graph.facebook.com/v23.0/${adAccountId}/ads?fields=id,name,creative{id,name,object_story_spec,image_url,thumbnail_url,effective_instagram_media_id}&access_token=${accessToken}`;
+      
+        try {
+          while (nextUrl) {
+            const response = await axios.get<any>(nextUrl);
+            const { data, paging } = response.data;
+      
+            allAds.push(...data);
+            nextUrl = paging?.next || null;
+          }
+      
+          return allAds;
+        } catch (error) {
+          console.error('Error fetching ads with creatives:', error?.response?.data || error.message);
+          throw new InternalServerErrorException('Failed to retrieve ads with creatives');
+        }
+      }
+
+
+
       async getAdCreativesViaAdsAPI(adAccountId: string, accessToken: string): Promise<any[]> {
         const allAds: any[] = [];
         let nextUrl: string | null = `https://graph.facebook.com/v21.0/${adAccountId}/ads?fields=id,name,creative{id},effective_status&effective_status=["ACTIVE"]&access_token=${accessToken}`;
@@ -115,6 +137,58 @@ export class FacebookApiService {
           throw new InternalServerErrorException('Failed to retrieve creatives via ads API');
         }
       }
+
+      async getAdsWithCreativesAndInsights(adAccountId: string, accessToken: string): Promise<any[]> {
+        const allAds: any[] = [];
+        let nextUrl: string | null = `https://graph.facebook.com/v23.0/${adAccountId}/ads?fields=id,name,status,creative{id,name,object_story_spec,image_url,thumbnail_url,effective_instagram_media_id}&access_token=${accessToken}`;
+      
+        try {
+          while (nextUrl) {
+            const response = await axios.get<any>(nextUrl);
+            const { data, paging } = response.data;
+      
+            for (const ad of data) {
+              const insights = await this.getAdInsights(ad.id, accessToken);
+      
+              allAds.push({
+                ad_id: ad.id,
+                ad_name: ad.name,
+                status: ad.status,
+                creative_id: ad.creative?.id || null,
+                creative_name: ad.creative?.name || null,
+                image_url: ad.creative?.image_url || ad.creative?.thumbnail_url || null,
+                object_story_spec: ad.creative?.object_story_spec || null,
+                effective_instagram_media_id: ad.creative?.effective_instagram_media_id || null,
+                insights: insights,
+              });
+            }
+      
+            nextUrl = paging?.next || null;
+          }
+      
+          return allAds;
+        } catch (error) {
+          console.error('Error fetching ads or creatives:', error?.response?.data || error.message);
+          throw new InternalServerErrorException('Failed to retrieve ads with creatives and insights');
+        }
+      }
+
+
+      // Helper function to get insights for an ad
+      async getAdInsights(adId: string, accessToken: string): Promise<any> {
+        const url = `https://graph.facebook.com/v23.0/${adId}/insights?fields=impressions,clicks,spend,cpm,ctr,reach&date_preset=maximum&access_token=${accessToken}`;
+      
+        try {
+          const response = await axios.get<any>(url);
+          const insights = response.data?.data?.[0] || {};
+          console.log('Insights response:', insights);
+          return insights;
+        } catch (error) {
+          console.warn(`Failed to fetch insights for ad ${adId}:`, error?.response?.data || error.message);
+          return {};
+        }
+      }
+      
 
     async getAccessToken(code: string): Promise<{ access_token: string }> {
         try {

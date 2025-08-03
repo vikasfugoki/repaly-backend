@@ -51,7 +51,10 @@ export class AuthService {
       loginSource: source,
     };
   
-    return this.jwtService.sign(payload);
+    // return this.jwtService.sign(payload);
+    return this.jwtService.sign(payload, {
+      expiresIn: '7d',  // '1h', '4h', etc., based on your needs
+    });
   }
 
   async validateToken(token: string): Promise<{ user: any; source: string }> {

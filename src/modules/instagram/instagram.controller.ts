@@ -422,6 +422,12 @@ export class InstagramAccountController {
         }
       }
 
+
+      // @InstagramResourceType('ad')
+      // @Post(':accountId/insights')
+      // async getAdsInsights(@Param)
+
+
       @InstagramResourceType('account')
       @Post(':accountId/dm-reply')
       async getDmComment(@Param('accountId') accountId: string, @Body() input: { type: 'text' | 'image' | 'video' | 'audio'; recipientId: string; content: string }) {
@@ -432,15 +438,6 @@ export class InstagramAccountController {
           throw new Error(`Failed to reply for  ${accountId}`);
         }
       }
-
-      // async getAccountMedia(@Param('accountId') accountId: string) {
-      //   try {
-      //     return await this.instagramAccountService.getInstagramMedia(accountId);
-      //   } catch (error) {
-      //     console.log('Failed to get Media', (error as Error).message);
-      //     throw new Error('Failed to get Media');
-      //   }
-      // }
 
 }
 

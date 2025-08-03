@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { InstagramApiService } from '../utils/instagram/api.service';
 import { InstagramAccountRepositoryService } from '@database/dynamodb/repository-services/instagram.account.service';
 import {InstagramMediaRepositoryService} from '@database/dynamodb/repository-services/instagram.media.service';
@@ -729,112 +729,224 @@ export class InstagramAccountService {
   }
 
     // story apis
+    // async updateAdsOnTable(accountId: string, input: Record<string, any>) {
+    //   try {
+    //     const isAccountIdPresent = await this.instagramFbAccessTokenService.isIdPresent(accountId);
+    //     if (isAccountIdPresent == false) {
+    //         if (input?.code != null) {
+    //           console.log("instagram authorization code:", input.code);
+    //           const tokenResponse = await this.facebookApiService.getAccessTokenAds(input.code);
+    //           console.log("access token using authorization code:", tokenResponse);
+    //           // await this.instagramFbAccessTokenService.insertFacebookDetails({"id": accountId, "access_token": tokenResponse.access_token});
+
+    //           const ads_lst = await this.facebookApiService.getAdAccounts(tokenResponse.access_token);
+
+    //           // pro user id
+    //           const account = await this.instagramAccountRepositoryService.getAccount(accountId);
+    //           const pro_user_id = account?.pro_user_id;
+
+    //           console.log("pro user id:", pro_user_id);
+
+    //           if (!pro_user_id) {
+    //             return {
+    //               statusCode: 400,
+    //               message: `pro_user_id is not present for the given Instagram account.`,
+    //               success: false,
+    //             };
+    //           }
+
+    //           // Add accountId to each ad in the list
+    //           const enriched_ads_lst = ads_lst.map(ad => ({
+    //             ...ad,
+    //             account_id: accountId,
+    //           }));
+
+    //           console.log('Enriched ads list:', enriched_ads_lst);
+
+    //           for (const ad of enriched_ads_lst) {
+    //             console.log("this is one of the enriched ad:", ad);
+    //             let ad_details = await this.facebookApiService.getAdCreatives(ad.id, tokenResponse.access_token);
+    //             for (const ad_detail of ad_details) {
+    //               console.log("ad details:", ad_detail);
+
+    //               // ✅ Validation: accountId must match instagram_user_id
+    //               const igUserId = ad_detail?.instagram_user_id;
+    //               if (igUserId !== pro_user_id) {
+    //                 throw new BadRequestException(
+    //                   "Facebook account is not connected to this Instagram user. Only accounts linked to the Instagram profile are allowed."
+    //                 );
+    //               }
+
+    //               const new_ad_detail = {...ad_detail, "accountId": ad.account_id, "adId": ad.id}
+                  
+
+    //               const ad_analytics_detail =  {
+    //                                             "id": new_ad_detail.id,
+    //                                             "accountId": new_ad_detail.accountId,
+    //                                             "effective_instagram_media_id": new_ad_detail?.effective_instagram_media_id,
+    //                                             "adId": new_ad_detail.adId
+    //               }
+
+    //               if (new_ad_detail?.effective_instagram_media_id != null) {
+    //                 await this.instagramAdsService.updateAdsDetails(new_ad_detail)
+    //                 await this.instagramAdAnalyticsRepositoryService.updateAdAnalytics(ad_analytics_detail);
+    //               }
+                  
+    //             }
+    //           }
+
+    //           console.log('ads being inserted successfully!!!!')
+    //           await this.instagramFbAccessTokenService.insertFacebookDetails({"id": accountId, "access_token": tokenResponse.access_token});
+
+    //         }
+    //     }
+    //     else {
+          
+    //         const facebookItem = await this.instagramFbAccessTokenService.getFacebookDetails(accountId);
+    //         const access_token = await facebookItem?.Item?.access_token;
+
+    //         const ads_lst = await this.facebookApiService.getAdAccounts(access_token);
+
+    //         // Add accountId to each ad in the list
+    //         const enriched_ads_lst = ads_lst.map(ad => ({
+    //           ...ad,
+    //           account_id: accountId,
+    //         }));
+
+    //         console.log('Enriched ads list:', enriched_ads_lst);
+
+    //         for (const ad of enriched_ads_lst) {
+    //           console.log("this is one of the enriched ad:", ad);
+    //           let ad_details = await this.facebookApiService.getAdCreatives(ad.id, access_token);
+    //           for (const ad_detail of ad_details) {
+    //             console.log("ad details:", ad_details);
+    //             const new_ad_detail = {...ad_detail, "accountId": ad.account_id, "adId": ad.id}
+    //             console.log("new ad details:", new_ad_detail);
+
+    //             if (new_ad_detail?.effective_instagram_media_id != null) {
+    //               await this.instagramAdsService.updateAdsDetails(new_ad_detail)
+    //             }
+    //           }
+    //         }
+    //         console.log('ads being inserted successfully!!!!')
+
+    //     }
+
+    //     return {success: true, message: `ads being inserted successfully!!!!`};
+
+    //   } catch (error) {
+    //     console.error(`Failed to update ad details ${accountId}:`, error);
+    //     throw error;
+    //   }
+    // }
+
     async updateAdsOnTable(accountId: string, input: Record<string, any>) {
       try {
         const isAccountIdPresent = await this.instagramFbAccessTokenService.isIdPresent(accountId);
-        if (isAccountIdPresent == false) {
-            if (input?.code != null) {
-              console.log("instagram authorization code:", input.code);
-              const tokenResponse = await this.facebookApiService.getAccessTokenAds(input.code);
-              console.log("access token using authorization code:", tokenResponse);
-              // await this.instagramFbAccessTokenService.insertFacebookDetails({"id": accountId, "access_token": tokenResponse.access_token});
-
-              const ads_lst = await this.facebookApiService.getAdAccounts(tokenResponse.access_token);
-
-              // pro user id
-              const account = await this.instagramAccountRepositoryService.getAccount(accountId);
-              const pro_user_id = account?.pro_user_id;
-
-              console.log("pro user id:", pro_user_id);
-
-              if (!pro_user_id) {
-                return {
-                  statusCode: 400,
-                  message: `pro_user_id is not present for the given Instagram account.`,
-                  success: false,
-                };
-              }
-
-              // Add accountId to each ad in the list
-              const enriched_ads_lst = ads_lst.map(ad => ({
-                ...ad,
-                account_id: accountId,
-              }));
-
-              console.log('Enriched ads list:', enriched_ads_lst);
-
-              for (const ad of enriched_ads_lst) {
-                console.log("this is one of the enriched ad:", ad);
-                let ad_details = await this.facebookApiService.getAdCreatives(ad.id, tokenResponse.access_token);
-                for (const ad_detail of ad_details) {
-                  console.log("ad details:", ad_detail);
-
-                  // ✅ Validation: accountId must match instagram_user_id
-                  const igUserId = ad_detail?.instagram_user_id;
-                  if (igUserId !== pro_user_id) {
-                    throw new BadRequestException(
-                      "Facebook account is not connected to this Instagram user. Only accounts linked to the Instagram profile are allowed."
-                    );
-                  }
-
-                  const new_ad_detail = {...ad_detail, "accountId": ad.account_id, "adId": ad.id}
-                  
-
-                  const ad_analytics_detail =  {"id": new_ad_detail.id,
-                                                "accountId": new_ad_detail.accountId,
-                                                "effective_instagram_media_id": new_ad_detail?.effective_instagram_media_id,
-                                                "adId": new_ad_detail.adId
-                  }
-
-                  if (new_ad_detail?.effective_instagram_media_id != null) {
-                    await this.instagramAdsService.updateAdsDetails(new_ad_detail)
-                    await this.instagramAdAnalyticsRepositoryService.updateAdAnalytics(ad_analytics_detail);
-                  }
-                  
-                }
-              }
-
-              console.log('ads being inserted successfully!!!!')
-              await this.instagramFbAccessTokenService.insertFacebookDetails({"id": accountId, "access_token": tokenResponse.access_token});
-
-            }
-        }
-        else {
-          
-            const facebookItem = await this.instagramFbAccessTokenService.getFacebookDetails(accountId);
-            const access_token = await facebookItem?.Item?.access_token;
-
-            const ads_lst = await this.facebookApiService.getAdAccounts(access_token);
-
-            // Add accountId to each ad in the list
-            const enriched_ads_lst = ads_lst.map(ad => ({
-              ...ad,
-              account_id: accountId,
-            }));
-
-            console.log('Enriched ads list:', enriched_ads_lst);
-
-            for (const ad of enriched_ads_lst) {
-              console.log("this is one of the enriched ad:", ad);
-              let ad_details = await this.facebookApiService.getAdCreatives(ad.id, access_token);
-              for (const ad_detail of ad_details) {
-                console.log("ad details:", ad_details);
-                const new_ad_detail = {...ad_detail, "accountId": ad.account_id, "adId": ad.id}
-                console.log("new ad details:", new_ad_detail);
-
-                if (new_ad_detail?.effective_instagram_media_id != null) {
-                  await this.instagramAdsService.updateAdsDetails(new_ad_detail)
-                }
-              }
-            }
-            console.log('ads being inserted successfully!!!!')
-
+        let accessToken: string;
+    
+        // 1. Get access token
+        if (!isAccountIdPresent) {
+          if (!input?.code) {
+            throw new BadRequestException("Missing authorization code for new account");
+          }
+    
+          const tokenResponse = await this.facebookApiService.getAccessTokenAds(input.code);
+          accessToken = tokenResponse.access_token;
+    
+          // await this.instagramFbAccessTokenService.insertFacebookDetails({
+          //   id: accountId,
+          //   access_token: accessToken,
+          // });
+        } else {
+          const facebookItem = await this.instagramFbAccessTokenService.getFacebookDetails(accountId);
+          accessToken = facebookItem?.Item?.access_token;
+    
+          if (!accessToken) {
+            throw new InternalServerErrorException("Access token not found for existing account");
+          }
         }
 
-        return {success: true, message: `ads being inserted successfully!!!!`};
+        let adsProcessed: number = 0;
+    
+        // 2. Get ad accounts
+        const adsList = await this.facebookApiService.getAdAccounts(accessToken);
+        const enrichedAdsList = adsList.map(ad => ({
+          ...ad,
+          account_id: accountId,
+        }));
+    
+        // 3. Get pro_user_id for validation
+        const account = await this.instagramAccountRepositoryService.getAccount(accountId);
+        const proUserId = account?.pro_user_id;
+    
+        if (!proUserId) {
+          return {
+            statusCode: 400,
+            message: `pro_user_id is not present for the given Instagram account.`,
+            success: false,
+          };
+        }
 
+        console.log("enrichedAdsList:", enrichedAdsList);
+    
+        // 4. Iterate over all ads and fetch creative + insight
+        for (const ad of enrichedAdsList) {
+          const adsWithData = await this.facebookApiService.getAdsWithCreativesAndInsights(ad.id, accessToken);
+    
+          for (const adData of adsWithData) {
+            const igUserId = adData?.object_story_spec?.instagram_user_id;
+    
+            // Validate: Facebook ad must be linked to the same IG user
+            if (igUserId && igUserId !== proUserId) {
+              throw new BadRequestException("Facebook account is not connected to this Instagram user.");
+            }
+    
+            // Combine all data into one object
+            const adDetail = {
+              ...adData,
+              id: adData.ad_id,
+              accountId: ad.account_id,
+              adId: adData.ad_id,
+              insights: adData.insights || {},
+            };
+
+            // Analytics record for Instagram Analytics table
+            const adAnalytics = {
+              id: adData.ad_id,
+              adId: adData.ad_id,
+              accountId: ad.account_id,
+              creativeId: adData.creative_id,
+              effective_instagram_media_id: adData.effective_instagram_media_id,
+            };
+
+            console.log("ad with insights:", adDetail);
+    
+            // Save into DynamoDB (single table)
+            if (adData?.effective_instagram_media_id) {
+              await this.instagramAdsService.updateAdsDetails(adDetail);
+              await this.instagramAdAnalyticsRepositoryService.updateAdAnalytics(adAnalytics);
+            }
+
+            adsProcessed++;
+          }
+        }
+
+        if (adsProcessed > 1) {
+          await this.instagramFbAccessTokenService.insertFacebookDetails({
+            id: accountId,
+            access_token: accessToken,
+          });
+
+          console.log("Ads, creatives, and insights inserted successfully!");
+          return { success: true, message: "Ads inserted successfully!" };
+        }
+    
+        console.log("accountID and facebook access_token being stores!!!");
+        return { success: true, message: "No instagram Ads available in this account!!!"};
+        
       } catch (error) {
-        console.error(`Failed to update ad details ${accountId}:`, error);
+        console.error(`Failed to update ad details for ${accountId}:`, error);
         throw error;
       }
     }
@@ -906,14 +1018,15 @@ export class InstagramAccountService {
     try {
       const result = await this.instagramAdAnalyticsRepositoryService.getAdAnalytics(adId);
       console.log("result ad stats:", result);
-      const item = result?.Item
+      const item = result?.Item?.comment_counts;
       console.log("item ad stats:", item);
 
       return {
-        positive_counts: item?.positive_count,
-        negative_counts: item?.negative_count,
-        potential_buyers_count: item?.potential_buyers_count,
-        inquiry_count: item?.inquiry_count
+        positive_counts: item?.positive,
+        negative_counts: item?.negative,
+        potential_buyers_count: item?.potential_buyers,
+        inquiry_count: item?.inquiry,
+        others_count: item?.others
       };
   
     } catch (error) {
