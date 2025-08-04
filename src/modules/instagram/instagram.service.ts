@@ -848,6 +848,7 @@ export class InstagramAccountService {
     
         // 1. Get access token
         if (!isAccountIdPresent) {
+          console.log("Account ID not present, input code:", input);
           if (!input?.code) {
             throw new BadRequestException("Missing authorization code for new account");
           }
