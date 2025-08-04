@@ -844,6 +844,7 @@ export class InstagramAccountService {
       try {
         const isAccountIdPresent = await this.instagramFbAccessTokenService.isIdPresent(accountId);
         let accessToken: string;
+        console.log("isAccountIdPresent:", isAccountIdPresent);
     
         // 1. Get access token
         if (!isAccountIdPresent) {
