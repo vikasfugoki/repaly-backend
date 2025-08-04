@@ -38,6 +38,7 @@ export class InstagramFbAccessTokenService {
     async isIdPresent(id: string): Promise<boolean> {
         try {
         const result = await this.getFacebookDetails(id);
+        console.log(`Checking ID presence for: ${id}`, result);
         return !!result?.Item; // true if Item exists, false otherwise
         } catch (error) {
         console.error(`Error checking ID presence for: ${id}`, error);

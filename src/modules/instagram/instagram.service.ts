@@ -980,6 +980,7 @@ export class InstagramAccountService {
   async isFacebookLinked(accountId: string) {
     try {
       const isAccountPresent = await this.instagramFbAccessTokenService.isIdPresent(accountId);
+      console.log("isFacebook linked:", isAccountPresent);
       if (isAccountPresent == true) {
         return {success: true, is_facebook_added: true };
       }
