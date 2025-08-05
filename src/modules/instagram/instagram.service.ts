@@ -934,7 +934,7 @@ export class InstagramAccountService {
           }
         }
 
-        if (adsProcessed > 1) {
+        if (adsProcessed > 0) {
           await this.instagramFbAccessTokenService.insertFacebookDetails({
             id: accountId,
             access_token: accessToken,
