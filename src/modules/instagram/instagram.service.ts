@@ -904,8 +904,12 @@ export class InstagramAccountService {
             console.log("adData:", adData);
     
             // Validate: Facebook ad must be linked to the same IG user
+            // if (igUserId && igUserId !== proUserId) {
+            //   throw new BadRequestException("Facebook account is not connected to this Instagram user.");
+            // }
             if (igUserId && igUserId !== proUserId) {
-              throw new BadRequestException("Facebook account is not connected to this Instagram user.");
+                console.warn(`Skipping ad ${adData.ad_id} - Instagram user mismatch (${igUserId} ≠ ${proUserId})`);
+                continue; // Skip this ad and continue with the next one
             }
     
             // Combine all data into one object
