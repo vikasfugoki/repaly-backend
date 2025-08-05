@@ -898,6 +898,10 @@ export class InstagramAccountService {
     
           for (const adData of adsWithData) {
             const igUserId = adData?.object_story_spec?.instagram_user_id;
+
+            console.log("igUserId:", igUserId);
+            console.log("proUserId:", proUserId);
+            console.log("adData:", adData);
     
             // Validate: Facebook ad must be linked to the same IG user
             if (igUserId && igUserId !== proUserId) {
