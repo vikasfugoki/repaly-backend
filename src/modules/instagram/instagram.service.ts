@@ -1196,6 +1196,8 @@ async getAccountLevelAnalytics(accountId: string) {
   try {
     // Fetch the account details
     const stats = await this.instagramAccountLevelAnalyticsRepositoryService.getAccountLevelAnalyticsByAccountId(accountId);
+    console.log("Account Level Analytics:", stats);
+    
     if (!stats || !stats.Items || stats.Items.length === 0) {
       throw new Error(`No analytics found for accountId: ${accountId}`);
     }
