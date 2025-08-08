@@ -16,6 +16,7 @@ import { FacebookApiService } from '../utils/facebook/api.service';
 import { InstagramAdsService } from '@database/dynamodb/repository-services/instagram.ads.service';
 import { InstagramFbAccessTokenService } from '@database/dynamodb/repository-services/instagram.fbAccessToken.service';
 import  { InstagramAdAnalyticsRepositoryService } from '@database/dynamodb/repository-services/instagram.adAnalytics.service';
+import { InstagramAccountLevelAnalyticsRepositoryService } from '@database/dynamodb/repository-services/instagram.accountLevelAnalytics.service';
 
 
 
@@ -32,7 +33,8 @@ export class InstagramAccountService {
     private readonly instagramAdsService: InstagramAdsService,
     private readonly instagramFbAccessTokenService: InstagramFbAccessTokenService,
     private readonly facebookApiService: FacebookApiService,
-    private readonly instagramAdAnalyticsRepositoryService: InstagramAdAnalyticsRepositoryService
+    private readonly instagramAdAnalyticsRepositoryService: InstagramAdAnalyticsRepositoryService,
+    private readonly instagramAccountLevelAnalyticsRepositoryService: InstagramAccountLevelAnalyticsRepositoryService,
   ) {}
 
   private buildInsights(
@@ -1185,6 +1187,98 @@ async dmReply(
     };
   }
 }
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////  ACCOUNT LEVEL ANALYTICS  //////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+async getAccountLevelAnalytics(accountId: string) {
+  try {
+    // Fetch the account details
+    const stats = await this.instagramAccountLevelAnalyticsRepositoryService.getAccountLevelAnalyticsByAccountId(accountId);
+    if (!stats || !stats.Items || stats.Items.length === 0) {
+      throw new Error(`No analytics found for accountId: ${accountId}`);
+    }
+
+    // Group items by their level
+    const groupedByLevel = {};
+    stats.Items.forEach(item => {
+      if (!groupedByLevel[item.level]) {
+        groupedByLevel[item.level] = [];
+      }
+      groupedByLevel[item.level].push(item);
+    });
+
+    // Initialize result objects
+    let engagementMetrics = {
+      inquiry: 0,
+      inquiry_dm: 0,
+      inquiry_no_automation: 0,
+      negative: 0,
+      negative_no_automation: 0,
+      no_automation_comments: 0,
+      other_comments: 0,
+      positive: 0,
+      positive_no_automation: 0,
+      potential_buyers: 0,
+      potential_buyers_no_automation: 0,
+      tagged_comment: 0,
+      tagged_comment_dm: 0,
+      total_comments: 0,
+      total_dms: 0
+    };
+
+    let automationMetrics = {
+      automated_post: 0,
+      total_post: 0
+    };
+
+    // Combine engagement metrics (account_media and account_ads)
+    ['account_media', 'account_ads'].forEach(level => {
+      if (groupedByLevel[level]) {
+        groupedByLevel[level].forEach(item => {
+          Object.keys(engagementMetrics).forEach(key => {
+            if (typeof item[key] === 'number') {
+              engagementMetrics[key] += item[key];
+            }
+          });
+        });
+      }
+    });
+
+    // Combine automation metrics (account_media_automated_posts and account_ads_automated_posts)
+    ['account_media_automated_posts', 'account_ads_automated_posts'].forEach(level => {
+      if (groupedByLevel[level]) {
+        groupedByLevel[level].forEach(item => {
+          Object.keys(automationMetrics).forEach(key => {
+            if (typeof item[key] === 'number') {
+              automationMetrics[key] += item[key];
+            }
+          });
+        });
+      }
+    });
+
+    // Calculate some additional metrics if needed
+    const automationRate = automationMetrics.total_post > 0 
+      ? (automationMetrics.automated_post / automationMetrics.total_post) * 100 
+      : 0;
+
+    // Combine all metrics into a single response
+    return {
+      accountId,
+      ...engagementMetrics,
+      ...automationMetrics,
+      automation_rate: automationRate.toFixed(2) + '%',
+      updated_at: new Date().toISOString()
+    };
+
+  } catch (error) {
+    console.error(`Failed to fetch account analytics for ${accountId}:`, error);
+    throw new Error('Unable to retrieve account analytics');
+  }
+}
+  
 
 
 }

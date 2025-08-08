@@ -439,5 +439,20 @@ export class InstagramAccountController {
         }
       }
 
+      //////////////////////////////////////////////////////////////////////////////////////////////////////
+      /////////////////////////////////// ACCOUNT LEVEL ANALYTICS //////////////////////////////////////////
+      //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+      @InstagramResourceType('account')
+      @Get(':accountId/account-level-analytics')
+      async getAccountLevelAnalytics(@Param('accountId') accountId: string) {
+        try {
+          return await this.instagramAccountService.getAccountLevelAnalytics(accountId);
+        } catch (error) {
+          console.log(`Failed to get account level analytics for ${accountId}:`, (error as Error).message);
+          throw new Error(`Failed to get account level analytics for ${accountId}`);
+        }
+      }
+
 }
 
