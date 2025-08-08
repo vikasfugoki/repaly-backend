@@ -1265,16 +1265,15 @@ async getAccountLevelAnalytics(accountId: string) {
     });
 
     // Calculate some additional metrics if needed
-    const automationRate = automationMetrics.total_post > 0 
-      ? (automationMetrics.automated_post / automationMetrics.total_post) * 100 
-      : 0;
+    // const automationRate = automationMetrics.total_post > 0 
+    //   ? (automationMetrics.automated_post / automationMetrics.total_post) * 100 
+    //   : 0;
 
     // Combine all metrics into a single response
     return {
       accountId,
       ...engagementMetrics,
       ...automationMetrics,
-      automation_rate: automationRate.toFixed(2) + '%',
       updated_at: new Date().toISOString()
     };
 
