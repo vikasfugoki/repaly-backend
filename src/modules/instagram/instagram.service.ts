@@ -1195,6 +1195,9 @@ async dmReply(
 async getAccountLevelAnalytics(accountId: string) {
   try {
     // Fetch the account details
+
+    console.log("Fetching account level analytics for accountId:", accountId);
+
     const stats = await this.instagramAccountLevelAnalyticsRepositoryService.getAccountLevelAnalyticsByAccountId(accountId);
     console.log("Account Level Analytics:", stats);
     

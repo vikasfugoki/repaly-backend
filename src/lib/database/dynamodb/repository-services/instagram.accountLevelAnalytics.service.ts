@@ -4,7 +4,7 @@ import { DynamoDBService } from '../dynamodb.service';
 
 @Injectable()
 export class InstagramAccountLevelAnalyticsRepositoryService {
-    private readonly tableName = 'instagram_account_level_analytics_repository';
+    private readonly tableName = 'instagram_account_analytics_repository';
     constructor(private readonly dynamoDbService: DynamoDBService) {}
     
     // Method to get account level analytics by ID
