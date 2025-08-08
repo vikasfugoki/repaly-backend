@@ -17,7 +17,7 @@ export class InstagramAccountLevelAnalyticsRepositoryService {
     }
 
     // Method to get account level analytics by account ID
-    getAccountLevelAnalyticsByAccountId(accountId: string) {
+    async getAccountLevelAnalyticsByAccountId(accountId: string) {
         const params = new QueryCommand({
             TableName: this.tableName,
             IndexName: 'accountId-index',
