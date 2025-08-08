@@ -1252,7 +1252,7 @@ async getAccountLevelAnalytics(accountId: string) {
     });
 
     // Combine automation metrics (account_media_automated_posts and account_ads_automated_posts)
-    ['account_media_automated_posts', 'account_ads_automated_posts'].forEach(level => {
+    ['account_media_automated_posts', 'account_ad_automated_posts'].forEach(level => {
       if (groupedByLevel[level]) {
         groupedByLevel[level].forEach(item => {
           Object.keys(automationMetrics).forEach(key => {
@@ -1281,7 +1281,7 @@ async getAccountLevelAnalytics(accountId: string) {
     console.error(`Failed to fetch account analytics for ${accountId}:`, error);
     throw new Error('Unable to retrieve account analytics');
   }
-}
+} 
   
 
 
