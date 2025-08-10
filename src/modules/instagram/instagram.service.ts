@@ -1214,13 +1214,22 @@ async getAccountLevelAnalytics(accountId: string) {
 
     const media = getByLevel('account_media');
     const ads = getByLevel('account_ads');
+    const stories = getByLevel("account_story");
     const dm = getByLevel('account_dm_automated_posts');
 
     const collapsed = {
       comments: (media.total_comments || 0) + (ads.total_comments || 0),
       dms: (media.total_dms || 0) + (ads.total_dms || 0),
       negative: (media.negative || 0) + (ads.negative || 0),
-      unreplied: dm.total_unreplied || 0
+      unreplied: dm.total_unreplied || 0,
+      total_posts:
+        (media.total_post || 0) +
+        (ads.total_post || 0) +
+        (stories.total_post || 0),
+      automated_posts:
+        (media.automated_post || 0) +
+        (ads.automated_post || 0) +
+        (stories.automated_post || 0)
     };
 
     console.log("Collapsed Analytics:", collapsed);
@@ -1237,7 +1246,5 @@ async getAccountLevelAnalytics(accountId: string) {
     throw new Error('Unable to retrieve account analytics');
   }
 } 
-  
-
 
 }
