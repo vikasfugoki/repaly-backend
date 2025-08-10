@@ -1235,12 +1235,44 @@ async getAccountLevelAnalytics(accountId: string) {
         (stories_post.automated_post || 0)
     };
 
+    const mediaDetails = {
+      total_comments: media.total_comments || 0,
+      replied_comments: (media.inquiry || 0) + (media.positive || 0) + (media.negative || 0) + (media.potential_buyers || 0) + (media.tagged_comment || 0) + (media.tagged_comment_dm || 0),
+      buyers: media.potential_buyers || 0,
+      inquiries: media.inquiry || 0,
+      negative_comments: media.negative || 0,
+      positive_comments: media.positive || 0,
+      others: (media.others || 0) + (media.positive_no_automation || 0) + (media.negative_no_automation || 0) + (media.potential_buyers_no_automation || 0) + (media.inquiry_no_automation || 0), 
+      tagged_comment: (media.tagged_comment || 0) + (media.tagged_comment_dm || 0),
+      total_post: media_post.total_post || 0,
+      automated_post: media_post.automated_post || 0
+    };
+
+    const adsDetails = {
+      total_comments: ads.total_comments || 0,
+      replied_comments: (ads.inquiry || 0) + (ads.positive || 0) + (ads.negative || 0) + (ads.potential_buyers || 0) + (ads.tagged_comment || 0) + (ads.tagged_comment_dm || 0),
+      buyers: ads.potential_buyers || 0,
+      inquiries: ads.inquiry || 0,
+      negative_comments: ads.negative || 0,
+      positive_comments: ads.positive || 0,
+      others: (ads.others || 0) + (ads.positive_no_automation || 0) + (ads.negative_no_automation || 0) + (ads.potential_buyers_no_automation || 0) + (ads.inquiry_no_automation || 0), 
+      tagged_comment: (ads.tagged_comment || 0) + (ads.tagged_comment_dm || 0),
+      total_post: ads_post.total_post || 0,
+      automated_post: ads_post.automated_post || 0
+    };
+
+    const expanded = {
+      media: mediaDetails,
+      ads: adsDetails,
+    }
+
     console.log("Collapsed Analytics:", collapsed);
 
     // // Combine all metrics into a single response
     return {
       accountId,
       collapsed,
+      expanded,
       updated_at: new Date().toISOString()
     };
 
