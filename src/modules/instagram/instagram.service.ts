@@ -1213,8 +1213,11 @@ async getAccountLevelAnalytics(accountId: string) {
       (stats.Items || []).find((item: any) => item.level === level) || {};
 
     const media = getByLevel('account_media');
+    const media_post = getByLevel('account_media_automated_posts');
     const ads = getByLevel('account_ads');
+    const ads_post = getByLevel('account_ad_automated_posts');
     const stories = getByLevel("account_story");
+    const stories_post = getByLevel('account_story_automated_posts');
     const dm = getByLevel('account_dm_automated_posts');
 
     const collapsed = {
@@ -1223,13 +1226,13 @@ async getAccountLevelAnalytics(accountId: string) {
       negative: (media.negative || 0) + (ads.negative || 0),
       unreplied: dm.total_unreplied || 0,
       total_posts:
-        (media.total_post || 0) +
-        (ads.total_post || 0) +
-        (stories.total_post || 0),
+        (media_post.total_post || 0) +
+        (ads_post.total_post || 0) +
+        (stories_post.total_post || 0),
       automated_posts:
-        (media.automated_post || 0) +
-        (ads.automated_post || 0) +
-        (stories.automated_post || 0)
+        (media_post.automated_post || 0) +
+        (ads_post.automated_post || 0) +
+        (stories_post.automated_post || 0)
     };
 
     console.log("Collapsed Analytics:", collapsed);
