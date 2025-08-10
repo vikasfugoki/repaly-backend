@@ -1202,8 +1202,6 @@ async getAccountLevelAnalytics(accountId: string) {
     console.log("Account Level Analytics:", stats);
 
     const levels = ['account_media', 'account_ads', 'account_media_automated_posts', 'account_ad_automated_posts', 'account_dm_automated_posts'];
-    
-    
 
     if (!stats || !stats.Items || stats.Items.length === 0) {
       throw new Error(`No analytics found for accountId: ${accountId}`);
@@ -1219,6 +1217,8 @@ async getAccountLevelAnalytics(accountId: string) {
     const stories = getByLevel("account_story");
     const stories_post = getByLevel('account_story_automated_posts');
     const dm = getByLevel('account_dm_automated_posts');
+
+    console.log("Media Analytics:", media);
 
     const collapsed = {
       comments: (media.total_comments || 0) + (ads.total_comments || 0),
