@@ -1257,13 +1257,33 @@ async getAccountLevelAnalytics(accountId: string) {
       positive_comments: ads.positive || 0,
       others: (ads.others || 0) + (ads.positive_no_automation || 0) + (ads.negative_no_automation || 0) + (ads.potential_buyers_no_automation || 0) + (ads.inquiry_no_automation || 0), 
       tagged_comment: (ads.tagged_comment || 0) + (ads.tagged_comment_dm || 0),
-      total_post: ads_post.total_post || 0,
-      automated_post: ads_post.automated_post || 0
+      total_ads: ads_post.total_post || 0,
+      automated_ads: ads_post.automated_post || 0
     };
+
+    const storyDetails = {
+      tagged_comments: stories.tagged || 0,
+      others: stories.others || 0,
+      total_comments: stories.total_comments || 0,
+      total_stories: stories_post.total_post || 0,
+      automated_stories: stories_post.automated_post || 0
+    }
+
+    const dmDetails = {
+      total_unreplied: dm.total_unreplied || 0,
+      total_dm: dm.total_dm || 0,
+      others: dm.category_others || 0,
+      lead: dm.category_lead || 0,
+      inquiry: dm.category_inquiry || 0,
+      collaboration: dm.category_collaboration || 0
+    }
+
 
     const expanded = {
       media: mediaDetails,
       ads: adsDetails,
+      stories: storyDetails,
+      dm: dmDetails
     }
 
     console.log("Collapsed Analytics:", collapsed);
