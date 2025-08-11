@@ -143,27 +143,28 @@ export class FacebookApiService {
         let nextUrl: string | null = `https://graph.facebook.com/v23.0/${adAccountId}/ads?fields=id,name,status,creative{id,name,object_story_spec,image_url,thumbnail_url,effective_instagram_media_id}&access_token=${accessToken}`;
       
         try {
-          while (nextUrl) {
-            const response = await axios.get<any>(nextUrl);
-            const { data, paging } = response.data;
+          while (nextUrl && allAds.length < 5) {
+        const response = await axios.get<any>(nextUrl);
+        const { data, paging } = response.data;
       
-            for (const ad of data) {
-              const insights = await this.getAdInsights(ad.id, accessToken);
+        for (const ad of data) {
+          if (allAds.length >= 5) break;
+          const insights = await this.getAdInsights(ad.id, accessToken);
       
-              allAds.push({
-                ad_id: ad.id,
-                ad_name: ad.name,
-                status: ad.status,
-                creative_id: ad.creative?.id || null,
-                creative_name: ad.creative?.name || null,
-                image_url: ad.creative?.image_url || ad.creative?.thumbnail_url || null,
-                object_story_spec: ad.creative?.object_story_spec || null,
-                effective_instagram_media_id: ad.creative?.effective_instagram_media_id || null,
-                insights: insights,
-              });
-            }
+          allAds.push({
+            ad_id: ad.id,
+            ad_name: ad.name,
+            status: ad.status,
+            creative_id: ad.creative?.id || null,
+            creative_name: ad.creative?.name || null,
+            image_url: ad.creative?.image_url || ad.creative?.thumbnail_url || null,
+            object_story_spec: ad.creative?.object_story_spec || null,
+            effective_instagram_media_id: ad.creative?.effective_instagram_media_id || null,
+            insights: insights,
+          });
+        }
       
-            nextUrl = paging?.next || null;
+        nextUrl = paging?.next || null;
           }
       
           return allAds;
