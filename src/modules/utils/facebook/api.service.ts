@@ -140,7 +140,7 @@ export class FacebookApiService {
 
       async getAdsWithCreativesAndInsights(adAccountId: string, accessToken: string): Promise<any[]> {
         const allAds: any[] = [];
-        let nextUrl: string | null = `https://graph.facebook.com/v23.0/${adAccountId}/ads?fields=id,name,status,creative{id,name,object_story_spec,image_url,thumbnail_url,effective_instagram_media_id}&access_token=${accessToken}`;
+        let nextUrl: string | null = `https://graph.facebook.com/v23.0/${adAccountId}/ads?fields=id,name,status,creative{id,name,object_story_spec,image_url,thumbnail_url,effective_instagram_media_id}&effective_status=['ACTIVE']&access_token=${accessToken}`;
       
         try {
           while (nextUrl && allAds.length < 5) {
