@@ -505,6 +505,9 @@ export class InstagramAccountService {
         await this.instagramAdAnalyticsRepositoryService.deleteAccount(accountId);
         console.log(`deleted from 'instagram_ads_analytics_repository'`);
 
+        await this.instagramAccountLevelAnalyticsRepositoryService.deleteAccount(accountId);
+        console.log(`deleted from 'instagram_account_level_analytics_repository'`);
+
         return {success: true, message: `account has been removed.`};
         
         
