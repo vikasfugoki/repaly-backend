@@ -17,8 +17,8 @@ import { InstagramAdsService } from '@database/dynamodb/repository-services/inst
 import { InstagramFbAccessTokenService } from '@database/dynamodb/repository-services/instagram.fbAccessToken.service';
 import  { InstagramAdAnalyticsRepositoryService } from '@database/dynamodb/repository-services/instagram.adAnalytics.service';
 import { InstagramAccountLevelAnalyticsRepositoryService } from '@database/dynamodb/repository-services/instagram.accountLevelAnalytics.service';
-
-
+import { InstagramDmMessageDetailsService } from '@database/dynamodb/repository-services/instagram.dmMessageDetails.service';
+import { InstagramDmMessagesService } from '@database/dynamodb/repository-services/instagram.dmMessages.service';
 
 @Injectable()
 export class InstagramAccountService {
@@ -35,6 +35,8 @@ export class InstagramAccountService {
     private readonly facebookApiService: FacebookApiService,
     private readonly instagramAdAnalyticsRepositoryService: InstagramAdAnalyticsRepositoryService,
     private readonly instagramAccountLevelAnalyticsRepositoryService: InstagramAccountLevelAnalyticsRepositoryService,
+    private readonly instagramDmMessageDetailsService: InstagramDmMessageDetailsService,
+    private readonly instagramDmMessagesService: InstagramDmMessagesService
   ) {}
 
   private buildInsights(
@@ -1324,6 +1326,25 @@ async getAccountLevelAnalytics(accountId: string) {
     catch (error) {
       console.error(`Failed to fetch DM analytics for ${accountId}:`, error);
       throw new Error('Unable to retrieve DM analytics');
+    }
+  }
+
+  async getDMConversations(accountId: string) {
+    try {
+      // Fetch all conversations for the account
+      const { items, lastEvaluatedKey } =
+        await this.instagramDmMessageDetailsService.getConversationDetails(accountId);
+      console.log("DM Conversations:", items);
+  
+      if (!items || items.length === 0) {
+        return [];
+      }
+  
+      // Optionally return pagination key as well if you need to load more pages
+      return { items, lastEvaluatedKey };
+    } catch (error) {
+      console.error(`Failed to get DM conversations for ${accountId}:`, error);
+      throw new Error("Unable to retrieve DM conversations");
     }
   }
 

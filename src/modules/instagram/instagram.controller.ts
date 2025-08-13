@@ -469,5 +469,16 @@ export class InstagramAccountController {
         }
       }
 
+      @InstagramResourceType('account')
+      @Get(':accountId/dm/conversations')
+      async getDMConversations(@Param('accountId') accountId: string) {
+        try {
+          return await this.instagramAccountService.getDMConversations(accountId);
+        } catch (error) {
+          console.log(`Failed to get DM conversations for ${accountId}:`, (error as Error).message);
+          throw new Error(`Failed to get DM conversations for ${accountId}`);
+        }
+      }
+
 }
 
