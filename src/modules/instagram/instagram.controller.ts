@@ -459,7 +459,7 @@ export class InstagramAccountController {
       //////////////////////////////////////////////////////////////////////////////////////////////////////
 
       @InstagramResourceType('account')
-      @Get(':accountId/dm-summary-analytics')
+      @Get(':accountId/dm/analytics-summary')
       async getDMSummaryAnalytics(@Param('accountId') accountId: string) {
         try {
           return await this.instagramAccountService.getDMSummaryAnalytics(accountId);
