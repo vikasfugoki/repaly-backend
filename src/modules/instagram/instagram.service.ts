@@ -1305,4 +1305,28 @@ async getAccountLevelAnalytics(accountId: string) {
   }
 } 
 
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////  DM LEVEL ANALYTICS  //////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  async getDMSummaryAnalytics(accountId: string) {
+    try {
+      // Fetch the account details
+      console.log("Fetching DM level analytics for accountId:", accountId);
+      const stats = await this.instagramAccountLevelAnalyticsRepositoryService.getAccountLevelAnalytics(accountId + "_dm_automated_posts");
+      console.log("DM Level Analytics:", stats);
+
+      if (!stats || !stats.Item) {
+        throw new Error(`No DM analytics found for accountId: ${accountId}`);
+      }
+  
+      return stats.Item;
+    }
+    catch (error) {
+      console.error(`Failed to fetch DM analytics for ${accountId}:`, error);
+      throw new Error('Unable to retrieve DM analytics');
+    }
+  }
+
+  
+
 }

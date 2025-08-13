@@ -454,5 +454,20 @@ export class InstagramAccountController {
         }
       }
 
+      //////////////////////////////////////////////////////////////////////////////////////////////////////
+      /////////////////////////////////// DM LEVEL ANALYTICS ///////////////////////////////////////////////
+      //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+      @InstagramResourceType('account')
+      @Get(':accountId/dm-summary-analytics')
+      async getDMSummaryAnalytics(@Param('accountId') accountId: string) {
+        try {
+          return await this.instagramAccountService.getDMSummaryAnalytics(accountId);
+        } catch (error) {
+          console.log(`Failed to get DM summary analytics for ${accountId}:`, (error as Error).message);
+          throw new Error(`Failed to get DM summary analytics for ${accountId}`);
+        }
+      }
+
 }
 
