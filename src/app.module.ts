@@ -41,6 +41,8 @@ import { InstagramAccountLevelAnalyticsRepositoryService } from '@database/dynam
 // Import the JwtModule
 import { JwtModule } from '@nestjs/jwt';
 import { FacebookUserRepositoryService } from '@database/dynamodb/repository-services/facebook.user.service';
+import { InstagramDmMessageDetailsService } from '@database/dynamodb/repository-services/instagram.dmMessageDetails.service';
+import { InstagramDmMessagesService } from '@database/dynamodb/repository-services/instagram.dmMessages.service';
 
 @Module({
   imports: [
@@ -92,7 +94,9 @@ import { FacebookUserRepositoryService } from '@database/dynamodb/repository-ser
     InstagramAdsService,
     InstagramFbAccessTokenService,
     InstagramAdAnalyticsRepositoryService,
-    InstagramAccountLevelAnalyticsRepositoryService
+    InstagramAccountLevelAnalyticsRepositoryService,
+    InstagramDmMessageDetailsService,
+    InstagramDmMessagesService
   ],
   exports: [DynamoDBService],
 })
