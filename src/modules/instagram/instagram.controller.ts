@@ -509,7 +509,7 @@ export class InstagramAccountController {
       }
 
       @InstagramResourceType('account')
-      @Get(':accountId/media-comments/:mediaId')
+      @Get(':accountId/media/:mediaId/all-comments')
       async getMediaAnalyticsById(@Param('accountId') accountId: string, @Param('mediaId') mediaId: string) {
         try {
           return await this.instagramAccountService.getMediaAnalyticsById(accountId, mediaId);
@@ -520,7 +520,7 @@ export class InstagramAccountController {
       }
 
       @InstagramResourceType('account')
-      @Get(':accountId/media-comments/:mediaId/category/:category')
+      @Get(':accountId/media/:mediaId/category/:category')
       async getMediaCommentsByCategory(
         @Param('accountId') accountId: string, 
         @Param('mediaId') mediaId: string,
