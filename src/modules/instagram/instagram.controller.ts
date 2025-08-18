@@ -536,7 +536,7 @@ export class InstagramAccountController {
       }
 
       @InstagramResourceType('account')
-      @Get(':accountId/media/comment-counts')
+      @Get(':accountId/media/comment-stats')
       async getMediaCommentCounts(@Param('accountId') accountId: string) {
         try {
           // This should call a service method that fetches all media for the account
