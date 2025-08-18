@@ -480,5 +480,98 @@ export class InstagramAccountController {
         }
       }
 
+      @InstagramResourceType('account')
+      @Get(':accountId/dm/conversations/:conversationId')
+      async getDMConversationDetails(@Param('accountId') accountId: string, @Param('conversationId') conversationId: string) {
+        try {
+          return await this.instagramAccountService.getDMConversationDetails(accountId, conversationId);
+        } catch (error) {
+          console.log(`Failed to get DM conversation details for ${conversationId} in account ${accountId}:`, (error as Error).message);
+          throw new Error(`Failed to get DM conversation details for ${conversationId} in account ${accountId}`);
+        }
+      }
+
+      //////////////////////////////////////////////////////////////////////////////////////////////////////
+      /////////////////////////////////// COMMENT LEVEL ANALYTICS ///////////////////////////////////////////////
+      //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+      ///////////////////////////////////// MEDIA ///////////////////////////////////////////////////////////
+
+      @InstagramResourceType('account')
+      @Get(':accountId/media/analytics-summary')
+      async getMediaAnalytics(@Param('accountId') accountId: string) {
+        try {
+          return await this.instagramAccountService.getMediaAnalytics(accountId);
+        } catch (error) {
+          console.log(`Failed to get media analytics for ${accountId}:`, (error as Error).message);
+          throw new Error(`Failed to get media analytics for ${accountId}`);
+        }
+      }
+
+      @InstagramResourceType('account')
+      @Get(':accountId/media-comments/:mediaId')
+      async getMediaAnalyticsById(@Param('accountId') accountId: string, @Param('mediaId') mediaId: string) {
+        try {
+          return await this.instagramAccountService.getMediaAnalyticsById(accountId, mediaId);
+        } catch (error) {
+          console.log(`Failed to get media analytics for ${mediaId} in account ${accountId}:`, (error as Error).message);
+          throw new Error(`Failed to get media analytics for ${mediaId} in account ${accountId}`);
+        }
+      }
+
+      @InstagramResourceType('account')
+      @Get(':accountId/media-comments/:mediaId/category/:category')
+      async getMediaCommentsByCategory(
+        @Param('accountId') accountId: string, 
+        @Param('mediaId') mediaId: string,
+        @Param('category') category: string
+      ) {
+        try {
+          // Valid categories: positive, negative, potential_buyers, inquiry, others
+          return await this.instagramAccountService.getMediaCommentsByCategory(accountId, mediaId, category);
+        } catch (error) {
+          console.log(`Failed to get """${category}""" comments for media ${mediaId} in account ${accountId}:`, (error as Error).message);
+          throw new Error(`Failed to get ${category} comments for media ${mediaId} in account ${accountId}`);
+        }
+      }
+
+      @InstagramResourceType('account')
+      @Get(':accountId/media/comment-counts')
+      async getMediaCommentCounts(@Param('accountId') accountId: string) {
+        try {
+          // This should call a service method that fetches all media for the account
+          // and returns an array of objects with mediaId and comment_counts
+          return await this.instagramAccountService.getMediaCommentCounts(accountId);
+        } catch (error) {
+          console.log(`Failed to get comment counts for media in account ${accountId}:`, (error as Error).message);
+          throw new Error(`Failed to get comment counts for media in account ${accountId}`);
+        }
+      }
+      
+
+    ///////////////////////////////////// Ads ////////////////////////////////////////////////////////////
+
+    @InstagramResourceType('account')
+    @Get(':accountId/ads/analytics-summary')
+    async getAdsAnalytics(@Param('accountId') accountId: string) {
+      try {
+        return await this.instagramAccountService.getAdsAnalytics(accountId);
+      } catch (error) {
+        console.log(`Failed to get ads analytics for ${accountId}:`, (error as Error).message);
+        throw new Error(`Failed to get ads analytics for ${accountId}`);
+      }
+    }
+
+    // @InstagramResourceType('account')
+    // @Get(':accountId/ads/:adId')
+    // async getAdAnalyticsById(@Param('accountId') accountId: string, @Param('adId') adId: string) {  
+    //   try {
+    //     return await this.instagramAccountService.getAdAnalyticsById(accountId, adId);
+    //   } catch (error) {
+    //     console.log(`Failed to get ad analytics for ${adId} in account ${accountId}:`, (error as Error).message);
+    //     throw new Error(`Failed to get ad analytics for ${adId} in account ${accountId}`);
+    //   }
+    // }
+
 }
 

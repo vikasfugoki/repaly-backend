@@ -269,6 +269,32 @@ export class InstagramAccountService {
       }
   }
 
+private isAutomatedPost(image: any): boolean {
+  const ai_enabled = image?.ai_enabled;
+  const tag_and_value_pair = image?.tag_and_value_pair;
+
+  // Check ai_enabled logic
+  if (ai_enabled && typeof ai_enabled === 'object') {
+      for (const category of Object.values(ai_enabled)) {
+          if (category && typeof category === 'object') {
+              const mode = (category as any)?.mode;
+              if (mode && mode !== "leave_comment") {
+                  return true;
+              }
+          }
+      }
+  }
+
+  // Check tag_and_value_pair as array
+  if (Array.isArray(tag_and_value_pair) && tag_and_value_pair.length > 0) {
+      return true;
+  }
+
+  return false;
+}
+
+  
+
   async getInstagramMediaFromTable(accountId: string) {
       try {
           console.log(accountId)
@@ -283,12 +309,13 @@ export class InstagramAccountService {
 
         // Ensure response is an array and limit its length to 15
         if (Array.isArray(items)) {
-            // return items
-            //     .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
-            //     .slice(0, 15);
             return items
-                .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-                .slice(0, 15);
+            .sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime())
+            .slice(0, 15)
+            .map(item => ({
+              ...item,
+              is_automated: this.isAutomatedPost(item)
+            }));
         } else {
             console.warn("Unexpected response type, expected an array:", response);
             return [];
@@ -608,7 +635,12 @@ export class InstagramAccountService {
       // Ensure response is an array and limit its length to 15
       if (Array.isArray(items)) {
         return items
-            .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+            .sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime())
+            .slice(0, 15)
+            .map(item => ({
+              ...item,
+              is_automated: this.isAutomatedPost(item)
+            }));
             // .slice(0, 15);
     } else {
         console.warn("Unexpected response type, expected an array:", response);
@@ -969,27 +1001,34 @@ export class InstagramAccountService {
     }
 
   async getAdsFromTable(accountId: string) {
-      try {
-        const isAccountPresent = await this.instagramFbAccessTokenService.isIdPresent(accountId);
-        if (isAccountPresent == false) {
-            return {
-              "is_facebook_added": isAccountPresent,
-              "ads": []
-            };
-        }
-
-        // You can fetch actual ads here if the account is present
-        const ads = await this.instagramAdsService.getAdsByAccountId(accountId);     
-
+    try {
+      const isAccountPresent = await this.instagramFbAccessTokenService.isIdPresent(accountId);
+      if (isAccountPresent == false) {
         return {
-          is_facebook_added: true,
-          ads: ads?.Items || []
+          is_facebook_added: isAccountPresent,
+          ads: []
         };
-
-      } catch (error) {
-        console.error(`Failed to get ad details for account: ${accountId}`, error);
-        throw error;
       }
+
+      // Fetch actual ads if the account is present
+      const ads = await this.instagramAdsService.getAdsByAccountId(accountId);
+      const items = ads?.Items || [];
+
+      // Add is_automated to each ad item using isAutomatedPost
+      const adsWithAutomation = items.map(item => ({
+        ...item,
+        is_automated: this.isAutomatedPost(item)
+      }));
+
+      return {
+        is_facebook_added: true,
+        ads: adsWithAutomation
+      };
+
+    } catch (error) {
+      console.error(`Failed to get ad details for account: ${accountId}`, error);
+      throw error;
+    }
   }
 
   async isFacebookLinked(accountId: string) {
@@ -1348,6 +1387,346 @@ async getAccountLevelAnalytics(accountId: string) {
     }
   }
 
+  async getDMConversationDetails(account_id: string, conversationId: string) {
+    try {
+      // Fetch conversation details by ID
+      const conversation = await this.instagramDmMessagesService.getConversationById(conversationId);
+      console.log("DM Conversation Details:", conversation);
   
+      if (!conversation || Object.keys(conversation).length === 0) {
+        throw new Error(`No conversation found for ID: ${conversationId}`);
+      }
+  
+      return conversation;
+    } catch (error) {
+      console.error(`Failed to get DM conversation details for ${conversationId}:`, error);
+      throw new Error("Unable to retrieve DM conversation details");
+    }
+  }
+  
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////// COMMENT LEVEL ANALYTICS ///////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  ////////////////////////////////////////// MEDIA ///////////////////////////////////////////////////////////
+
+  async getMediaAnalytics(accountId: string) {
+    try {
+      const mediaAutomatedPostsResult = await this.instagramAccountLevelAnalyticsRepositoryService.getAccountLevelAnalytics(accountId + "_media_automated_posts");
+      const mediaAutomatedPosts = mediaAutomatedPostsResult?.Item || {};
+      const mediaAnalyticsResult = await this.instagramAccountLevelAnalyticsRepositoryService.getAccountLevelAnalytics(accountId + "_media");
+      const mediaAnalytics = mediaAnalyticsResult?.Item || {};
+      
+      // mediaAutomatedPosts = mediaAutomatedPosts?.Item || {};
+      // mediaAnalytics = mediaAnalytics?.Item || {};
+
+      const res = {
+        inquiry: mediaAnalytics.inquiry ?? 0,
+        inquiry_dm: mediaAnalytics.inquiry_dm ?? 0,
+        inquiry_no_automation: mediaAnalytics.inquiry_no_automation ?? 0,
+        level: mediaAnalytics.level ?? "account_media",
+        negative: mediaAnalytics.negative ?? 0,
+        negative_no_automation: mediaAnalytics.negative_no_automation ?? 0,
+        no_automation_comments: mediaAnalytics.no_automation_comments ?? 1,
+        other_comments: mediaAnalytics.other_comments ?? 0,
+        positive: mediaAnalytics.positive ?? 0,
+        positive_no_automation: mediaAnalytics.positive_no_automation ?? 1,
+        potential_buyers: mediaAnalytics.potential_buyers ?? 0,
+        potential_buyers_no_automation: mediaAnalytics.potential_buyers_no_automation ?? 0,
+        tagged: mediaAnalytics.tagged ?? 0,
+        tagged_comment: mediaAnalytics.tagged_comment ?? 0,
+        tagged_comment_dm: mediaAnalytics.tagged_comment_dm ?? 1,
+        total_comments: mediaAnalytics.total_comments ?? 2,
+        total_dms: mediaAnalytics.total_dms ?? 1,
+        media_automated_posts: mediaAutomatedPosts.automated_post ?? 0,
+        total_posts: mediaAutomatedPosts.total_post ?? 0,
+      };
+
+      return res;
+    } catch (error) {
+      console.error(`Failed to get media analytics for ${accountId}:`, error);
+      throw new Error('Unable to retrieve media analytics');
+    }
+  }
+
+  async getMediaAnalyticsById(accountId: string, mediaId: string) {
+    try {
+      const mediaAnalytics = await this.instagramMediaAnalyticsRepositoryService.getMediaAnalytics(mediaId);
+      if (!mediaAnalytics || Object.keys(mediaAnalytics).length === 0) {
+        throw new Error(`No analytics found for mediaId: ${mediaId}`);
+      }
+
+      const commentsByType = mediaAnalytics.comments_by_type || {};
+      const allComments: Array<{
+        comment_timestamp: number;
+        commenter_username: string;
+        comment: string;
+        response_comment: string;
+        response_dm: string;
+        reply_timestamp: number;
+        category: string;
+      }> = [];
+
+      for (const [category, comments] of Object.entries(commentsByType)) {
+        for (const commentArr of comments as any[]) {
+          const [
+            comment_timestamp,
+            commenter_username,
+            comment,
+            response,
+            reply_timestamp
+          ] = commentArr;
+
+          allComments.push({
+            comment_timestamp,
+            commenter_username,
+            comment,
+            response_comment: category.includes('dm') ? '' : response,
+            response_dm: category.includes('dm') ? response : '',
+            reply_timestamp,
+            category
+          });
+        }
+      }
+
+      return allComments;
+    } catch (error) {
+      console.error(`Failed to get media analytics for ${mediaId}:`, error);
+      throw new Error('Unable to retrieve media analytics');
+    }
+  }
+
+  async getMediaCommentsByCategory(accountId: string, mediaId: string, category: string) {
+    try {
+      // Define valid categories
+      const validCategories = [
+        'positive',
+        'negative',
+        'potential_buyers',
+        'inquiry',
+        'others',
+        'tagged_comment'
+      ];
+
+      if (!validCategories.includes(category)) {
+        throw new Error(`Invalid category: ${category}. Valid categories are: ${validCategories.join(', ')}`);
+      }
+
+      // Get media analytics
+      const mediaAnalytics = await this.instagramMediaAnalyticsRepositoryService.getMediaAnalytics(mediaId);
+      if (!mediaAnalytics || Object.keys(mediaAnalytics).length === 0) {
+        throw new Error(`No analytics found for mediaId: ${mediaId}`);
+      }
+
+      const commentsByType = mediaAnalytics.comments_by_type || {};
+      let filteredComments: Array<{
+        comment_timestamp: number;
+        commenter_username: string;
+        comment: string;
+        response_comment: string;
+        response_dm: string;
+        reply_timestamp: number;
+        category: string;
+      }> = [];
+
+      // Helper to process comments
+      const processComments = (comments: any[], cat: string) => {
+        for (const commentArr of comments) {
+          const [
+            comment_timestamp,
+            commenter_username,
+            comment,
+            response,
+            reply_timestamp
+          ] = commentArr;
+
+          filteredComments.push({
+            comment_timestamp,
+            commenter_username,
+            comment,
+            response_comment: cat.includes('dm') ? '' : response,
+            response_dm: cat.includes('dm') ? response : '',
+            reply_timestamp,
+            category: cat
+          });
+        }
+      };
+
+      // Combine categories as per requirements
+      if (category === 'positive') {
+        processComments(commentsByType['positive'] || [], 'positive');
+        processComments(commentsByType['positive_no_automation'] || [], 'positive_no_automation');
+      } else if (category === 'negative') {
+        processComments(commentsByType['negative'] || [], 'negative');
+        processComments(commentsByType['negative_no_automation'] || [], 'negative_no_automation');
+      } else if (category === 'potential_buyers') {
+        processComments(commentsByType['potential_buyers'] || [], 'potential_buyers');
+        processComments(commentsByType['potential_buyers_no_automation'] || [], 'potential_buyers_no_automation');
+      } else if (category === 'inquiry') {
+        processComments(commentsByType['inquiry'] || [], 'inquiry');
+        processComments(commentsByType['inquiry_dm'] || [], 'inquiry_dm');
+        processComments(commentsByType['inquiry_no_automation'] || [], 'inquiry_no_automation');
+      } else if (category === 'tagged_comment') {
+        processComments(commentsByType['tagged_comment'] || [], 'tagged_comment');
+        processComments(commentsByType['tagged_comment_dm'] || [], 'tagged_comment_dm');
+      } else if (category === 'others') {
+        processComments(commentsByType['others'] || [], 'others');
+        processComments(commentsByType['other_comments'] || [], 'other_comments');
+      }
+
+      return filteredComments;
+    } catch (error) {
+      console.error(`Failed to get ${category} comments for media ${mediaId}:`, error);
+      throw new Error(`Unable to retrieve ${category} comments for media`);
+    }
+  }
+
+  async getMediaCommentCounts(accountId: string) {
+    try {
+      // Fetch all media for the account
+      const mediaListResponse = await this.instagramMediaRepositoryService.getMediaByAccountId(accountId);
+      const mediaItems = mediaListResponse?.Items || [];
+      if (!Array.isArray(mediaItems) || mediaItems.length === 0) {
+        throw new Error(`No media found for accountId: ${accountId}`);
+      }
+
+      // For each media, fetch analytics and build stats using comment_counts and combined categories
+      const result = await Promise.all(
+        mediaItems.map(async (media) => {
+          const mediaId = media.id;
+          const analytics = await this.instagramMediaAnalyticsRepositoryService.getMediaAnalytics(mediaId);
+          const comment_counts = (analytics?.comment_counts ?? {}) as {
+            positive?: number;
+            positive_no_automation?: number;
+            negative?: number;
+            negative_no_automation?: number;
+            inquiry?: number;
+            inquiry_dm?: number;
+            inquiry_no_automation?: number;
+            potential_buyers?: number;
+            potential_buyers_no_automation?: number;
+            tagged_comment?: number;
+            tagged_comment_dm?: number;
+            others?: number;
+            other_comments?: number;
+            total_comments?: number;
+          };
+
+          // Combine stats for positive, negative, inquiry, potential_buyers, etc.
+          const combinedStats = {
+            mediaId,
+            positive: (comment_counts.positive ?? 0) + (comment_counts.positive_no_automation ?? 0),
+            negative: (comment_counts.negative ?? 0) + (comment_counts.negative_no_automation ?? 0),
+            inquiry: (comment_counts.inquiry ?? 0) + (comment_counts.inquiry_no_automation ?? 0),
+            potential_buyers: (comment_counts.potential_buyers ?? 0) + (comment_counts.potential_buyers_no_automation ?? 0),
+            tagged_comment: (comment_counts.tagged_comment ?? 0) + (comment_counts.tagged_comment_dm ?? 0),
+            others: (comment_counts.others ?? 0) + (comment_counts.other_comments ?? 0),
+            no_automation_comments: (comment_counts.positive_no_automation ?? 0) + (comment_counts.negative_no_automation ?? 0) + (comment_counts.potential_buyers_no_automation ?? 0) + (comment_counts.inquiry_no_automation ?? 0),
+            total_dms: (comment_counts.inquiry_dm ?? 0) + (comment_counts.tagged_comment_dm ?? 0),
+            total_comments: comment_counts.total_comments ?? 0,
+            // Add more combined stats as needed
+          };
+
+          return combinedStats;
+        })
+      );
+
+      return result;
+    } catch (error) {
+      console.error(`Failed to get media comment counts for account ${accountId}:`, error);
+      throw error;
+    }
+  }
+
+  //////////////////////////////////////////////  Ads //////////////////////////////////////////////////////////
+
+  async getAdsAnalytics(accountId: string) {
+    try {
+      const adsAutomatedPostsResult = await this.instagramAccountLevelAnalyticsRepositoryService.getAccountLevelAnalytics(accountId + "_ad_automated_posts");
+      const adsAutomatedPosts = adsAutomatedPostsResult?.Item || {};
+      const adsAnalyticsResult = await this.instagramAccountLevelAnalyticsRepositoryService.getAccountLevelAnalytics(accountId + "_ads");
+      const adsAnalytics = adsAnalyticsResult?.Item || {};
+
+      // adsAutomatedPosts = adsAutomatedPosts?.Item || {};
+      // adsAnalytics = adsAnalytics?.Item || {};
+
+      const res = {
+        inquiry: adsAnalytics.inquiry ?? 0,
+        inquiry_dm: adsAnalytics.inquiry_dm ?? 0,
+        inquiry_no_automation: adsAnalytics.inquiry_no_automation ?? 0,
+        level: adsAnalytics.level ?? "account_ads",
+        negative: adsAnalytics.negative ?? 0,
+        negative_no_automation: adsAnalytics.negative_no_automation ?? 0,
+        no_automation_comments: adsAnalytics.no_automation_comments ?? 1,
+        other_comments: adsAnalytics.other_comments ?? 0,
+        positive: adsAnalytics.positive ?? 0,
+        positive_no_automation: adsAnalytics.positive_no_automation ?? 1,
+        potential_buyers: adsAnalytics.potential_buyers ?? 0,
+        potential_buyers_no_automation: adsAnalytics.potential_buyers_no_automation ?? 0,
+        tagged: adsAnalytics.tagged ?? 0,
+        tagged_comment: adsAnalytics.tagged_comment ?? 0,
+        tagged_comment_dm: adsAnalytics.tagged_comment_dm ?? 1,
+        total_comments: adsAnalytics.total_comments ?? 2,
+        total_dms: adsAnalytics.total_dms ?? 1,
+        media_automated_posts: adsAutomatedPosts.automated_post ?? 0,
+        total_ads: adsAutomatedPosts.total_post ?? 0
+      };
+
+      return res;
+    } catch (error) {
+      console.error(`Failed to get ad analytics for ${accountId}:`, error);
+      throw new Error('Unable to retrieve ad analytics');
+    }
+  }
+
+  
+
+  // async getAdAnalyticsById(accountId: string, adId: string) {
+  //   try {
+  //     const adAnalytics = await this.instagramAdAnalyticsRepositoryService.getAdAnalytics(adId);
+  //     if (!adAnalytics || Object.keys(adAnalytics).length === 0) {
+  //       throw new Error(`No analytics found for adId: ${adId}`);
+  //     }
+
+  //     const commentsByType = adAnalytics.comments_by_type || {};
+  //     const allComments: Array<{
+  //       comment_timestamp: number;
+  //       commenter_username: string;
+  //       comment: string;
+  //       response_comment: string;
+  //       response_dm: string;
+  //       reply_timestamp: number;
+  //       category: string;
+  //     }> = [];
+
+  //     for (const [category, comments] of Object.entries(commentsByType)) {
+  //       for (const commentArr of comments as any[]) {
+  //         const [
+  //           comment_timestamp,
+  //           commenter_username,
+  //           comment,
+  //           response,
+  //           reply_timestamp
+  //         ] = commentArr;
+
+  //         allComments.push({
+  //           comment_timestamp,
+  //           commenter_username,
+  //           comment,
+  //           response_comment: category.includes('dm') ? '' : response,
+  //           response_dm: category.includes('dm') ? response : '',
+  //           reply_timestamp,
+  //           category
+  //         });
+  //       }
+  //     }
+
+  //     return allComments;
+  //   } catch (error) {
+  //     console.error(`Failed to get ad analytics for ${adId}:`, error);
+  //     throw new Error('Unable to retrieve ad analytics');
+  //   }
+  // }
 
 }
