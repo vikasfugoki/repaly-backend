@@ -1354,7 +1354,7 @@ async getAccountLevelAnalytics(accountId: string) {
       // Fetch the account details
       console.log("Fetching DM level analytics for accountId:", accountId);
       const stats = await this.instagramAccountLevelAnalyticsRepositoryService.getAccountLevelAnalytics(accountId + "_dm_automated_posts");
-      console.log("DM Level Analytics:", stats);
+      // console.log("DM Level Analytics:", stats);
 
       if (!stats || !stats.Item) {
         throw new Error(`No DM analytics found for accountId: ${accountId}`);
