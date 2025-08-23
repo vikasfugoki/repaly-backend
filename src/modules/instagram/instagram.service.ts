@@ -534,8 +534,15 @@ private isAutomatedPost(image: any): boolean {
         await this.instagramAdAnalyticsRepositoryService.deleteAccount(accountId);
         console.log(`deleted from 'instagram_ads_analytics_repository'`);
 
-        // await this.instagramAccountLevelAnalyticsRepositoryService.deleteAccount(accountId);
-        // console.log(`deleted from 'instagram_account_level_analytics_repository'`);
+        await this.instagramDmMessageDetailsService.deleteConversationDetails(accountId);
+        console.log(`deleted from 'instagram_dm_message_details_repository'`);
+        await this.instagramDmMessagesService.deleteConversation(accountId);
+        console.log(`deleted from 'instagram_dm_messages_repository'`);
+
+        setTimeout(async () => {
+          await this.instagramAccountLevelAnalyticsRepositoryService.deleteAccount(accountId);
+          console.log(`deleted from 'instagram_account_level_analytics_repository'`);
+        }, 2 * 60 * 1000);
 
         return {success: true, message: `account has been removed.`};
         
@@ -1679,6 +1686,112 @@ async getAccountLevelAnalytics(accountId: string) {
       throw new Error('Unable to retrieve ad analytics');
     }
   }
+
+  async getAdAnalyticsById(accountId: string, adId: string) {
+    try {
+
+      // const result = await this.instagramAdAnalyticsRepositoryService.getAdAnalytics(adId);
+      // console.log("result ad stats:", result);
+      // const item = result?.Item?.comment_counts;
+      // console.log("item ad stats:", item);
+      
+      const adAnalytics = await this.instagramAdAnalyticsRepositoryService.getAdAnalytics(adId);
+      if (!adAnalytics || Object.keys(adAnalytics).length === 0) {
+        throw new Error(`No analytics found for adId: ${adId}`);
+      }
+
+      const commentsByType = adAnalytics.Item?.comment_counts || {};
+      const allComments: Array<{
+        comment_timestamp: number;
+        commenter_username: string;
+        comment: string;
+        response_comment: string;
+        response_dm: string;
+        reply_timestamp: number;
+        category: string;
+      }> = [];
+
+      for (const [category, comments] of Object.entries(commentsByType)) {
+        for (const commentArr of comments as any[]) {
+          const [
+            comment_timestamp,
+            commenter_username,
+            comment,
+            response,
+            reply_timestamp
+          ] = commentArr;
+
+          allComments.push({
+            comment_timestamp,
+            commenter_username,
+            comment,
+            response_comment: category.includes('dm') ? '' : response,
+            response_dm: category.includes('dm') ? response : '',
+            reply_timestamp,
+            category
+          });
+        }
+      }
+      return allComments;
+    } catch (error) {
+      console.error(`Failed to get ad analytics for ${adId}:`, error); 
+      throw new Error('Unable to retrieve ad analytics');
+    }
+  }
+
+  async getAdCommentCounts(accountId: string) {
+    try {
+      // Fetch all ads for the account
+      const adsListResponse = await this.instagramAdsService.getAdsByAccountId(accountId);
+      const adsItems = adsListResponse?.Items || [];
+      if (!Array.isArray(adsItems) || adsItems.length === 0) {
+        throw new Error(`No ads found for accountId: ${accountId}`);
+      }
+      // For each ad, fetch analytics and build stats using comment_counts and combined categories
+      const result = await Promise.all(
+        adsItems.map(async (ad) => {
+          const adId = ad.id;
+          const analytics = await this.instagramAdAnalyticsRepositoryService.getAdAnalytics(adId);
+          const comment_counts = (analytics?.Item?.comment_counts ?? {}) as {
+            positive?: number;
+            positive_no_automation?: number;
+            negative?: number;
+            negative_no_automation?: number;
+            inquiry?: number;
+            inquiry_dm?: number;
+            inquiry_no_automation?: number;
+            potential_buyers?: number;
+            potential_buyers_no_automation?: number;
+            tagged_comment?: number;
+            tagged_comment_dm?: number;
+            others?: number;
+            other_comments?: number;
+            total_comments?: number;
+          };
+          // Combine stats for positive, negative, inquiry, potential_buyers, etc.
+          const combinedStats = {
+            adId,
+            positive: (comment_counts.positive ?? 0) + (comment_counts.positive_no_automation ?? 0),
+            negative: (comment_counts.negative ?? 0) + (comment_counts.negative_no_automation ?? 0),
+            inquiry: (comment_counts.inquiry ?? 0) + (comment_counts.inquiry_no_automation ?? 0),
+            potential_buyers: (comment_counts.potential_buyers ?? 0) + (comment_counts.potential_buyers_no_automation ?? 0),
+            tagged_comment: (comment_counts.tagged_comment ?? 0) + (comment_counts.tagged_comment_dm ?? 0),
+            others: (comment_counts.others ?? 0) + (comment_counts.other_comments ?? 0),
+            no_automation_comments: (comment_counts.positive_no_automation ?? 0) + (comment_counts.negative_no_automation ?? 0) + (comment_counts.potential_buyers_no_automation ?? 0) + (comment_counts.inquiry_no_automation ?? 0),
+            total_dms: (comment_counts.inquiry_dm ?? 0) + (comment_counts.tagged_comment_dm ?? 0),
+            total_comments: comment_counts.total_comments ?? 0,
+            // Add more combined stats as needed
+          };
+          return combinedStats;
+        })
+      );
+      return result;
+    } catch (error) {
+      console.error(`Failed to get ad comment counts for account ${accountId}:`, error);
+      throw error;
+    }
+  }
+      
 
   
 

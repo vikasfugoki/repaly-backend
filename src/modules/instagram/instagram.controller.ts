@@ -562,16 +562,29 @@ export class InstagramAccountController {
       }
     }
 
-    // @InstagramResourceType('account')
-    // @Get(':accountId/ads/:adId')
-    // async getAdAnalyticsById(@Param('accountId') accountId: string, @Param('adId') adId: string) {  
-    //   try {
-    //     return await this.instagramAccountService.getAdAnalyticsById(accountId, adId);
-    //   } catch (error) {
-    //     console.log(`Failed to get ad analytics for ${adId} in account ${accountId}:`, (error as Error).message);
-    //     throw new Error(`Failed to get ad analytics for ${adId} in account ${accountId}`);
-    //   }
-    // }
+    @InstagramResourceType('account')
+    @Get(':accountId/ad/:adId/all-comments')
+    async getAdsAnalyticsById(@Param('accountId') accountId: string, @Param('adId') adId: string) {
+      try {
+        return await this.instagramAccountService.getAdAnalyticsById(accountId, adId);
+      } catch (error) {
+        console.log(`Failed to get media analytics for ${adId} in account ${accountId}:`, (error as Error).message);
+        throw new Error(`Failed to get media analytics for ${adId} in account ${accountId}`);
+      }
+    }
+
+    @InstagramResourceType('account')
+    @Get(':accountId/ad/comment-stats')
+    async getAdCommentCounts(@Param('accountId') accountId: string) {
+      try {
+        // This should call a service method that fetches all ads for the account
+        // and returns an array of objects with adId and comment_counts
+        return await this.instagramAccountService.getAdCommentCounts(accountId);
+      } catch (error) {
+        console.log(`Failed to get comment counts for ads in account ${accountId}:`, (error as Error).message);
+        throw new Error(`Failed to get comment counts for ads in account ${accountId}`);
+      }
+    }
 
 }
 
