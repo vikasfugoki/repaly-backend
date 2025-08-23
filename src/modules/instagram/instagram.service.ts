@@ -539,10 +539,9 @@ private isAutomatedPost(image: any): boolean {
         await this.instagramDmMessagesService.deleteConversation(accountId);
         console.log(`deleted from 'instagram_dm_messages_repository'`);
 
-        await new Promise((resolve) => setTimeout(resolve, 2 * 60 * 1000));
+        // await new Promise((resolve) => setTimeout(resolve, 2 * 60 * 1000));
         await this.instagramAccountLevelAnalyticsRepositoryService.deleteAccount(accountId);
         console.log(`deleted from 'instagram_account_level_analytics_repository'`);
-
         return {success: true, message: `account has been removed.`};
         
         
