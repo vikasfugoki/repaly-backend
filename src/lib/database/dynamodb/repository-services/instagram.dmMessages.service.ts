@@ -17,8 +17,8 @@ export class InstagramDmMessagesService {
                 const params = new QueryCommand({
                     TableName: this.tableName,
                     IndexName: 'account_id-index',
-                    KeyConditionExpression: 'account_id = :id',
-                    ExpressionAttributeValues: { ':id': account_id },
+                    KeyConditionExpression: 'account_id = :account_id',
+                    ExpressionAttributeValues: { ':account_id': account_id },
                     Limit: limit,
                     ExclusiveStartKey: lastKey,
                 });
