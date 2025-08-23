@@ -563,7 +563,7 @@ export class InstagramAccountController {
     }
 
     @InstagramResourceType('account')
-    @Get(':accountId/ad/:adId/all-comments')
+    @Get(':accountId/ads/:adId/all-comments')
     async getAdsAnalyticsById(@Param('accountId') accountId: string, @Param('adId') adId: string) {
       try {
         return await this.instagramAccountService.getAdAnalyticsById(accountId, adId);
@@ -574,7 +574,7 @@ export class InstagramAccountController {
     }
 
     @InstagramResourceType('account')
-    @Get(':accountId/ad/comment-stats')
+    @Get(':accountId/ads/comment-stats')
     async getAdCommentCounts(@Param('accountId') accountId: string) {
       try {
         // This should call a service method that fetches all ads for the account
