@@ -1704,6 +1704,8 @@ async getAccountLevelAnalytics(accountId: string) {
       if (!adAnalytics || Object.keys(adAnalytics).length === 0) {
         throw new Error(`No analytics found for adId: ${adId}`);
       }
+
+      console.log("DEBUG adAnalytics.Item:", JSON.stringify(adAnalytics.Item, null, 2));
   
       const item = adAnalytics.Item || {};
       const allComments: Array<{
