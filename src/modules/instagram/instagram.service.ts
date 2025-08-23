@@ -1356,20 +1356,32 @@ async getAccountLevelAnalytics(accountId: string) {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////
   async getDMSummaryAnalytics(accountId: string) {
     try {
-      // Fetch the account details
       console.log("Fetching DM level analytics for accountId:", accountId);
-      const stats = await this.instagramAccountLevelAnalyticsRepositoryService.getAccountLevelAnalytics(accountId + "_dm_automated_posts");
-      // console.log("DM Level Analytics:", stats);
-
+  
+      const stats = await this.instagramAccountLevelAnalyticsRepositoryService
+        .getAccountLevelAnalytics(accountId + "_dm_automated_posts");
+  
       if (!stats || !stats.Item) {
-        throw new Error(`No DM analytics found for accountId: ${accountId}`);
+        console.warn(`No DM analytics found for accountId: ${accountId}`);
+        return {
+          statusCode: 404,
+          message: `No DM analytics found for accountId: ${accountId}`,
+          data: null,
+        };
       }
   
-      return stats.Item;
-    }
-    catch (error) {
+      return {
+        statusCode: 200,
+        message: "DM analytics retrieved successfully",
+        data: stats.Item,
+      };
+    } catch (error) {
       console.error(`Failed to fetch DM analytics for ${accountId}:`, error);
-      throw new Error('Unable to retrieve DM analytics');
+      return {
+        statusCode: 500,
+        message: "Unable to retrieve DM analytics",
+        error: error instanceof Error ? error.message : String(error),
+      };
     }
   }
 
