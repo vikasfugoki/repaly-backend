@@ -13,41 +13,53 @@ export class InstagramDmMessageDetailsService {
         let totalDeleted = 0;
 
         do {
-            const params = new QueryCommand({
-                TableName: this.tableName,
-                IndexName: 'account_id-index',
-                KeyConditionExpression: 'account_id = :account_id',
-                ExpressionAttributeValues: { ':account_id': account_id },
-                Limit: pageSize,
-                ExclusiveStartKey: lastEvaluatedKey,
-            });
+            try {
+                console.log(`Querying for account_id: ${account_id}, pageSize: ${pageSize}, lastEvaluatedKey:`, lastEvaluatedKey);
 
-            const result = await this.dynamoDbService.dynamoDBDocumentClient.send(params);
-            const items = result.Items ?? [];
-
-            if (items.length === 0 && !lastEvaluatedKey) {
-                return { message: 'No conversation details found for the provided account ID.' };
-            }
-
-            const deleteRequests = items.map(item => ({
-                DeleteRequest: {
-                    Key: { id: item.id, account_id: item.account_id },
-                },
-            }));
-
-            if (deleteRequests.length > 0) {
-                const batchWriteParams = new BatchWriteCommand({
-                    RequestItems: {
-                        [this.tableName]: deleteRequests,
-                    },
+                const params = new QueryCommand({
+                    TableName: this.tableName,
+                    IndexName: 'account_id-index',
+                    KeyConditionExpression: 'account_id = :account_id',
+                    ExpressionAttributeValues: { ':account_id': account_id },
+                    Limit: pageSize,
+                    ExclusiveStartKey: lastEvaluatedKey,
                 });
-                await this.dynamoDbService.dynamoDBDocumentClient.send(batchWriteParams);
-                totalDeleted += deleteRequests.length;
-            }
 
-            lastEvaluatedKey = result.LastEvaluatedKey;
+                const result = await this.dynamoDbService.dynamoDBDocumentClient.send(params);
+                const items = result.Items ?? [];
+                console.log(`Fetched ${items.length} items.`);
+
+                if (items.length === 0 && !lastEvaluatedKey) {
+                    console.log('No conversation details found for the provided account ID.');
+                    return { message: 'No conversation details found for the provided account ID.' };
+                }
+
+                const deleteRequests = items.map(item => ({
+                    DeleteRequest: {
+                        Key: { id: item.id, account_id: item.account_id },
+                    },
+                }));
+
+                if (deleteRequests.length > 0) {
+                    console.log(`Deleting ${deleteRequests.length} items.`);
+                    const batchWriteParams = new BatchWriteCommand({
+                        RequestItems: {
+                            [this.tableName]: deleteRequests,
+                        },
+                    });
+                    await this.dynamoDbService.dynamoDBDocumentClient.send(batchWriteParams);
+                    totalDeleted += deleteRequests.length;
+                }
+
+                lastEvaluatedKey = result.LastEvaluatedKey;
+                console.log('lastEvaluatedKey:', lastEvaluatedKey);
+            } catch (error) {
+                console.error('Error during deleteConversationDetails:', error);
+                throw error;
+            }
         } while (lastEvaluatedKey);
 
+        console.log(`Conversation details deleted successfully. Total deleted: ${totalDeleted}`);
         return { message: `Conversation details deleted successfully. Total deleted: ${totalDeleted}` };
     }
 
