@@ -1700,55 +1700,48 @@ async getAccountLevelAnalytics(accountId: string) {
 
   async getAdAnalyticsById(accountId: string, adId: string) {
     try {
-
-      // const result = await this.instagramAdAnalyticsRepositoryService.getAdAnalytics(adId);
-      // console.log("result ad stats:", result);
-      // const item = result?.Item?.comment_counts;
-      // console.log("item ad stats:", item);
-      
       const adAnalytics = await this.instagramAdAnalyticsRepositoryService.getAdAnalytics(adId);
       if (!adAnalytics || Object.keys(adAnalytics).length === 0) {
         throw new Error(`No analytics found for adId: ${adId}`);
       }
-
-      const commentsByType = adAnalytics.Item?.comment_counts || {};
+  
+      const item = adAnalytics.Item || {};
       const allComments: Array<{
-        comment_timestamp: number;
+        comment_timestamp: string;
         commenter_username: string;
         comment: string;
         response_comment: string;
         response_dm: string;
-        reply_timestamp: number;
+        reply_timestamp: string;
         category: string;
       }> = [];
-
-      for (const [category, comments] of Object.entries(commentsByType)) {
-        for (const commentArr of comments as any[]) {
-          const [
-            comment_timestamp,
-            commenter_username,
-            comment,
-            response,
-            reply_timestamp
-          ] = commentArr;
-
+  
+      // iterate over keys that end with "_comments"
+      for (const [key, comments] of Object.entries(item)) {
+        if (!key.endsWith("_comments")) continue;
+  
+        const category = key.replace("_comments", ""); // e.g. "others" or "positive_no_automation"
+  
+        for (const c of comments as any[]) {
           allComments.push({
-            comment_timestamp,
-            commenter_username,
-            comment,
-            response_comment: category.includes('dm') ? '' : response,
-            response_dm: category.includes('dm') ? response : '',
-            reply_timestamp,
+            comment_timestamp: c.comment_timestamp,
+            commenter_username: c.commenter_username,
+            comment: c.comment_text,
+            response_comment: category.includes("dm") ? "" : c.comment_response,
+            response_dm: category.includes("dm") ? c.comment_response : "",
+            reply_timestamp: c.response_timestamp,
             category
           });
         }
       }
+  
       return allComments;
     } catch (error) {
-      console.error(`Failed to get ad analytics for ${adId}:`, error); 
-      throw new Error('Unable to retrieve ad analytics');
+      console.error(`Failed to get ad analytics for ${adId}:`, error);
+      throw new Error("Unable to retrieve ad analytics");
     }
   }
+  
 
   async getAdCommentCounts(accountId: string) {
     try {
