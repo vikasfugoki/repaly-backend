@@ -36,7 +36,7 @@ export class InstagramDmMessageDetailsService {
 
                 const deleteRequests = items.map(item => ({
                     DeleteRequest: {
-                        Key: { id: item.id, account_id: item.account_id },
+                        Key: { id: item.id },
                     },
                 }));
 
