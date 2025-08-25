@@ -176,18 +176,20 @@ export class FacebookApiService {
 
       async getAdsWithCreativesAndInsights(adAccountId: string, accessToken: string): Promise<any[]> {
         const allAds: any[] = [];
-        let nextUrl: string | null = `https://graph.facebook.com/v23.0/${adAccountId}/ads?fields=id,name,status,creative{
-          id,
-          name,
-          object_story_spec{
-            video_data,
-            link_data,
-            photo_data
-          },
-          image_url,
-          thumbnail_url,
-          effective_instagram_media_id
-        }&effective_status=['ACTIVE']&access_token=${accessToken}`;
+        let nextUrl: string | null = `https://graph.facebook.com/v23.0/${adAccountId}/ads?fields=id,name,status,
+          adset{id,name},
+          creative{
+            id,
+            name,
+            object_story_spec{
+              video_data,
+              link_data,
+              photo_data
+            },
+            image_url,
+            thumbnail_url,
+            effective_instagram_media_id
+          }&effective_status=['ACTIVE']&access_token=${accessToken}`;
       
         try {
           while (nextUrl && allAds.length < 5) {
@@ -213,7 +215,7 @@ export class FacebookApiService {
                     const videoResponse = await axios.get(
                       `https://graph.facebook.com/v23.0/${videoId}?fields=source,picture&access_token=${accessToken}`
                     );
-                    
+      
                     // Prefer video source if available, otherwise fallback to thumbnail (picture)
                     mediaUrl = videoResponse.data?.source || videoResponse.data?.picture || null;
                   } catch (err) {
@@ -226,8 +228,10 @@ export class FacebookApiService {
       
               allAds.push({
                 ad_id: ad.id,
-                ad_name: ad.name,
+                ad_name: ad.name || null,
                 status: ad.status,
+                adset_id: ad.adset?.id || null,
+                adset_name: ad.adset?.name || null,
                 creative_id: ad.creative?.id || null,
                 creative_name: ad.creative?.name || null,
                 media_type: mediaType,   // image or video
