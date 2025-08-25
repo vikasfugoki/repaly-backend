@@ -138,33 +138,107 @@ export class FacebookApiService {
         }
       }
 
+      // async getAdsWithCreativesAndInsights(adAccountId: string, accessToken: string): Promise<any[]> {
+      //   const allAds: any[] = [];
+      //   let nextUrl: string | null = `https://graph.facebook.com/v23.0/${adAccountId}/ads?fields=id,name,status,creative{id,name,object_story_spec,image_url,thumbnail_url,effective_instagram_media_id}&effective_status=['ACTIVE']&access_token=${accessToken}`;
+      
+      //   try {
+      //     while (nextUrl && allAds.length < 5) {
+      //   const response = await axios.get<any>(nextUrl);
+      //   const { data, paging } = response.data;
+      
+      //   for (const ad of data) {
+      //     if (allAds.length >= 5) break;
+      //     const insights = await this.getAdInsights(ad.id, accessToken);
+      
+      //     allAds.push({
+      //       ad_id: ad.id,
+      //       ad_name: ad.name,
+      //       status: ad.status,
+      //       creative_id: ad.creative?.id || null,
+      //       creative_name: ad.creative?.name || null,
+      //       image_url: ad.creative?.image_url || ad.creative?.thumbnail_url || null,
+      //       object_story_spec: ad.creative?.object_story_spec || null,
+      //       effective_instagram_media_id: ad.creative?.effective_instagram_media_id || null,
+      //       insights: insights,
+      //     });
+      //   }
+      
+      //   nextUrl = paging?.next || null;
+      //     }
+      
+      //     return allAds;
+      //   } catch (error) {
+      //     console.error('Error fetching ads or creatives:', error?.response?.data || error.message);
+      //     throw new InternalServerErrorException('Failed to retrieve ads with creatives and insights');
+      //   }
+      // }
+
       async getAdsWithCreativesAndInsights(adAccountId: string, accessToken: string): Promise<any[]> {
         const allAds: any[] = [];
-        let nextUrl: string | null = `https://graph.facebook.com/v23.0/${adAccountId}/ads?fields=id,name,status,creative{id,name,object_story_spec,image_url,thumbnail_url,effective_instagram_media_id}&effective_status=['ACTIVE']&access_token=${accessToken}`;
+        let nextUrl: string | null = `https://graph.facebook.com/v23.0/${adAccountId}/ads?fields=id,name,status,creative{
+          id,
+          name,
+          object_story_spec{
+            video_data,
+            link_data,
+            photo_data
+          },
+          image_url,
+          thumbnail_url,
+          effective_instagram_media_id
+        }&effective_status=['ACTIVE']&access_token=${accessToken}`;
       
         try {
           while (nextUrl && allAds.length < 5) {
-        const response = await axios.get<any>(nextUrl);
-        const { data, paging } = response.data;
+            const response = await axios.get<any>(nextUrl);
+            const { data, paging } = response.data;
       
-        for (const ad of data) {
-          if (allAds.length >= 5) break;
-          const insights = await this.getAdInsights(ad.id, accessToken);
+            for (const ad of data) {
+              if (allAds.length >= 5) break;
       
-          allAds.push({
-            ad_id: ad.id,
-            ad_name: ad.name,
-            status: ad.status,
-            creative_id: ad.creative?.id || null,
-            creative_name: ad.creative?.name || null,
-            image_url: ad.creative?.image_url || ad.creative?.thumbnail_url || null,
-            object_story_spec: ad.creative?.object_story_spec || null,
-            effective_instagram_media_id: ad.creative?.effective_instagram_media_id || null,
-            insights: insights,
-          });
-        }
+              const insights = await this.getAdInsights(ad.id, accessToken);
       
-        nextUrl = paging?.next || null;
+              let mediaType = 'image';
+              let mediaUrl = ad.creative?.image_url || ad.creative?.thumbnail_url || null;
+      
+              // Handle video creative
+              if (ad.creative?.object_story_spec?.video_data) {
+                mediaType = 'video';
+                const videoId = ad.creative?.object_story_spec?.video_data?.video_id;
+      
+                if (videoId) {
+                  try {
+                    // Fetch video details
+                    const videoResponse = await axios.get(
+                      `https://graph.facebook.com/v23.0/${videoId}?fields=source,picture&access_token=${accessToken}`
+                    );
+                    
+                    // Prefer video source if available, otherwise fallback to thumbnail (picture)
+                    mediaUrl = videoResponse.data?.source || videoResponse.data?.picture || null;
+                  } catch (err) {
+                    console.warn(`Failed to fetch video details for video_id=${videoId}`, err.message);
+                    // fallback to thumbnail if fetch fails
+                    mediaUrl = ad.creative?.thumbnail_url || null;
+                  }
+                }
+              }
+      
+              allAds.push({
+                ad_id: ad.id,
+                ad_name: ad.name,
+                status: ad.status,
+                creative_id: ad.creative?.id || null,
+                creative_name: ad.creative?.name || null,
+                media_type: mediaType,   // image or video
+                media_url: mediaUrl,     // final usable URL
+                object_story_spec: ad.creative?.object_story_spec || null,
+                effective_instagram_media_id: ad.creative?.effective_instagram_media_id || null,
+                insights: insights,
+              });
+            }
+      
+            nextUrl = paging?.next || null;
           }
       
           return allAds;
@@ -173,6 +247,7 @@ export class FacebookApiService {
           throw new InternalServerErrorException('Failed to retrieve ads with creatives and insights');
         }
       }
+      
 
 
       // Helper function to get insights for an ad
