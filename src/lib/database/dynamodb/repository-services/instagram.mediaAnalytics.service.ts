@@ -156,7 +156,7 @@ export class InstagramMediaAnalyticsRepositoryService {
   async updateAnalyticsDetails(mediaDetails: Record<string, any>) {
     try {
 
-      mediaDetails = {id: mediaDetails.id, accountId: mediaDetails.accountId}
+      mediaDetails = {id: mediaDetails.id, accountId: mediaDetails.accountId, image_url: mediaDetails.image_url}
       const { id, ...updateFields } = mediaDetails; // Extract id and other fields separately
   
       if (!id) {
