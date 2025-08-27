@@ -1369,6 +1369,17 @@ async getAccountLevelAnalytics(accountId: string) {
           data: null,
         };
       }
+
+      // Calculate total_dm if not present
+      if (stats.Item.total_dm === undefined || stats.Item.total_dm === null) {
+        const category_inquiry = stats.Item.category_inquiry || 0;
+        const category_collaboration = stats.Item.category_collaboration || 0;
+        const category_others = stats.Item.category_others || 0;
+        const category_lead = stats.Item.category_lead || 0;
+        
+        stats.Item.total_dm = category_inquiry + category_collaboration + category_others + category_lead;
+        console.log(`Calculated total_dm: ${stats.Item.total_dm} from categories`);
+      }
   
       return {
         statusCode: 200,
