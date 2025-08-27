@@ -1380,6 +1380,12 @@ async getAccountLevelAnalytics(accountId: string) {
         stats.Item.total_dm = category_inquiry + category_collaboration + category_others + category_lead;
         console.log(`Calculated total_dm: ${stats.Item.total_dm} from categories`);
       }
+
+      // If total_dm is 0 but total_unreplied exists, use total_unreplied as total_dm
+      if (stats.Item.total_dm === 0 && stats.Item.total_unreplied !== undefined && stats.Item.total_unreplied !== null) {
+        stats.Item.total_dm = stats.Item.total_unreplied;
+        console.log(`Using total_unreplied (${stats.Item.total_unreplied}) as total_dm since calculated total_dm was 0`);
+      }
   
       return {
         statusCode: 200,
