@@ -1629,6 +1629,7 @@ async getAccountLevelAnalytics(accountId: string) {
       const result = await Promise.all(
         mediaItems.map(async (media) => {
           const mediaId = media.id;
+          const image_url = media.media_url;
           const analytics = await this.instagramMediaAnalyticsRepositoryService.getMediaAnalytics(mediaId);
           const comment_counts = (analytics?.comment_counts ?? {}) as {
             positive?: number;
@@ -1650,6 +1651,7 @@ async getAccountLevelAnalytics(accountId: string) {
           // Combine stats for positive, negative, inquiry, potential_buyers, etc.
             const combinedStats = {
             mediaId,
+            image_url,
             positive: (comment_counts.positive ?? 0) + (comment_counts.positive_no_automation ?? 0),
             negative: (comment_counts.negative ?? 0) + (comment_counts.negative_no_automation ?? 0),
             inquiry: (comment_counts.inquiry ?? 0) + (comment_counts.inquiry_no_automation ?? 0),
