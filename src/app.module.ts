@@ -43,6 +43,8 @@ import { JwtModule } from '@nestjs/jwt';
 import { FacebookUserRepositoryService } from '@database/dynamodb/repository-services/facebook.user.service';
 import { InstagramDmMessageDetailsService } from '@database/dynamodb/repository-services/instagram.dmMessageDetails.service';
 import { InstagramDmMessagesService } from '@database/dynamodb/repository-services/instagram.dmMessages.service';
+import { InstagramQuickReplyRepositoryService } from '@database/dynamodb/repository-services/instagram.qucikReply.service';
+
 
 @Module({
   imports: [
@@ -96,7 +98,8 @@ import { InstagramDmMessagesService } from '@database/dynamodb/repository-servic
     InstagramAdAnalyticsRepositoryService,
     InstagramAccountLevelAnalyticsRepositoryService,
     InstagramDmMessageDetailsService,
-    InstagramDmMessagesService
+    InstagramDmMessagesService,
+    InstagramQuickReplyRepositoryService
   ],
   exports: [DynamoDBService],
 })
