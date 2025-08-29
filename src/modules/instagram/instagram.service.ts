@@ -1881,7 +1881,7 @@ async getAccountLevelAnalytics(accountId: string) {
         this.instagramQuickReplyRepositoryService.addQuickReply(item)
       ));
 
-      return { success: true, message: 'Quick replies created successfully', items };
+      return { success: true, message: 'Quick replies created successfully'};
     } catch (error) {
       console.error('Failed to create quick replies:', error);
       throw error;
