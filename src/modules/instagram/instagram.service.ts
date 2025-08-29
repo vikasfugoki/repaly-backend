@@ -1782,7 +1782,8 @@ async getAccountLevelAnalytics(accountId: string) {
       const adsListResponse = await this.instagramAdsService.getAdsByAccountId(accountId);
       const adsItems = adsListResponse?.Items || [];
       if (!Array.isArray(adsItems) || adsItems.length === 0) {
-        throw new Error(`No ads found for accountId: ${accountId}`);
+        // Handle empty ads list gracefully
+        return [];
       }
       // For each ad, fetch analytics and build stats using comment_counts and combined categories
       const result = await Promise.all(
@@ -1806,7 +1807,7 @@ async getAccountLevelAnalytics(accountId: string) {
             total_comments?: number;
           };
           // Combine stats for positive, negative, inquiry, potential_buyers, etc.
-            const combinedStats = {
+          const combinedStats = {
             adId,
             positive: (comment_counts.positive ?? 0) + (comment_counts.positive_no_automation ?? 0),
             negative: (comment_counts.negative ?? 0) + (comment_counts.negative_no_automation ?? 0),
@@ -1829,8 +1830,8 @@ async getAccountLevelAnalytics(accountId: string) {
               (comment_counts.tagged_comment ?? 0) +
               (comment_counts.tagged_comment_dm ?? 0) +
               (comment_counts.others ?? 0) +
-              (comment_counts.other_comments ?? 0),       
-            };
+              (comment_counts.other_comments ?? 0),
+          };
           return combinedStats;
         })
       );
