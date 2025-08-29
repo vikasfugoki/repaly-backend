@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBody, ApiParam} from '@nestjs/swagger';
 import { InstagramAccountService } from './instagram.service';
 import { InstagramOwnershipGuard } from '../auth/instagram-ownership.guard';
@@ -585,6 +585,51 @@ export class InstagramAccountController {
         throw new Error(`Failed to get comment counts for ads in account ${accountId}`);
       }
     }
+
+    // quick replies
+    @InstagramResourceType('account')
+    @Get(':accountId/quick-replies')
+    async getQuickReplies(@Param('accountId') accountId: string) {
+      try {
+        return await this.instagramAccountService.getQuickReplies(accountId);
+      } catch (error) {
+        console.log(`Failed to get quick replies for ${accountId}:`, (error as Error).message);
+        throw new Error(`Failed to get quick replies for ${accountId}`);
+      }
+    }
+
+    @InstagramResourceType('account')
+    @Post(':accountId/update-quick-replies')
+    async createQuickReply(@Param('accountId') accountId: string, @Body() input: Array<{ category: string; title: string; content: string }>) {
+      try {
+        return await this.instagramAccountService.createQuickReply(accountId, input);
+      } catch (error) {
+        console.log(`Failed to create quick reply for ${accountId}:`, (error as Error).message);
+        throw new Error(`Failed to create quick reply for ${accountId}`);
+      }
+    }
+
+   @InstagramResourceType('account')
+   @Patch(':accountId/update-quick-reply/:quickReplyId')
+   async updateQuickReply(@Param('accountId') accountId: string, @Param('quickReplyId') quickReplyId: string, @Body() input: Record<string, any>) {
+    try {
+      return await this.instagramAccountService.updateQuickReply(accountId, quickReplyId, input);
+    } catch (error) {
+      console.log(`Failed to update quick reply ${quickReplyId} for ${accountId}:`, (error as Error).message);
+      throw new Error(`Failed to update quick reply ${quickReplyId} for ${accountId}`);
+    }
+  }
+
+  @InstagramResourceType('account')
+  @Delete(':accountId/delete-quick-reply/:quickReplyId')
+  async deleteQuickReply(@Param('accountId') accountId: string, @Param('quickReplyId') quickReplyId: string) {
+    try {
+      return await this.instagramAccountService.deleteQuickReply(accountId, quickReplyId);
+    } catch (error) {
+      console.log(`Failed to delete quick reply ${quickReplyId} for ${accountId}:`, (error as Error).message);
+      throw new Error(`Failed to delete quick reply ${quickReplyId} for ${accountId}`);
+    }
+  }
 
 }
 

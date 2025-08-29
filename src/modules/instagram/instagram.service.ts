@@ -19,6 +19,9 @@ import  { InstagramAdAnalyticsRepositoryService } from '@database/dynamodb/repos
 import { InstagramAccountLevelAnalyticsRepositoryService } from '@database/dynamodb/repository-services/instagram.accountLevelAnalytics.service';
 import { InstagramDmMessageDetailsService } from '@database/dynamodb/repository-services/instagram.dmMessageDetails.service';
 import { InstagramDmMessagesService } from '@database/dynamodb/repository-services/instagram.dmMessages.service';
+import { InstagramQuickReplyRepositoryService } from '@database/dynamodb/repository-services/instagram.qucikReply.service';
+import { v4 as uuidv4 } from 'uuid';
+
 
 @Injectable()
 export class InstagramAccountService {
@@ -36,7 +39,8 @@ export class InstagramAccountService {
     private readonly instagramAdAnalyticsRepositoryService: InstagramAdAnalyticsRepositoryService,
     private readonly instagramAccountLevelAnalyticsRepositoryService: InstagramAccountLevelAnalyticsRepositoryService,
     private readonly instagramDmMessageDetailsService: InstagramDmMessageDetailsService,
-    private readonly instagramDmMessagesService: InstagramDmMessagesService
+    private readonly instagramDmMessagesService: InstagramDmMessagesService,
+    private readonly instagramQuickReplyRepositoryService: InstagramQuickReplyRepositoryService,
   ) {}
 
   private buildInsights(
@@ -1783,6 +1787,7 @@ async getAccountLevelAnalytics(accountId: string) {
       const adsItems = adsListResponse?.Items || [];
       if (!Array.isArray(adsItems) || adsItems.length === 0) {
         // Handle empty ads list gracefully
+        console.log(`No ads found for account ${accountId}`);
         return [];
       }
       // For each ad, fetch analytics and build stats using comment_counts and combined categories
@@ -1841,7 +1846,76 @@ async getAccountLevelAnalytics(accountId: string) {
       throw error;
     }
   }
-      
+  
+
+  // quick replies
+  async getQuickReplies(accountId: string) {
+    try {
+      const quickReplies = await this.instagramQuickReplyRepositoryService.getQuickReplyByAccountId(accountId);
+      const items = quickReplies?.Items || [];
+      return items;
+    } catch (error) {
+      console.error(`Failed to get quick replies for account: ${accountId}`, error);
+      throw error;
+    }
+  }
+
+  async createQuickReply(accountId: string, quickReplies: Array<{ category: string; title: string; content: string }>) {
+    try {
+      if (!Array.isArray(quickReplies) || quickReplies.length === 0) {
+        throw new Error('Input must be a non-empty array of quick replies');
+      }
+
+      // Prepare each quick reply item for DynamoDB
+      const items = quickReplies.map(qr => ({
+        id: uuidv4(), // use uuid for unique key
+        accountId,
+        category: qr.category,
+        title: qr.title,
+        content: qr.content,
+        created_at: new Date().toISOString()
+      }));
+
+      // Insert each item as a row in DynamoDB
+      await Promise.all(items.map(item =>
+        this.instagramQuickReplyRepositoryService.addQuickReply(item)
+      ));
+
+      return { success: true, message: 'Quick replies created successfully', items };
+    } catch (error) {
+      console.error('Failed to create quick replies:', error);
+      throw error;
+    }
+  }
+
+  async updateQuickReply(accountId: string, quickReplyId: string, updateData: { category?: string; title?: string; content?: string }) {
+    try {
+      if (!updateData || Object.keys(updateData).length === 0) {
+        throw new Error('Update data must be a non-empty object');
+      }
+      const items = {
+        id: quickReplyId,
+        accountId,
+        ...updateData,
+        updated_at: new Date().toISOString()
+      }
+      const updatedQuickReply = await this.instagramQuickReplyRepositoryService.addQuickReply(items);
+      return { success: true, message: 'Quick reply updated successfully', updatedQuickReply };
+    } catch (error) {
+      console.error(`Failed to update quick reply ${quickReplyId}:`, error);
+      throw error;
+    }
+  }
+
+  async deleteQuickReply(accountId: string, quickReplyId: string) {
+    try {
+      await this.instagramQuickReplyRepositoryService.deleteQuickReply(quickReplyId);
+      return { success: true, message: 'Quick reply deleted successfully' };
+    } catch (error) {
+      console.error(`Failed to delete quick reply ${quickReplyId}:`, error);
+      throw error;
+    }
+  }
 
   
 
