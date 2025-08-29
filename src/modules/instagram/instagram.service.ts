@@ -1853,7 +1853,17 @@ async getAccountLevelAnalytics(accountId: string) {
     try {
       const quickReplies = await this.instagramQuickReplyRepositoryService.getQuickReplyByAccountId(accountId);
       const items = quickReplies?.Items || [];
-      return items;
+      const grouped: Record<string, any[]> = {};
+
+      for (const item of items) {
+        const category = item.category || 'uncategorized';
+        if (!grouped[category]) {
+          grouped[category] = [];
+        }
+        grouped[category].push(item);
+      }
+
+      return grouped;
     } catch (error) {
       console.error(`Failed to get quick replies for account: ${accountId}`, error);
       throw error;
