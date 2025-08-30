@@ -1794,6 +1794,7 @@ async getAccountLevelAnalytics(accountId: string) {
       const result = await Promise.all(
         adsItems.map(async (ad) => {
           const adId = ad.id;
+          const image_url = ad.media_url;
           const analytics = await this.instagramAdAnalyticsRepositoryService.getAdAnalytics(adId);
           const comment_counts = (analytics?.Item?.comment_counts ?? {}) as {
             positive?: number;
