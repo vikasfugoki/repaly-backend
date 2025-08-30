@@ -1815,6 +1815,7 @@ async getAccountLevelAnalytics(accountId: string) {
           // Combine stats for positive, negative, inquiry, potential_buyers, etc.
           const combinedStats = {
             adId,
+            image_url,
             positive: (comment_counts.positive ?? 0) + (comment_counts.positive_no_automation ?? 0),
             negative: (comment_counts.negative ?? 0) + (comment_counts.negative_no_automation ?? 0),
             inquiry: (comment_counts.inquiry ?? 0) + (comment_counts.inquiry_no_automation ?? 0),
