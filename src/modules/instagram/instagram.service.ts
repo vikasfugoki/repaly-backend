@@ -1634,6 +1634,7 @@ async getAccountLevelAnalytics(accountId: string) {
         mediaItems.map(async (media) => {
           const mediaId = media.id;
           const image_url = media.media_url;
+          const media_type =  media.media_type;
           const analytics = await this.instagramMediaAnalyticsRepositoryService.getMediaAnalytics(mediaId);
           const comment_counts = (analytics?.comment_counts ?? {}) as {
             positive?: number;
@@ -1656,6 +1657,7 @@ async getAccountLevelAnalytics(accountId: string) {
             const combinedStats = {
             mediaId,
             image_url,
+            media_type,
             positive: (comment_counts.positive ?? 0) + (comment_counts.positive_no_automation ?? 0),
             negative: (comment_counts.negative ?? 0) + (comment_counts.negative_no_automation ?? 0),
             inquiry: (comment_counts.inquiry ?? 0) + (comment_counts.inquiry_no_automation ?? 0),
@@ -1711,17 +1713,17 @@ async getAccountLevelAnalytics(accountId: string) {
         level: adsAnalytics.level ?? "account_ads",
         negative: adsAnalytics.negative ?? 0,
         negative_no_automation: adsAnalytics.negative_no_automation ?? 0,
-        no_automation_comments: adsAnalytics.no_automation_comments ?? 1,
+        no_automation_comments: adsAnalytics.no_automation_comments ?? 0,
         other_comments: adsAnalytics.other_comments ?? 0,
         positive: adsAnalytics.positive ?? 0,
-        positive_no_automation: adsAnalytics.positive_no_automation ?? 1,
+        positive_no_automation: adsAnalytics.positive_no_automation ?? 0,
         potential_buyers: adsAnalytics.potential_buyers ?? 0,
         potential_buyers_no_automation: adsAnalytics.potential_buyers_no_automation ?? 0,
         tagged: adsAnalytics.tagged ?? 0,
         tagged_comment: adsAnalytics.tagged_comment ?? 0,
-        tagged_comment_dm: adsAnalytics.tagged_comment_dm ?? 1,
-        total_comments: adsAnalytics.total_comments ?? 2,
-        total_dms: adsAnalytics.total_dms ?? 1,
+        tagged_comment_dm: adsAnalytics.tagged_comment_dm ?? 0,
+        total_comments: adsAnalytics.total_comments ?? 0,
+        total_dms: adsAnalytics.total_dms ?? 0,
         media_automated_posts: adsAutomatedPosts.automated_post ?? 0,
         total_ads: adsAutomatedPosts.total_post ?? 0
       };
@@ -1795,6 +1797,7 @@ async getAccountLevelAnalytics(accountId: string) {
         adsItems.map(async (ad) => {
           const adId = ad.id;
           const image_url = ad.media_url;
+          const media_type = ad.media_type;
           const analytics = await this.instagramAdAnalyticsRepositoryService.getAdAnalytics(adId);
           const comment_counts = (analytics?.Item?.comment_counts ?? {}) as {
             positive?: number;
@@ -1816,6 +1819,7 @@ async getAccountLevelAnalytics(accountId: string) {
           const combinedStats = {
             adId,
             image_url,
+            media_type,
             positive: (comment_counts.positive ?? 0) + (comment_counts.positive_no_automation ?? 0),
             negative: (comment_counts.negative ?? 0) + (comment_counts.negative_no_automation ?? 0),
             inquiry: (comment_counts.inquiry ?? 0) + (comment_counts.inquiry_no_automation ?? 0),
