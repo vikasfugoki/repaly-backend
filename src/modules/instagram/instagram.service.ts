@@ -1727,7 +1727,8 @@ async getAccountLevelAnalytics(accountId: string) {
         total_comments: adsAnalytics.total_comments ?? 0,
         total_dms: adsAnalytics.total_dms ?? 0,
         media_automated_posts: adsAutomatedPosts.automated_post ?? 0,
-        total_ads: adsAutomatedPosts.total_post ?? 0
+        total_ads: adsAutomatedPosts.total_post ?? 0,
+        date: new Date().toISOString()
       };
 
       return res;
