@@ -25,6 +25,10 @@ export class UserService {
     );
   }
 
+  getBusinessDetails(user_id: string) {
+    return this.businessDetailsService.getBusinessDetailsByUserId(user_id);
+  }
+
   async getUserProfileInfo(user_id: string) {
     console.log(user_id);
   

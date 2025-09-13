@@ -37,6 +37,39 @@ export class UserController {
     }
   }
 
+  @Get('business-details')
+  async getBusinessDetails(@Req() req) {
+    try {
+      const platformId = req.user.id;
+      const userItem = await this.userDetailsService.getUserByPlatformId(platformId);
+      if (!userItem) {
+        throw new HttpException(
+          'User is not allowed to make this request',
+          HttpStatus.FORBIDDEN,
+        );
+      }
+
+      const influexId = userItem.id ?? "";
+
+      const businessDetails = await this.userService.getBusinessDetails(influexId);
+
+      if (!businessDetails) {
+        throw new HttpException(
+          'Business details not found',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      return {
+        msg: 'Successfully fetched business details.',
+        data: businessDetails,
+      };
+    } catch (error) {
+      console.log((error as Error).message);
+      throw new Error('Error: Failed to fetch business details.');
+    }
+  }
+
   @Get('profile')
   async getUserProfile(@Req() req){
       try {
