@@ -1346,7 +1346,8 @@ async getAccountLevelAnalytics(accountId: string) {
       accountId,
       collapsed,
       expanded,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      added_at: new Date().toISOString()
     };
 
   } catch (error) {
@@ -1727,8 +1728,7 @@ async getAccountLevelAnalytics(accountId: string) {
         total_comments: adsAnalytics.total_comments ?? 0,
         total_dms: adsAnalytics.total_dms ?? 0,
         media_automated_posts: adsAutomatedPosts.automated_post ?? 0,
-        total_ads: adsAutomatedPosts.total_post ?? 0,
-        date: new Date().toISOString()
+        total_ads: adsAutomatedPosts.total_post ?? 0
       };
 
       return res;
