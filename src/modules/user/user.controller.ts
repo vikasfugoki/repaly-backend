@@ -50,20 +50,44 @@ export class UserController {
       }
 
       const influexId = userItem.id ?? "";
-
       const businessDetails = await this.userService.getBusinessDetails(influexId);
 
-      if (!businessDetails) {
+      if (
+        !businessDetails ||
+        !businessDetails.Item ||
+        !businessDetails.Item.queries
+      ) {
         throw new HttpException(
           'Business details not found',
           HttpStatus.NOT_FOUND,
         );
       }
 
-      return {
-        msg: 'Successfully fetched business details.',
-        data: businessDetails,
-      };
+      // Parse the queries field (which is a JSON string)
+      let queries;
+      try {
+        queries = JSON.parse(businessDetails.Item.queries);
+      } catch {
+        throw new HttpException(
+          'Invalid business details format',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+
+      // Find the question: "Please provide your contact details."
+      const contactQuestion = queries.find(
+        (q: any) =>
+          q.question &&
+          q.question.trim().toLowerCase() === 'please provide your contact details.'
+      );
+
+      // Return the answer as contact_no (even if it's not a number)
+      let contact_no = null;
+      if (contactQuestion && contactQuestion.answer !== 'skipped') {
+        contact_no = contactQuestion.answer;
+      }
+
+      return { "contact_no": contact_no };
     } catch (error) {
       console.log((error as Error).message);
       throw new Error('Error: Failed to fetch business details.');
