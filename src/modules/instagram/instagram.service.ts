@@ -1480,6 +1480,12 @@ async getAccountLevelAnalytics(accountId: string) {
         total_dms: mediaAnalytics.total_dms ?? 1,
         media_automated_posts: mediaAutomatedPosts.automated_post ?? 0,
         total_posts: mediaAutomatedPosts.total_post ?? 0,
+        total_positive: mediaAnalytics.positive + mediaAnalytics.positive_no_automation,
+        total_negative: mediaAnalytics.negative + mediaAnalytics.negative_no_automation,
+        total_potential_buyers: mediaAnalytics.potential_buyers + mediaAnalytics.potential_buyers_no_automation,
+        total_inquiry: mediaAnalytics.inquiry + mediaAnalytics.inquiry_no_automation + mediaAnalytics.inquiry_dm,
+        total_tagged: mediaAnalytics.tagged_comment + mediaAnalytics.tagged_comment_dm,
+        total_others: mediaAnalytics.other_comments
       };
 
       return res;
@@ -1728,7 +1734,13 @@ async getAccountLevelAnalytics(accountId: string) {
         total_comments: adsAnalytics.total_comments ?? 0,
         total_dms: adsAnalytics.total_dms ?? 0,
         media_automated_posts: adsAutomatedPosts.automated_post ?? 0,
-        total_ads: adsAutomatedPosts.total_post ?? 0
+        total_ads: adsAutomatedPosts.total_post ?? 0,
+        total_positive: adsAnalytics.positive + adsAnalytics.positive_no_automation,
+        total_negative: adsAnalytics.negative + adsAnalytics.negative_no_automation,
+        total_potential_buyers: adsAnalytics.potential_buyers + adsAnalytics.potential_buyers_no_automation,
+        total_inquiry: adsAnalytics.inquiry + adsAnalytics.inquiry_dm + adsAnalytics.inquiry_no_automation,
+        total_tagged: adsAnalytics.tagged_comment + adsAnalytics.tagged_comment_dm,
+        total_others: adsAnalytics.other_comments
       };
 
       return res;
