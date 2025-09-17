@@ -1758,7 +1758,7 @@ async getAccountLevelAnalytics(accountId: string) {
             negative: (comment_counts.negative ?? 0) + (comment_counts.negative_no_automation ?? 0),
             inquiry: (comment_counts.inquiry ?? 0) + (comment_counts.inquiry_no_automation ?? 0) + (comment_counts.inquiry_dm ?? 0),
             potential_buyers: (comment_counts.potential_buyers ?? 0) + (comment_counts.potential_buyers_no_automation ?? 0),
-            tagged_comment: (comment_counts.tagged_comment ?? 0) + (comment_counts.tagged_comment_dm ?? 0) + (comment_counts.tagged_comment_dm ?? 0),
+            tagged_comment: (comment_counts.tagged_comment ?? 0) + (comment_counts.tagged_comment_dm ?? 0),
             others: (comment_counts.other_comments ?? 0), //(comment_counts.others ?? 0)
             // no_automation_comments: (comment_counts.positive_no_automation ?? 0) + (comment_counts.negative_no_automation ?? 0) + (comment_counts.potential_buyers_no_automation ?? 0) + (comment_counts.inquiry_no_automation ?? 0),
             // total_dms: (comment_counts.inquiry_dm ?? 0) + (comment_counts.tagged_comment_dm ?? 0),
