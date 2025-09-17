@@ -583,7 +583,7 @@ private isAutomatedPost(image: any): boolean {
       const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
     
       const uploadParams = {
-        Bucket: process.env.S3_BUCKET_NAME!,
+        Bucket: 'influex-bucket',
         Key: key,
         Body: response.data,
         ContentType: "image/jpeg",
