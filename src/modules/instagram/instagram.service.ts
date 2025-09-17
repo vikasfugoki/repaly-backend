@@ -706,7 +706,8 @@ private isAutomatedPost(image: any): boolean {
         );
     
         // Return only active stories
-        return updatedItems.filter(item => item.IsActive);
+        // return updatedItems.filter(item => item.IsActive);
+        return updatedItems;
     
       } catch (error) {
         console.error(`Error getting media details for ${accountId}:`, error);
