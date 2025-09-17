@@ -1466,6 +1466,15 @@ async getAccountLevelAnalytics(accountId: string) {
       const mediaAutomatedPosts = mediaAutomatedPostsResult?.Item || {};
       const mediaAnalyticsResult = await this.instagramAccountLevelAnalyticsRepositoryService.getAccountLevelAnalytics(accountId + "_media");
       const mediaAnalytics = mediaAnalyticsResult?.Item || {};
+
+      const {access_token} = await this.instagramAccountRepositoryService.getAccount(accountId) ?? {};
+      if (!access_token) {
+        throw new Error(`Access token not found for accountId: ${accountId}`);
+      }
+      console.log("access token:", access_token);
+      const media_count = await this.instagramApiService.getMediaCount(accountId, access_token);
+      console.log("media count:", media_count);
+      mediaAutomatedPosts.total_post = media_count;
       
       // mediaAutomatedPosts = mediaAutomatedPosts?.Item || {};
       // mediaAnalytics = mediaAnalytics?.Item || {};
