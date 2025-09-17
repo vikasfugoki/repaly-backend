@@ -1,3 +1,4 @@
+import axios from "axios";
 import { Injectable, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { InstagramApiService } from '../utils/instagram/api.service';
 import { InstagramAccountRepositoryService } from '@database/dynamodb/repository-services/instagram.account.service';
@@ -599,6 +600,21 @@ private isAutomatedPost(image: any): boolean {
           const storyTimestamp = new Date(story.timestamp);
           const hoursDiff = (now.getTime() - storyTimestamp.getTime()) / (1000 * 60 * 60);
           const isActive = hoursDiff <= 24;
+
+          const imageUrl =
+          story.media_type === "VIDEO" && story.thumbnail_url
+            ? story.thumbnail_url
+            : story.media_url;
+
+          let imageBase64: string | null = null;
+          try {
+            const imageResponse = await axios.get(imageUrl, { responseType: "arraybuffer" });
+            imageBase64 = Buffer.from(imageResponse.data, "binary").toString("base64");
+          } catch (err) {
+            console.warn(`Failed to fetch image for storyId ${story.id}`, err);
+          }
+
+
           const response = await this.instagramStoryRepositoryService.getStory(story.id);
           const existingStory = response?.Item || null;
 
@@ -606,6 +622,7 @@ private isAutomatedPost(image: any): boolean {
             ...story,
             accountId,
             IsActive: isActive,
+            image_data: imageBase64,
             tag_and_value_pair: existingStory && 'tag_and_value_pair' in existingStory
                                 ? existingStory.tag_and_value_pair
                                 : {},
@@ -644,14 +661,29 @@ private isAutomatedPost(image: any): boolean {
       // Ensure response is an array and limit its length to 15
       if (Array.isArray(items)) {
         return items
-            .sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime())
-            .slice(0, 15)
-            .map(item => ({
+          .sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime())
+          .slice(0, 15)
+          .map(item => {
+            const storyTimestamp = new Date(item.timestamp as string);
+            const hoursDiff = (new Date().getTime() - storyTimestamp.getTime()) / (1000 * 60 * 60);
+            const isActive = hoursDiff <= 24;
+
+            // Update DynamoDB only if IsActive changed
+            if (item.IsActive !== isActive) {
+               this.instagramStoryRepositoryService.updateStoryDetails({
+                ...item,
+                IsActive: isActive,
+              });
+              console.log(`Updated IsActive for story ${item.id} → ${isActive}`);
+            }
+      
+            return {
               ...item,
-              is_automated: this.isAutomatedPost(item)
-            }));
-            // .slice(0, 15);
-    } else {
+              IsActive: isActive,
+              is_automated: this.isAutomatedPost(item),
+            };
+          });
+      } else {
         console.warn("Unexpected response type, expected an array:", response);
         return [];
     }

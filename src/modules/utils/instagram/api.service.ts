@@ -86,7 +86,7 @@ export class InstagramApiService {
     console.log("url:",url);
     const params = {
       fields:
-      'id,media_type,media_url,timestamp',
+      'id,media_type,media_url,thumbnail_url,timestamp',
       access_token,
       limit: 15
     };
