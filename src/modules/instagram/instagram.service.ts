@@ -1692,17 +1692,20 @@ async getAccountLevelAnalytics(accountId: string) {
       // Fetch all media for the account
       const mediaListResponse = await this.instagramMediaRepositoryService.getMediaByAccountId(accountId);
       const mediaItems = mediaListResponse?.Items || [];
+      
       if (!Array.isArray(mediaItems) || mediaItems.length === 0) {
         throw new Error(`No media found for accountId: ${accountId}`);
       }
-
+  
       // For each media, fetch analytics and build stats using comment_counts and combined categories
       const result = await Promise.all(
         mediaItems.map(async (media) => {
           const mediaId = media.id;
           const media_url = media.media_url;
           const thumbnail_url = media.thumbnail_url;
-          const media_type =  media.media_type;
+          const media_type = media.media_type;
+          const timestamp = media.timestamp;
+          
           const analytics = await this.instagramMediaAnalyticsRepositoryService.getMediaAnalytics(mediaId);
           const comment_counts = (analytics?.comment_counts ?? {}) as {
             positive?: number;
@@ -1720,13 +1723,14 @@ async getAccountLevelAnalytics(accountId: string) {
             other_comments?: number;
             total_comments?: number;
           };
-
+  
           // Combine stats for positive, negative, inquiry, potential_buyers, etc.
-            const combinedStats = {
+          const combinedStats = {
             mediaId,
             media_url,
             media_type,
             thumbnail_url,
+            timestamp,
             positive: (comment_counts.positive ?? 0) + (comment_counts.positive_no_automation ?? 0),
             negative: (comment_counts.negative ?? 0) + (comment_counts.negative_no_automation ?? 0),
             inquiry: (comment_counts.inquiry ?? 0) + (comment_counts.inquiry_no_automation ?? 0),
@@ -1749,14 +1753,19 @@ async getAccountLevelAnalytics(accountId: string) {
               (comment_counts.tagged_comment_dm ?? 0) +
               (comment_counts.others ?? 0) +
               (comment_counts.other_comments ?? 0),
-            // Add more combined stats as needed
-            };
-
+          };
+  
           return combinedStats;
         })
       );
-
-      return result;
+  
+      // Sort result by timestamp descending (newest first)
+      const sortedResult = result.sort((a, b) => 
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+  
+      return sortedResult;
+      
     } catch (error) {
       console.error(`Failed to get media comment counts for account ${accountId}:`, error);
       throw error;
