@@ -652,47 +652,56 @@ private isAutomatedPost(image: any): boolean {
       try {
         console.log("accountId:", accountId);
         const response = await this.instagramStoryRepositoryService.getStoryByAccountId(accountId);
-
+    
         console.log(`DynamoDB Response:`, response);
-
-        // Extract items from response if they exist
-      const items = response?.Items || [];
-
-      // Ensure response is an array and limit its length to 15
-      if (Array.isArray(items)) {
-        return items
-          .sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime())
-          .slice(0, 15)
-          .map(item => {
-            const storyTimestamp = new Date(item.timestamp as string);
-            const hoursDiff = (new Date().getTime() - storyTimestamp.getTime()) / (1000 * 60 * 60);
-            const isActive = hoursDiff <= 24;
-
-            // Update DynamoDB only if IsActive changed
-            if (item.IsActive !== isActive) {
-               this.instagramStoryRepositoryService.updateStoryDetails({
+    
+        const items = response?.Items || [];
+        const now = new Date();
+    
+        if (!Array.isArray(items)) {
+          console.warn("Unexpected response type, expected an array:", response);
+          return [];
+        }
+    
+        const updatedItems = await Promise.all(
+          items
+            .sort(
+              (a, b) =>
+                new Date(b.timestamp || 0).getTime() -
+                new Date(a.timestamp || 0).getTime()
+            )
+            .slice(0, 15)
+            .map(async (item) => {
+              const storyTimestamp = new Date(item.timestamp as string);
+              const hoursDiff = (now.getTime() - storyTimestamp.getTime()) / (1000 * 60 * 60);
+              const isActive = hoursDiff <= 24;
+    
+              // Update DynamoDB only if IsActive changed
+              if (item.IsActive !== isActive) {
+                await this.instagramStoryRepositoryService.updateStoryDetails({
+                  ...item,
+                  IsActive: isActive,
+                });
+                console.log(`Updated IsActive for story ${item.id} → ${isActive}`);
+              }
+    
+              return {
                 ...item,
                 IsActive: isActive,
-              });
-              console.log(`Updated IsActive for story ${item.id} → ${isActive}`);
-            }
-      
-            return {
-              ...item,
-              IsActive: isActive,
-              is_automated: this.isAutomatedPost(item),
-            };
-          });
-      } else {
-        console.warn("Unexpected response type, expected an array:", response);
-        return [];
-    }
+                is_automated: this.isAutomatedPost(item),
+              };
+            })
+        );
+    
+        // Return only active stories
+        return updatedItems.filter(item => item.IsActive);
+    
       } catch (error) {
         console.error(`Error getting media details for ${accountId}:`, error);
         throw error;
+      }
     }
-      
-  }
+    
 
   async getStoryDetailsFromTable(storyId: string) {
     try {
