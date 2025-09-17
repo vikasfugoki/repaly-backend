@@ -592,7 +592,7 @@ private isAutomatedPost(image: any): boolean {
     
       await s3Client.send(new PutObjectCommand(uploadParams));
     
-      return `https://repaly-bucket.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+      return `https://influex-bucket.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
     }
 
     // story function
@@ -609,8 +609,6 @@ private isAutomatedPost(image: any): boolean {
             console.warn(`No story found for accountId: ${accountId}`);
             return [];
         }
-
-        
 
         const now = new Date();
         // Insert into 'instagram_media_repository' DynamoDB table
