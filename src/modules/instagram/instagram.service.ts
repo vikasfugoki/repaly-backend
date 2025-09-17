@@ -583,11 +583,10 @@ private isAutomatedPost(image: any): boolean {
       const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
     
       const uploadParams = {
-        Bucket: 'influex-bucket',
+        Bucket: "influex-bucket",
         Key: key,
         Body: response.data,
-        ContentType: "image/jpeg",
-        ACL: ObjectCannedACL.public_read, // ✅ enum, not string
+        ContentType: "image/jpeg"
       };
     
       await s3Client.send(new PutObjectCommand(uploadParams));
