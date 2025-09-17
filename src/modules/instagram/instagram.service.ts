@@ -657,7 +657,7 @@ private isAutomatedPost(image: any): boolean {
 
       } catch (error) {
         console.error(`Error updating stroy for ${accountId}:`, error);
-        return { success: false, message: `Error updating story in the table` };
+        return { success: false, message: `Error updating story in the table ${error}` };
       }
     }
 
