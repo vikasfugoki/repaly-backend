@@ -1,4 +1,5 @@
 import axios from "axios";
+import { S3Client, PutObjectCommand, ObjectCannedACL } from "@aws-sdk/client-s3";
 import { Injectable, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { InstagramApiService } from '../utils/instagram/api.service';
 import { InstagramAccountRepositoryService } from '@database/dynamodb/repository-services/instagram.account.service';
@@ -23,6 +24,7 @@ import { InstagramDmMessagesService } from '@database/dynamodb/repository-servic
 import { InstagramQuickReplyRepositoryService } from '@database/dynamodb/repository-services/instagram.qucikReply.service';
 import { v4 as uuidv4 } from 'uuid';
 
+const s3Client = new S3Client({ region: process.env.AWS_REGION });
 
 @Injectable()
 export class InstagramAccountService {
@@ -577,6 +579,22 @@ private isAutomatedPost(image: any): boolean {
       }
     }
 
+    async uploadToS3(imageUrl: string, key: string): Promise<string> {
+      const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
+    
+      const uploadParams = {
+        Bucket: process.env.S3_BUCKET_NAME!,
+        Key: key,
+        Body: response.data,
+        ContentType: "image/jpeg",
+        ACL: ObjectCannedACL.public_read, // ✅ enum, not string
+      };
+    
+      await s3Client.send(new PutObjectCommand(uploadParams));
+    
+      return `https://repaly-bucket.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+    }
+
     // story function
     async updateAccountStoryOnTable(accountId: string) {
       try {
@@ -601,19 +619,15 @@ private isAutomatedPost(image: any): boolean {
           const hoursDiff = (now.getTime() - storyTimestamp.getTime()) / (1000 * 60 * 60);
           const isActive = hoursDiff <= 24;
 
-          // const imageUrl =
-          // story.media_type === "VIDEO" && story.thumbnail_url
-          //   ? story.thumbnail_url
-          //   : story.media_url;
+          // Pick thumbnail for VIDEO, media_url for IMAGE
+          const imageUrl =
+          story.media_type === "VIDEO" && story.thumbnail_url
+            ? story.thumbnail_url
+            : story.media_url;
 
-          // let imageBase64: string | null = null;
-          // try {
-          //   const imageResponse = await axios.get(imageUrl, { responseType: "arraybuffer" });
-          //   imageBase64 = Buffer.from(imageResponse.data, "binary").toString("base64");
-          // } catch (err) {
-          //   console.warn(`Failed to fetch image for storyId ${story.id}`, err);
-          // }
-
+        // Upload to S3 and get new URL
+        const s3Key = `instagram/stories/${accountId}/${story.id}.jpg`;
+        const s3Url = await this.uploadToS3(imageUrl, s3Key);
 
           const response = await this.instagramStoryRepositoryService.getStory(story.id);
           const existingStory = response?.Item || null;
@@ -622,6 +636,7 @@ private isAutomatedPost(image: any): boolean {
             ...story,
             accountId,
             IsActive: isActive,
+            media_url: s3Url, // Use S3 URL
             // image_data: imageBase64,
             tag_and_value_pair: existingStory && 'tag_and_value_pair' in existingStory
                                 ? existingStory.tag_and_value_pair
