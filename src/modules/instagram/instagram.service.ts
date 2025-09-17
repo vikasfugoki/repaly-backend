@@ -1313,7 +1313,7 @@ async getAccountLevelAnalytics(accountId: string) {
     if (!accountInfo?.access_token) {
       throw new Error(`Access token not found for accountId: ${accountId}`);
     }
-    const { access_token } = accountInfo ?? {};
+    const { access_token, created_time } = accountInfo ?? {};
     const media_count = await this.instagramApiService.getMediaCount(accountId, access_token);
     console.log("access token:", access_token);
     console.log("Account Level Analytics:", stats);
@@ -1411,7 +1411,7 @@ async getAccountLevelAnalytics(accountId: string) {
       collapsed,
       expanded,
       updated_at: new Date().toISOString(),
-      added_at: new Date().toISOString()
+      added_at: created_time
     };
 
   } catch (error) {
