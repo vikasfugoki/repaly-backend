@@ -1252,6 +1252,9 @@ async getAccountLevelAnalytics(accountId: string) {
     console.log("Fetching account level analytics for accountId:", accountId);
 
     const stats = await this.instagramAccountLevelAnalyticsRepositoryService.getAccountLevelAnalyticsByAccountId(accountId);
+    const accountInfo = await this.instagramAccountRepositoryService.getAccount(accountId);
+    const { media_count } = accountInfo ?? {};
+    console.log("Media Count:", media_count);
     console.log("Account Level Analytics:", stats);
 
     const levels = ['account_media', 'account_ads', 'account_media_automated_posts', 'account_ad_automated_posts', 'account_dm_automated_posts'];
@@ -1279,7 +1282,7 @@ async getAccountLevelAnalytics(accountId: string) {
       negative: (media.negative || 0) + (ads.negative || 0),
       unreplied: dm.total_unreplied || 0,
       total_posts:
-        (media_post.total_post || 0) +
+        (media_count || media_post.total_post || 0) +
         (ads_post.total_post || 0) +
         (stories_post.total_post || 0),
       automated_posts:
@@ -1297,7 +1300,7 @@ async getAccountLevelAnalytics(accountId: string) {
       positive_comments: media.positive || 0,
       others: (media.others || 0) + (media.positive_no_automation || 0) + (media.negative_no_automation || 0) + (media.potential_buyers_no_automation || 0) + (media.inquiry_no_automation || 0), 
       tagged_comment: (media.tagged_comment || 0) + (media.tagged_comment_dm || 0),
-      total_post: media_post.total_post || 0,
+      total_post: media_count || media_post.total_post || 0,
       automated_post: media_post.automated_post || 0
     };
 
