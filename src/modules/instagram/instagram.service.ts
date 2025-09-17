@@ -1561,7 +1561,7 @@ async getAccountLevelAnalytics(accountId: string) {
       if (!mediaAnalytics || Object.keys(mediaAnalytics).length === 0) {
         throw new Error(`No analytics found for mediaId: ${mediaId}`);
       }
-
+  
       const commentsByType = mediaAnalytics.comments_by_type || {};
       const allComments: Array<{
         comment_timestamp: number;
@@ -1572,35 +1572,58 @@ async getAccountLevelAnalytics(accountId: string) {
         reply_timestamp: number;
         category: string;
       }> = [];
-
-      for (const [category, comments] of Object.entries(commentsByType)) {
+  
+      // Define mapping from raw categories -> normalized categories
+      const categoryMap: Record<string, string> = {
+        positive: "positive",
+        positive_no_automation: "positive",
+        negative: "negative",
+        negative_no_automation: "negative",
+        inquiry: "inquiry",
+        inquiry_no_automation: "inquiry",
+        inquiry_dm: "inquiry",
+        potential_buyers: "potential_buyers",
+        potential_buyers_no_automation: "potential_buyers",
+        tagged_comment: "tagged_comment",
+        tagged_comment_dm: "tagged_comment",
+        other_comments: "others",
+      };
+  
+      for (const [rawCategory, comments] of Object.entries(commentsByType)) {
+        const normalizedCategory = categoryMap[rawCategory];
+        if (!normalizedCategory) {
+          // Skip categories we don't care about
+          continue;
+        }
+  
         for (const commentArr of comments as any[]) {
           const [
             comment_timestamp,
             commenter_username,
             comment,
             response,
-            reply_timestamp
+            reply_timestamp,
           ] = commentArr;
-
+  
           allComments.push({
             comment_timestamp,
             commenter_username,
             comment,
-            response_comment: category.includes('dm') ? '' : response,
-            response_dm: category.includes('dm') ? response : '',
+            response_comment: rawCategory.includes("dm") ? "" : response,
+            response_dm: rawCategory.includes("dm") ? response : "",
             reply_timestamp,
-            category
+            category: normalizedCategory,
           });
         }
       }
-
+  
       return allComments;
     } catch (error) {
       console.error(`Failed to get media analytics for ${mediaId}:`, error);
-      throw new Error('Unable to retrieve media analytics');
+      throw new Error("Unable to retrieve media analytics");
     }
   }
+  
 
   async getMediaCommentsByCategory(accountId: string, mediaId: string, category: string) {
     try {
