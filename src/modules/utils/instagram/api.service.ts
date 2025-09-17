@@ -122,6 +122,28 @@ export class InstagramApiService {
     }
   }
 
+  async getMediaCount(accountId: string, accessToken: string): Promise<number> {
+    if (!accountId || !accessToken) {
+      throw new Error("Account ID and access token are required");
+    }
+  
+    const url = `https://graph.instagram.com/${accountId}?fields=id,username,media_count&access_token=${accessToken}`;
+  
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        const errorBody = await response.text();
+        throw new Error(`Failed to fetch media_count: ${response.status} - ${errorBody}`);
+      }
+  
+      const data = await response.json();
+      return data.media_count ?? 0;
+    } catch (error) {
+      console.error("Error fetching media_count:", error);
+      return 0; // fallback if API fails
+    }
+  }
+
   // async getMediaInsight(
   //   mediaId: string,
   //   access_token: string,

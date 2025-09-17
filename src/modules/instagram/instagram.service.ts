@@ -1245,6 +1245,9 @@ async dmReply(
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////  ACCOUNT LEVEL ANALYTICS  //////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
 async getAccountLevelAnalytics(accountId: string) {
   try {
     // Fetch the account details
@@ -1253,8 +1256,12 @@ async getAccountLevelAnalytics(accountId: string) {
 
     const stats = await this.instagramAccountLevelAnalyticsRepositoryService.getAccountLevelAnalyticsByAccountId(accountId);
     const accountInfo = await this.instagramAccountRepositoryService.getAccount(accountId);
-    const { media_count } = accountInfo ?? {};
-    console.log("Media Count:", media_count);
+    if (!accountInfo?.access_token) {
+      throw new Error(`Access token not found for accountId: ${accountId}`);
+    }
+    const { access_token } = accountInfo ?? {};
+    const media_count = await this.instagramApiService.getMediaCount(accountId, access_token);
+    console.log("access token:", access_token);
     console.log("Account Level Analytics:", stats);
 
     const levels = ['account_media', 'account_ads', 'account_media_automated_posts', 'account_ad_automated_posts', 'account_dm_automated_posts'];
