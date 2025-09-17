@@ -601,18 +601,18 @@ private isAutomatedPost(image: any): boolean {
           const hoursDiff = (now.getTime() - storyTimestamp.getTime()) / (1000 * 60 * 60);
           const isActive = hoursDiff <= 24;
 
-          const imageUrl =
-          story.media_type === "VIDEO" && story.thumbnail_url
-            ? story.thumbnail_url
-            : story.media_url;
+          // const imageUrl =
+          // story.media_type === "VIDEO" && story.thumbnail_url
+          //   ? story.thumbnail_url
+          //   : story.media_url;
 
-          let imageBase64: string | null = null;
-          try {
-            const imageResponse = await axios.get(imageUrl, { responseType: "arraybuffer" });
-            imageBase64 = Buffer.from(imageResponse.data, "binary").toString("base64");
-          } catch (err) {
-            console.warn(`Failed to fetch image for storyId ${story.id}`, err);
-          }
+          // let imageBase64: string | null = null;
+          // try {
+          //   const imageResponse = await axios.get(imageUrl, { responseType: "arraybuffer" });
+          //   imageBase64 = Buffer.from(imageResponse.data, "binary").toString("base64");
+          // } catch (err) {
+          //   console.warn(`Failed to fetch image for storyId ${story.id}`, err);
+          // }
 
 
           const response = await this.instagramStoryRepositoryService.getStory(story.id);
@@ -622,7 +622,7 @@ private isAutomatedPost(image: any): boolean {
             ...story,
             accountId,
             IsActive: isActive,
-            image_data: imageBase64,
+            // image_data: imageBase64,
             tag_and_value_pair: existingStory && 'tag_and_value_pair' in existingStory
                                 ? existingStory.tag_and_value_pair
                                 : {},
