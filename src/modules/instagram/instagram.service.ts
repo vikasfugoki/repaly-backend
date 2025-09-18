@@ -1599,7 +1599,7 @@ async getAccountLevelAnalytics(accountId: string) {
         potential_buyers_no_automation: "potential_buyers",
         tagged_comment: "tagged_comment",
         tagged_comment_dm: "tagged_comment",
-        other_comments: "others",
+        others: "others",
       };
   
       for (const [rawCategory, comments] of Object.entries(commentsByType)) {
