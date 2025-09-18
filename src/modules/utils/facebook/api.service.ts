@@ -184,7 +184,8 @@ export class FacebookApiService {
             object_story_spec{
               video_data,
               link_data,
-              photo_data
+              photo_data,
+              instagram_user_id
             },
             image_url,
             thumbnail_url,
