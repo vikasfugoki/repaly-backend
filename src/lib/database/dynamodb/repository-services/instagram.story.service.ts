@@ -61,7 +61,7 @@ export class InstagramStoryRepositoryService {
           // Define the update parameters for DynamoDB UpdateItem
           const params = {
             TableName: this.tableName,
-            Key: { story_id }, // Assuming 'id' is the primary key
+            Key: { id }, // Assuming 'id' is the primary key
             UpdateExpression: `SET ${updateExpression.join(', ')}`,
             ExpressionAttributeNames: expressionAttributeNames,
             ExpressionAttributeValues: expressionAttributeValues,
