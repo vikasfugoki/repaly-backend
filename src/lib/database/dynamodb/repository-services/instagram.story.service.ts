@@ -32,13 +32,15 @@ export class InstagramStoryRepositoryService {
 
     async updateStoryDetails(storyDetails: Record<string, any>) {
         try {
-          const { id, ...rest } = storyDetails; // Extract id and other fields separately
-      
-          if (!id) {
-            throw new Error('id is required to insert or update story details');
+          const { id, story_id, ...rest } = storyDetails; // Extract both
+
+          // Normalize: prefer id, fallback to story_id
+          const finalStoryId = id || story_id;
+
+          if (!finalStoryId) {
+            throw new Error("id or story_id is required to insert or update story details");
           }
 
-          const story_id = id; // Rename for DynamoDB compatibility
           const updateFields = { ...rest };
       
           // Construct the UpdateExpression and ExpressionAttributeValues for dynamic fields
@@ -61,7 +63,7 @@ export class InstagramStoryRepositoryService {
           // Define the update parameters for DynamoDB UpdateItem
           const params = {
             TableName: this.tableName,
-            Key: { story_id }, // Assuming 'id' is the primary key
+            Key: { finalStoryId }, // Assuming 'id' is the primary key
             UpdateExpression: `SET ${updateExpression.join(', ')}`,
             ExpressionAttributeNames: expressionAttributeNames,
             ExpressionAttributeValues: expressionAttributeValues,
