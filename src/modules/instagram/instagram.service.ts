@@ -1008,7 +1008,7 @@ private isAutomatedPost(image: any): boolean {
             // if (igUserId && igUserId !== proUserId) {
             //   throw new BadRequestException("Facebook account is not connected to this Instagram user.");
             // }
-            if (!igUserId && igUserId !== proUserId) {
+            if (igUserId && igUserId !== proUserId) {
                 console.warn(`Skipping ad ${adData.ad_id} - Instagram user mismatch (${igUserId} ≠ ${proUserId})`);
                 continue; // Skip this ad and continue with the next one
             }
