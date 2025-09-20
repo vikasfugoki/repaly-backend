@@ -687,15 +687,6 @@ private isAutomatedPost(image: any): boolean {
               const storyTimestamp = new Date(item.timestamp as string);
               const hoursDiff = (now.getTime() - storyTimestamp.getTime()) / (1000 * 60 * 60);
               const isActive = hoursDiff <= 24;
-    
-              // Update DynamoDB only if IsActive changed
-
-              item = {
-                ...item,
-                id: item.id || item.story_id,
-              };
-
-              console.log("item:", item, "isActive:", isActive, "current IsActive:", item.IsActive);
 
               if (item.IsActive !== isActive) {
                 await this.instagramStoryRepositoryService.updateStoryDetails({
