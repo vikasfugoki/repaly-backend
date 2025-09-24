@@ -1358,7 +1358,7 @@ async getAccountLevelAnalytics(accountId: string) {
       inquiries: (media.inquiry || 0) + (media.inquiry_no_automation || 0) + (media.inquiry_dm || 0),
       negative_comments: (media.negative || 0) +  (media.negative_no_automation || 0),
       positive_comments: (media.positive || 0) + (media.positive_no_automation || 0),
-      others: (media.others || 0),
+      others: (media.other_comments || 0),
       tagged_comment: (media.tagged_comment || 0) + (media.tagged_comment_dm || 0),
       total_post: media_count || media_post.total_post || 0,
       automated_post: media_post.automated_post || 0
