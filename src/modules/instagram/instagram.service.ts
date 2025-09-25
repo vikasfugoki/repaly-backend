@@ -1848,6 +1848,14 @@ async getAccountLevelAnalytics(accountId: string) {
 
   async getAdsAnalytics(accountId: string) {
     try {
+
+      // calling update-ads
+      try {
+        await this.updateAdsOnTable(accountId, {});
+      } catch (err) {
+        console.error(`updateAdsOnTable failed for ${accountId}:`, err);
+      }
+
       const adsAutomatedPostsResult = await this.instagramAccountLevelAnalyticsRepositoryService.getAccountLevelAnalytics(accountId + "_ad_automated_posts");
       const adsAutomatedPosts = adsAutomatedPostsResult?.Item || {};
       const adsAnalyticsResult = await this.instagramAccountLevelAnalyticsRepositoryService.getAccountLevelAnalytics(accountId + "_ads");
@@ -1940,6 +1948,14 @@ async getAccountLevelAnalytics(accountId: string) {
 
   async getAdCommentCounts(accountId: string) {
     try {
+
+      // calling update-ads
+      try {
+        await this.updateAdsOnTable(accountId, {});
+      } catch (err) {
+        console.error(`updateAdsOnTable failed for ${accountId}:`, err);
+      }
+
       // Fetch all ads for the account
       const adsListResponse = await this.instagramAdsService.getAdsByAccountId(accountId);
       const adsItems = adsListResponse?.Items || [];
