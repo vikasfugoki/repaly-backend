@@ -1912,10 +1912,8 @@ async getAccountLevelAnalytics(accountId: string) {
       if (!adAnalytics || Object.keys(adAnalytics).length === 0) {
         throw new Error(`No analytics found for adId: ${adId}`);
       }
-
-      console.log("DEBUG adAnalytics.Item:", JSON.stringify(adAnalytics.Item, null, 2));
   
-      const item = adAnalytics.Item || {};
+      const commentsByType = adAnalytics.Item || {};
       const allComments: Array<{
         comment_timestamp: string;
         commenter_username: string;
@@ -1926,21 +1924,38 @@ async getAccountLevelAnalytics(accountId: string) {
         category: string;
       }> = [];
   
-      // iterate over keys that end with "_comments"
-      for (const [key, comments] of Object.entries(item)) {
-        if (!key.endsWith("_comments")) continue;
+      // Define mapping from raw categories -> normalized categories
+      const categoryMap: Record<string, string> = {
+        positive: "positive",
+        positive_no_automation: "positive",
+        negative: "negative",
+        negative_no_automation: "negative",
+        inquiry: "inquiry",
+        inquiry_no_automation: "inquiry",
+        inquiry_dm: "inquiry",
+        potential_buyers: "potential_buyers",
+        potential_buyers_no_automation: "potential_buyers",
+        tagged_comment: "tagged_comment",
+        tagged_comment_dm: "tagged_comment",
+        others: "others",
+      };
   
-        const category = key.replace("_comments", ""); // e.g. "others" or "positive_no_automation"
+      for (const [rawCategory, comments] of Object.entries(commentsByType)) {
+        if (!rawCategory.endsWith("_comments")) continue;
+  
+        const baseCategory = rawCategory.replace("_comments", "");
+        const normalizedCategory = categoryMap[baseCategory];
+        if (!normalizedCategory) continue;
   
         for (const c of comments as any[]) {
           allComments.push({
             comment_timestamp: c.comment_timestamp,
             commenter_username: c.commenter_username,
             comment: c.comment_text,
-            response_comment: category.includes("dm") ? "" : c.comment_response,
-            response_dm: category.includes("dm") ? c.comment_response : "",
+            response_comment: rawCategory.includes("dm") ? "" : c.comment_response,
+            response_dm: rawCategory.includes("dm") ? c.comment_response : "",
             reply_timestamp: c.response_timestamp,
-            category
+            category: normalizedCategory,
           });
         }
       }
@@ -1951,6 +1966,7 @@ async getAccountLevelAnalytics(accountId: string) {
       throw new Error("Unable to retrieve ad analytics");
     }
   }
+  
   
 
   async getAdCommentCounts(accountId: string) {
