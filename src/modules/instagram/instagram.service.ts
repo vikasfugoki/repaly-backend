@@ -1535,6 +1535,14 @@ async getAccountLevelAnalytics(accountId: string) {
 
   async getMediaAnalytics(accountId: string) {
     try {
+
+      // calling update-media
+      try {
+        await this.updateAccountMediaOnTable(accountId);
+      } catch (err) {
+        console.error(`updateAccountMediaOnTable failed for ${accountId}:`, err);
+      }
+
       const mediaAutomatedPostsResult = await this.instagramAccountLevelAnalyticsRepositoryService.getAccountLevelAnalytics(accountId + "_media_automated_posts");
       const mediaAutomatedPosts = mediaAutomatedPostsResult?.Item || {};
       const mediaAnalyticsResult = await this.instagramAccountLevelAnalyticsRepositoryService.getAccountLevelAnalytics(accountId + "_media");
@@ -1744,6 +1752,14 @@ async getAccountLevelAnalytics(accountId: string) {
 
   async getMediaCommentCounts(accountId: string) {
     try {
+
+      // calling update-media
+      try {
+        await this.updateAccountMediaOnTable(accountId);
+      } catch (err) {
+        console.error(`updateAccountMediaOnTable failed for ${accountId}:`, err);
+      }
+
       // Fetch all media for the account
       const mediaListResponse = await this.instagramMediaRepositoryService.getMediaByAccountId(accountId);
       const mediaItems = mediaListResponse?.Items || [];
