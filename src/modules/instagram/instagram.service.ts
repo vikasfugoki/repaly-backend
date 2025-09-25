@@ -1306,12 +1306,26 @@ async getAccountLevelAnalytics(accountId: string) {
     // Fetch the account details
 
     console.log("Fetching account level analytics for accountId:", accountId);
-    //  calling update-media
-    await this.updateAccountMediaOnTable(accountId);
-    //  calling update-ads
-    await this.updateAdsOnTable(accountId, {});
-    //  calling update-story
-    await this.updateAccountStoryOnTable(accountId);
+    // calling update-media
+    try {
+      await this.updateAccountMediaOnTable(accountId);
+    } catch (err) {
+      console.error(`updateAccountMediaOnTable failed for ${accountId}:`, err);
+    }
+
+    // calling update-ads
+    try {
+      await this.updateAdsOnTable(accountId, {});
+    } catch (err) {
+      console.error(`updateAdsOnTable failed for ${accountId}:`, err);
+    }
+
+    // calling update-story
+    try {
+      await this.updateAccountStoryOnTable(accountId);
+    } catch (err) {
+      console.error(`updateAccountStoryOnTable failed for ${accountId}:`, err);
+    }
 
     const stats = await this.instagramAccountLevelAnalyticsRepositoryService.getAccountLevelAnalyticsByAccountId(accountId);
     const accountInfo = await this.instagramAccountRepositoryService.getAccount(accountId);
