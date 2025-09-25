@@ -1303,30 +1303,21 @@ async dmReply(
 
 async getAccountLevelAnalytics(accountId: string) {
   try {
+    // run all updates in parallel
+    await Promise.allSettled([
+      this.updateAccountMediaOnTable(accountId),
+      this.updateAdsOnTable(accountId, {}),
+      this.updateAccountStoryOnTable(accountId)
+    ]).then(results => {
+      results.forEach((result, idx) => {
+        if (result.status === "rejected") {
+          const fn = ["updateAccountMediaOnTable", "updateAdsOnTable", "updateAccountStoryOnTable"][idx];
+          console.error(`${fn} failed for ${accountId}:`, result.reason);
+        }
+      });
+    });
+
     // Fetch the account details
-
-    console.log("Fetching account level analytics for accountId:", accountId);
-    // calling update-media
-    try {
-      await this.updateAccountMediaOnTable(accountId);
-    } catch (err) {
-      console.error(`updateAccountMediaOnTable failed for ${accountId}:`, err);
-    }
-
-    // calling update-ads
-    try {
-      await this.updateAdsOnTable(accountId, {});
-    } catch (err) {
-      console.error(`updateAdsOnTable failed for ${accountId}:`, err);
-    }
-
-    // calling update-story
-    try {
-      await this.updateAccountStoryOnTable(accountId);
-    } catch (err) {
-      console.error(`updateAccountStoryOnTable failed for ${accountId}:`, err);
-    }
-
     const stats = await this.instagramAccountLevelAnalyticsRepositoryService.getAccountLevelAnalyticsByAccountId(accountId);
     const accountInfo = await this.instagramAccountRepositoryService.getAccount(accountId);
     if (!accountInfo?.access_token) {
