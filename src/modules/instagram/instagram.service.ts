@@ -1444,6 +1444,14 @@ async getAccountLevelAnalytics(accountId: string) {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////
   async getDMSummaryAnalytics(accountId: string) {
     try {
+
+      // calling update-story
+      try {
+        await this.updateAccountStoryOnTable(accountId);
+      } catch (err) {
+        console.error(`updateAccountStoryOnTable failed for ${accountId}:`, err);
+      }
+
       console.log("Fetching DM level analytics for accountId:", accountId);
   
       const stats = await this.instagramAccountLevelAnalyticsRepositoryService
@@ -1492,6 +1500,14 @@ async getAccountLevelAnalytics(accountId: string) {
 
   async getDMConversations(accountId: string) {
     try {
+
+      // calling update-story
+      try {
+        await this.updateAccountStoryOnTable(accountId);
+      } catch (err) {
+        console.error(`updateAccountStoryOnTable failed for ${accountId}:`, err);
+      }
+
       // Fetch all conversations for the account
       const { items, lastEvaluatedKey } =
         await this.instagramDmMessageDetailsService.getConversationDetails(accountId);
