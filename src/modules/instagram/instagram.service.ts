@@ -1306,6 +1306,12 @@ async getAccountLevelAnalytics(accountId: string) {
     // Fetch the account details
 
     console.log("Fetching account level analytics for accountId:", accountId);
+    //  calling update-media
+    await this.updateAccountMediaOnTable(accountId);
+    //  calling update-ads
+    await this.updateAdsOnTable(accountId, {});
+    //  calling update-story
+    await this.updateAccountStoryOnTable(accountId);
 
     const stats = await this.instagramAccountLevelAnalyticsRepositoryService.getAccountLevelAnalyticsByAccountId(accountId);
     const accountInfo = await this.instagramAccountRepositoryService.getAccount(accountId);
