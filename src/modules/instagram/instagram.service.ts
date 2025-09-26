@@ -1781,6 +1781,7 @@ async getAccountLevelAnalytics(accountId: string) {
           const mediaId = media.id;
           const media_url = media.media_url;
           const thumbnail_url = media.thumbnail_url;
+          const permalink = media.permalink;
           const media_type = media.media_type;
           const timestamp = media.timestamp;
           
@@ -1808,6 +1809,7 @@ async getAccountLevelAnalytics(accountId: string) {
             media_url,
             media_type,
             thumbnail_url,
+            permalink,
             timestamp,
             positive: (comment_counts.positive ?? 0) + (comment_counts.positive_no_automation ?? 0),
             negative: (comment_counts.negative ?? 0) + (comment_counts.negative_no_automation ?? 0),
