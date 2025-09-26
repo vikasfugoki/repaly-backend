@@ -107,7 +107,7 @@ export class InstagramApiService {
     const url = this.urlService.getMediaUrl(userId);
     const params = {
       fields:
-        'id,caption,media_type,media_url,timestamp,like_count,thumbnail_url,comments_count',
+        'id,caption,media_type,media_url,timestamp,like_count,thumbnail_url,comments_count,permalink',
       access_token,
       limit: 15, // limit the response to a maximum of 15 media items
     };
