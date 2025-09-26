@@ -181,6 +181,7 @@ export class FacebookApiService {
           creative{
             id,
             name,
+            instagram_permalink_url,
             object_story_spec{
               video_data,
               link_data,
@@ -198,7 +199,7 @@ export class FacebookApiService {
             const { data, paging } = response.data;
       
             for (const ad of data) {
-              if (allAds.length >= 5) break;
+              // if (allAds.length >= 5) break;
       
               const insights = await this.getAdInsights(ad.id, accessToken);
       
@@ -240,6 +241,7 @@ export class FacebookApiService {
                 object_story_spec: ad.creative?.object_story_spec || null,
                 effective_instagram_media_id: ad.creative?.effective_instagram_media_id || null,
                 insights: insights,
+                instagram_permalink_url: ad.creative?.instagram_permalink_url || null,
               });
             }
       
