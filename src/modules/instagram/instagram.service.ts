@@ -1886,9 +1886,10 @@ async getAccountLevelAnalytics(accountId: string) {
         positive_no_automation: adsAnalytics.positive_no_automation ?? 0,
         potential_buyers: adsAnalytics.potential_buyers ?? 0,
         potential_buyers_no_automation: adsAnalytics.potential_buyers_no_automation ?? 0,
-        tagged: adsAnalytics.tagged ?? 0,
-        tagged_comment: adsAnalytics.tagged_comment ?? 0,
-        tagged_comment_dm: adsAnalytics.tagged_comment_dm ?? 0,
+        // removing tagged as ads doesn't support tagged comments
+        // tagged: adsAnalytics.tagged ?? 0,
+        // tagged_comment: adsAnalytics.tagged_comment ?? 0,
+        // tagged_comment_dm: adsAnalytics.tagged_comment_dm ?? 0,
         total_comments: adsAnalytics.total_comments ?? 0,
         total_dms: adsAnalytics.total_dms ?? 0,
         media_automated_posts: adsAutomatedPosts.automated_post ?? 0,
