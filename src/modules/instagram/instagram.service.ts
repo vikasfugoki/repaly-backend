@@ -1996,6 +1996,7 @@ async getAccountLevelAnalytics(accountId: string) {
           const adId = ad.id;
           const media_url = ad.media_url;
           const thumbnail_url = ad.thumbnail_url;
+          const permalink =  ad.instagram_permalink_url;
           const media_type = ad.media_type;
           const analytics = await this.instagramAdAnalyticsRepositoryService.getAdAnalytics(adId);
           const comment_counts = (analytics?.Item?.comment_counts ?? {}) as {
@@ -2020,6 +2021,7 @@ async getAccountLevelAnalytics(accountId: string) {
             media_url,
             media_type,
             thumbnail_url,
+            permalink,
             positive: (comment_counts.positive ?? 0) + (comment_counts.positive_no_automation ?? 0),
             negative: (comment_counts.negative ?? 0) + (comment_counts.negative_no_automation ?? 0),
             inquiry: (comment_counts.inquiry ?? 0) + (comment_counts.inquiry_no_automation ?? 0),
