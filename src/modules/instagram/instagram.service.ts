@@ -1364,7 +1364,7 @@ async getAccountLevelAnalytics(accountId: string) {
 
     const mediaDetails = {
       total_comments: media.total_comments || 0,
-      replied_comments: (media.inquiry || 0) + (media.positive || 0) + (media.negative || 0) + (media.potential_buyers || 0) + (media.tagged_comment || 0) + (media.tagged_comment_dm || 0),
+      replied_comments: (media.inquiry || 0) + (media.positive || 0) + (media.negative || 0) + (media.potential_buyers || 0) + (media.tagged_comment || 0) + (media.tagged_comment_dm || 0) + (media.inquiry_dm || 0),
       buyers: (media.potential_buyers || 0) + (media.potential_buyers_no_automation || 0),
       inquiries: (media.inquiry || 0) + (media.inquiry_no_automation || 0) + (media.inquiry_dm || 0),
       negative_comments: (media.negative || 0) +  (media.negative_no_automation || 0),
