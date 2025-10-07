@@ -159,7 +159,9 @@ export class InstagramAccountService {
         //   tag_and_value_pair: tagAndValuePair,
         //   ai_enabled: ai_enabled
         // };
-        return response?.Item ?? {};
+        const item = response?.Item ?? {};
+        item.is_automated = this.isAutomatedPost(item);
+        return item;
 
     } catch (error) {
         console.error(`Error getting media details for media ${mediaId}:`, error);
