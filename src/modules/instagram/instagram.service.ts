@@ -720,7 +720,10 @@ private isAutomatedPost(image: any): boolean {
   async getStoryDetailsFromTable(storyId: string) {
     try {
         const response = await this.instagramStoryRepositoryService.getStory(storyId);
-        return response?.Item ?? {};
+        const item = response?.Item ?? {};
+
+        item.is_automated = this.isAutomatedPost(item);
+        return item;
 
     } catch (error) {
         console.error(`Error getting story details for media ${storyId}:`, error);
@@ -1111,8 +1114,11 @@ private isAutomatedPost(image: any): boolean {
 
   async getAdDetails(adId: string) {
     try {
-      const ad_detail = this.instagramAdsService.getAds(adId);
-      return ad_detail;
+      const ad_detail = await this.instagramAdsService.getAds(adId); // <--- await here
+      return {
+        ...ad_detail,
+        is_automated: this.isAutomatedPost(ad_detail),
+      };
     } catch (error) {
       console.error(`Failed to get details for ad: ${adId}`, error);
       throw error;
