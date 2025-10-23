@@ -7,7 +7,7 @@ export class InstagramFlowstateRepositoryService {
   private readonly tableName = 'flow_repository';
   constructor(private readonly dynamoDbService: DynamoDBService) {}
 
-  getFlowstate(id: string) {
+  async getFlowstate(id: string) {
     const params = new GetCommand({
       TableName: this.tableName,
       Key: { id: id },
@@ -15,7 +15,7 @@ export class InstagramFlowstateRepositoryService {
     return this.dynamoDbService.dynamoDBDocumentClient.send(params);
   }
 
-  getFlowstatesByProId(pro_user_id: string) {
+  async getFlowstatesByProId(pro_user_id: string) {
     const params = new QueryCommand({
       TableName: this.tableName,
       IndexName: 'pro_user_id-index',

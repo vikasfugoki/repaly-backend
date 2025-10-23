@@ -2158,6 +2158,16 @@ async getAccountLevelAnalytics(accountId: string) {
     }
   }
 
+  async getInstagramDMFlowstate(accountId: string) {
+    try {
+      const flowState = await this.instagramFlowstateRepositoryService.getFlowstate(accountId);
+      return flowState;
+    } catch (error) {
+      console.error(`Failed to get DM flow state for account ${accountId}:`, error);
+      throw error;
+    }
+  }
+
   
 
   // async getAdAnalyticsById(accountId: string, adId: string) {
