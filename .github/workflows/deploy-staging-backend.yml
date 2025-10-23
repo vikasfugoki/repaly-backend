@@ -1,0 +1,89 @@
+name: Deploy Node.js Lambda from ECR
+
+on:
+  push:
+    branches:
+      - staging
+
+env:
+  AWS_ACCOUNT_ID: 225989378089
+  AWS_REGION: us-west-1
+  REPOSITORY_NAME: influex-app
+  IMAGE_TAG: latest
+  LAMBDA_FUNCTION_NAME: ContainerBackend
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.14
+
+      - name: Install dependencies
+        run: |
+          npm install
+          npm install @vendia/serverless-express aws-lambda
+          npm install aws-serverless-express
+          npm install google-auth-library
+
+      - name: Build project
+        run: npm run build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-1
+
+      - name: Create .env file
+        run: |
+          cat <<EOF > .env
+          AWS_ACCESS_ID=${{ secrets.AWS_ACCESS_ID }}
+          AWS_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }}
+          ALLOW_ALL_AUTH=${{ secrets.ALLOW_ALL_AUTH }}
+          FACEBOOK_ADS_REDIRECT_URL=${{ secrets.FACEBOOK_ADS_REDIRECT_URL }}
+          FACEBOOK_API_URL=${{ secrets.FACEBOOK_API_URL }}
+          FACEBOOK_CLIENT_ID=${{ secrets.FACEBOOK_CLIENT_ID }}
+          FACEBOOK_CLIENT_SECRET=${{ secrets.FACEBOOK_CLIENT_SECRET }}
+          FACEBOOK_OAUTH_URL=${{ secrets.FACEBOOK_OAUTH_URL }}
+          FACEBOOK_REDIRECT_URL=${{ secrets.FACEBOOK_REDIRECT_URL }}
+          GOOGLE_API_URL=${{ secrets.GOOGLE_API_URL }}
+          GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_OAUTH_URL=${{ secrets.GOOGLE_OAUTH_URL }}
+          GOOGLE_REDIRECT_URL='https://influex-staging-vikas.vercel.app/auth/google'
+          GPT_KEY=${{ secrets.GPT_KEY }}
+          INSTAGRAM_BASE_URL=${{ secrets.INSTAGRAM_BASE_URL }}
+          INSTAGRAM_CLIENT_ID=${{ secrets.INSTAGRAM_CLIENT_ID }}
+          INSTAGRAM_CLIENT_SECRET=${{ secrets.INSTAGRAM_CLIENT_SECRET }}
+          INSTAGRAM_OAUTH_URL=${{ secrets.INSTAGRAM_OAUTH_URL }}
+          INSTAGRAM_REDIRECT_URL='https://influex-staging-vikas.vercel.app/exchange-code/instagram'
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          EOF
+
+      - name: Build Docker image
+        run: |
+          docker build --platform linux/amd64 -t $REPOSITORY_NAME .
+
+      - name: Login to Amazon ECR
+        run: |
+          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+
+      - name: Tag and push Docker image
+        run: |
+          docker tag $REPOSITORY_NAME:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPOSITORY_NAME:$IMAGE_TAG
+          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPOSITORY_NAME:$IMAGE_TAG
+
+      - name: Update Lambda function
+        run: |
+          aws lambda update-function-code \
+            --function-name $LAMBDA_FUNCTION_NAME \
+            --image-uri $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPOSITORY_NAME:$IMAGE_TAG \
+            --output json
