@@ -2149,8 +2149,13 @@ async getAccountLevelAnalytics(accountId: string) {
   /// DM automation flow section
   async addInstagramDMFlowstate(accountId: string, flowStateData: any) {
     try {
-      flowStateData.id = accountId;
+      flowStateData.accountId = accountId;
+      flowStateData.id = flowStateData.flow.id;
+      flowStateData.isActiveAutomation = flowStateData.flow.isActiveAutomation;
       const result = await this.instagramFlowstateRepositoryService.insertFlowstateDetails(flowStateData);
+      if (flowStateData.flow.isActiveAutomation) {
+        await this.instagramFlowstateRepositoryService.activateFlowstate(flowStateData.id , accountId)
+      }
       return result;
     } catch (error) {
       console.error(`Failed to add DM flow state for account ${accountId}:`, error);
@@ -2158,9 +2163,9 @@ async getAccountLevelAnalytics(accountId: string) {
     }
   }
 
-  async getInstagramDMFlowstate(accountId: string) {
+  async getInstagramDMFlowstates(accountId: string) {
     try {
-      const flowState = await this.instagramFlowstateRepositoryService.getFlowstate(accountId);
+      const flowState = await this.instagramFlowstateRepositoryService.getFlowstatesByAccountId(accountId);
       return flowState;
     } catch (error) {
       console.error(`Failed to get DM flow state for account ${accountId}:`, error);

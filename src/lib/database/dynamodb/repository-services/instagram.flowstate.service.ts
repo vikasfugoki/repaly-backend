@@ -1,4 +1,12 @@
-import { GetCommand, QueryCommand, PutCommand, BatchWriteCommand, UpdateCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
+import {
+  GetCommand,
+  QueryCommand,
+  PutCommand,
+  ScanCommand,
+  BatchWriteCommand,
+  UpdateCommand,
+  DeleteCommand,
+} from '@aws-sdk/lib-dynamodb';
 import { Injectable } from '@nestjs/common';
 import { DynamoDBService } from '../dynamodb.service';
 
@@ -12,18 +20,21 @@ export class InstagramFlowstateRepositoryService {
       TableName: this.tableName,
       Key: { id: id },
     });
-    const result = await this.dynamoDbService.dynamoDBDocumentClient.send(params);
+    const result =
+      await this.dynamoDbService.dynamoDBDocumentClient.send(params);
     return result.Item || null;
   }
 
-  async getFlowstatesByProId(pro_user_id: string) {
-    const params = new QueryCommand({
+  async getFlowstatesByAccountId(accountId: string) {
+    const params = new ScanCommand({
       TableName: this.tableName,
-      IndexName: 'pro_user_id-index',
-      KeyConditionExpression: 'pro_user_id = :id',
-      ExpressionAttributeValues: { ':id': pro_user_id },
+      FilterExpression: 'accountId = :accountId',
+      ExpressionAttributeValues: { ':accountId': accountId },
+      ProjectionExpression: 'flow',
     });
-    return this.dynamoDbService.dynamoDBDocumentClient.send(params);
+    const result =
+      await this.dynamoDbService.dynamoDBDocumentClient.send(params);
+    return result.Items?.map((item) => item.flow) || [];
   }
 
   async insertFlowstateDetails(flowstateDetails: Record<string, any>) {
@@ -35,11 +46,50 @@ export class InstagramFlowstateRepositoryService {
 
       await this.dynamoDbService.dynamoDBDocumentClient.send(params);
       console.log(`Flowstate details inserted:`, flowstateDetails);
-      return { success: true, message: 'Flowstate details stored successfully' };
+      return {
+        success: true,
+        message: 'Flowstate details stored successfully',
+      };
     } catch (error) {
       console.error(`Error inserting flowstate details:`, error);
       throw new Error('Failed to insert flowstate details');
     }
   }
 
+  async activateFlowstate(flowstateId: string, accountId: string) {
+    // Step 1️⃣ — get all flowstates for that account
+    const scanParams = new ScanCommand({
+      TableName: this.tableName,
+      FilterExpression: 'accountId = :accountId',
+      ExpressionAttributeValues: { ':accountId': accountId },
+      ProjectionExpression: 'id',
+    });
+
+    const result =
+      await this.dynamoDbService.dynamoDBDocumentClient.send(scanParams);
+    const flowstates = result.Items || [];
+
+    // Step 2️⃣ — update each one (except the active one)
+    const updatePromises = flowstates.map((flowstate) => {
+      const shouldBeActive = flowstate.id === flowstateId;
+
+      const updateParams = new UpdateCommand({
+        TableName: this.tableName,
+        Key: { id: flowstate.id },
+        UpdateExpression: 'SET isActiveAutomation = :isActiveAutomation',
+        ExpressionAttributeValues: {
+          ':isActiveAutomation': shouldBeActive,
+        },
+      });
+
+      return this.dynamoDbService.dynamoDBDocumentClient.send(updateParams);
+    });
+
+    await Promise.all(updatePromises);
+
+    return {
+      success: true,
+      message: 'Flowstate activation updated successfully',
+    };
+  }
 }
