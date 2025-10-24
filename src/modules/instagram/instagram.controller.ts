@@ -634,9 +634,9 @@ export class InstagramAccountController {
   /// DM Automation
   @InstagramResourceType('account')
   @Put(':accountId/flowstate')
-  async putFlowstate(@Param('accountId') mediaId: string, @Body() input: Record<string, any>) {
+  async putFlowstate(@Param('accountId') accountId: string, @Body() input: Record<string, any>) {
     try {
-            return await this.instagramAccountService.addInstagramDMFlowstate(mediaId, input);
+            return await this.instagramAccountService.addInstagramDMFlowstate(accountId, input);
     } catch (error) {
             console.log("Failed to update the table with DM flowstate:", (error as Error).message);
             throw new Error('Failed to update the table with DM flowstate.')
