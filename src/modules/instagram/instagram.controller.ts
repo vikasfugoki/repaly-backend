@@ -641,7 +641,19 @@ export class InstagramAccountController {
             console.log("Failed to update the table with DM flowstate:", (error as Error).message);
             throw new Error('Failed to update the table with DM flowstate.')
     }
+  }
 
+  // get flowstate
+  @InstagramResourceType('account')
+  @Get(':accountId/flowstate')
+  async getFlowstate(@Param('accountId') accountId: string) {
+    try {
+          return await this.instagramAccountService.getInstagramDMFlowstate(accountId);
+    }
+    catch (error) {
+      console.log('Failed to get DM flowstate :', (error as Error).message);
+      throw new Error('Failed to get DM flowstate');
+    }
   }
 
 }
