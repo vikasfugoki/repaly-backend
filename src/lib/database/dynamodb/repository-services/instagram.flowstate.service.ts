@@ -12,7 +12,8 @@ export class InstagramFlowstateRepositoryService {
       TableName: this.tableName,
       Key: { id: id },
     });
-    return this.dynamoDbService.dynamoDBDocumentClient.send(params);
+    const result = await this.dynamoDbService.dynamoDBDocumentClient.send(params);
+    return result.Item || null;
   }
 
   async getFlowstatesByProId(pro_user_id: string) {
