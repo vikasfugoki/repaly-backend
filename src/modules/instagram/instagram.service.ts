@@ -2166,6 +2166,7 @@ async getAccountLevelAnalytics(accountId: string) {
   async getInstagramDMFlowstates(accountId: string) {
     try {
       const flowState = await this.instagramFlowstateRepositoryService.getFlowstatesByAccountId(accountId);
+      console.log("DM Flow States");
       return flowState;
     } catch (error) {
       console.error(`Failed to get DM flow state for account ${accountId}:`, error);
