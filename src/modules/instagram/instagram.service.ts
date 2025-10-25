@@ -22,6 +22,7 @@ import { InstagramAccountLevelAnalyticsRepositoryService } from '@database/dynam
 import { InstagramDmMessageDetailsService } from '@database/dynamodb/repository-services/instagram.dmMessageDetails.service';
 import { InstagramDmMessagesService } from '@database/dynamodb/repository-services/instagram.dmMessages.service';
 import { InstagramQuickReplyRepositoryService } from '@database/dynamodb/repository-services/instagram.qucikReply.service';
+import { InstagramFlowstateRepositoryService } from "@database/dynamodb/repository-services/instagram.flowstate.service";
 import { v4 as uuidv4 } from 'uuid';
 
 const s3Client = new S3Client({ region: process.env.AWS_REGION });
@@ -44,6 +45,7 @@ export class InstagramAccountService {
     private readonly instagramDmMessageDetailsService: InstagramDmMessageDetailsService,
     private readonly instagramDmMessagesService: InstagramDmMessagesService,
     private readonly instagramQuickReplyRepositoryService: InstagramQuickReplyRepositoryService,
+    private readonly instagramFlowstateRepositoryService: InstagramFlowstateRepositoryService,
   ) {}
 
   private buildInsights(
@@ -2140,6 +2142,34 @@ async getAccountLevelAnalytics(accountId: string) {
       return { success: true, message: 'Quick reply deleted successfully' };
     } catch (error) {
       console.error(`Failed to delete quick reply ${quickReplyId}:`, error);
+      throw error;
+    }
+  }
+
+  /// DM automation flow section
+  async addInstagramDMFlowstate(accountId: string, flowStateData: any) {
+    try {
+      flowStateData.accountId = accountId;
+      flowStateData.id = flowStateData.flow.id;
+      flowStateData.isActiveAutomation = flowStateData.flow.isActiveAutomation;
+      const result = await this.instagramFlowstateRepositoryService.insertFlowstateDetails(flowStateData);
+      if (flowStateData.flow.isActiveAutomation) {
+        await this.instagramFlowstateRepositoryService.activateFlowstate(flowStateData.id , accountId)
+      }
+      return result;
+    } catch (error) {
+      console.error(`Failed to add DM flow state for account ${accountId}:`, error);
+      throw error;
+    }
+  }
+
+  async getInstagramDMFlowstates(accountId: string) {
+    try {
+      const flowState = await this.instagramFlowstateRepositoryService.getFlowstatesByAccountId(accountId);
+      console.log("DM Flow States");
+      return flowState;
+    } catch (error) {
+      console.error(`Failed to get DM flow state for account ${accountId}:`, error);
       throw error;
     }
   }
