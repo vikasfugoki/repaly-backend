@@ -876,7 +876,7 @@ export class InstagramAccountController {
   }
 
   @InstagramResourceType('account')
-  @Get(':accountId/flowstates')
+  @Get(':accountId/flowstate')
   async getFlowStates(@Param('accountId') accountId: string) {
     try {
       return await this.instagramAccountService.getInstagramDMFlowstates(
