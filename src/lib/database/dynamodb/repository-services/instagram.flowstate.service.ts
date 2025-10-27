@@ -62,7 +62,6 @@ export class InstagramFlowstateRepositoryService {
       TableName: this.tableName,
       FilterExpression: 'accountId = :accountId',
       ExpressionAttributeValues: { ':accountId': accountId },
-      ProjectionExpression: 'id',
     });
 
     const result =
@@ -72,13 +71,18 @@ export class InstagramFlowstateRepositoryService {
     // Step 2️⃣ — update each one (except the active one)
     const updatePromises = flowstates.map((flowstate) => {
       const shouldBeActive = flowstate.id === flowstateId;
-
+      const updatedFlow = {
+        ...flowstate.flow,
+        isActiveAutomation: shouldBeActive,
+      };
       const updateParams = new UpdateCommand({
         TableName: this.tableName,
         Key: { id: flowstate.id },
-        UpdateExpression: 'SET isActiveAutomation = :isActiveAutomation',
+        UpdateExpression:
+          'SET isActiveAutomation = :isActiveAutomation, flow = :flow',
         ExpressionAttributeValues: {
           ':isActiveAutomation': shouldBeActive,
+          ':flow': updatedFlow,
         },
       });
 
