@@ -2174,6 +2174,16 @@ async getAccountLevelAnalytics(accountId: string) {
     }
   }
 
+  async deleteInstagramDMFlowstate(flowStateId: string) {
+    try {
+      const result = await this.instagramFlowstateRepositoryService.deleteFlowstate(flowStateId);
+      return result;
+    } catch (error) {
+      console.error(`Failed to delete DM flow state ${flowStateId}:`, error);
+      throw error;
+    }
+  }
+
   
 
   // async getAdAnalyticsById(accountId: string, adId: string) {

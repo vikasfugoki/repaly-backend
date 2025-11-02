@@ -92,4 +92,25 @@ export class InstagramFlowstateRepositoryService {
       message: 'Flowstate activation updated successfully',
     };
   }
+
+  async deleteFlowstate(flowstateId: string) {
+    try {
+      const deleteParams = new DeleteCommand({
+        TableName: this.tableName,
+        Key: { id: flowstateId },
+      });
+
+      await this.dynamoDbService.dynamoDBDocumentClient.send(deleteParams);
+      return {
+        success: true,
+        message: `Flowstate with id ${flowstateId} deleted successfully`,
+      };
+    } catch (error) {
+      console.error(
+        `Error deleting flowstate with id ${flowstateId}:`,
+        error,
+      );
+      throw new Error('Failed to delete flowstate');
+    }
+  }
 }
