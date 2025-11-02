@@ -890,4 +890,23 @@ export class InstagramAccountController {
       throw new Error('Failed to get the DM flowstates.');
     }
   }
+
+  @InstagramResourceType('account')
+  @Delete(':accountId/flowstate/:flowstateId')
+  async deleteFlowstate(
+    @Param('accountId') accountId: string,
+    @Param('flowstateId') flowstateId: string,
+  ) {
+    try {
+      return await this.instagramAccountService.deleteInstagramDMFlowstate(
+        flowstateId
+      );
+    } catch (error) {
+      console.log(
+        'Failed to delete the DM flowstate:',
+        (error as Error).message,
+      );
+      throw new Error('Failed to delete the DM flowstate.');
+    }
+  }
 }
