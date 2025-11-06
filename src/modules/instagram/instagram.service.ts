@@ -2577,12 +2577,34 @@ export class InstagramAccountService {
     }
   }
 
-  async deleteInstagramDMFlowstate(flowStateId: string) {
+  async getInstagramDMFlowstateDetails(flowstateId: string) {
     try {
-      const result = await this.instagramFlowstateRepositoryService.deleteFlowstate(flowStateId);
-      return result;
+      const flowState =
+        await this.instagramFlowstateRepositoryService.getFlowstate(
+          flowstateId,
+        );
+      return flowState;
     } catch (error) {
-      console.error(`Failed to delete DM flow state ${flowStateId}:`, error);
+      console.error(
+        `Failed to get DM flow state for id ${flowstateId}:`,
+        error,
+      );
+      throw error;
+    }
+  }
+
+  async deleteInstagramDMFlowstate(flowstateId: string) {
+    try {
+      const message =
+        await this.instagramFlowstateRepositoryService.deleteFlowstate(
+          flowstateId,
+        );
+      return message;
+    } catch (error) {
+      console.error(
+        `Failed to delete DM flow state for id ${flowstateId}:`,
+        error,
+      );
       throw error;
     }
   }
