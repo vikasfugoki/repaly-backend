@@ -883,10 +883,7 @@ export class InstagramAccountController {
         accountId,
       );
     } catch (error) {
-      console.log(
-        'Failed to get the DM flowstates:',
-        (error as Error).message,
-      );
+      console.log('Failed to get the DM flowstates:', (error as Error).message);
       throw new Error('Failed to get the DM flowstates.');
     }
   }
