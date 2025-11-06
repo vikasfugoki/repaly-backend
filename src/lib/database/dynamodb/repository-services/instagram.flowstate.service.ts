@@ -1,9 +1,7 @@
 import {
   GetCommand,
-  QueryCommand,
   PutCommand,
   ScanCommand,
-  BatchWriteCommand,
   UpdateCommand,
   DeleteCommand,
 } from '@aws-sdk/lib-dynamodb';
@@ -23,6 +21,18 @@ export class InstagramFlowstateRepositoryService {
     const result =
       await this.dynamoDbService.dynamoDBDocumentClient.send(params);
     return result.Item || null;
+  }
+
+  async deleteFlowstate(id: string) {
+    const params = new DeleteCommand({
+      TableName: this.tableName,
+      Key: { id: id },
+    });
+      await this.dynamoDbService.dynamoDBDocumentClient.send(params);
+    return {
+      success: true,
+      message: 'Flowstate deleted successfully',
+    };
   }
 
   async getFlowstatesByAccountId(accountId: string) {
@@ -95,26 +105,5 @@ export class InstagramFlowstateRepositoryService {
       success: true,
       message: 'Flowstate activation updated successfully',
     };
-  }
-
-  async deleteFlowstate(flowstateId: string) {
-    try {
-      const deleteParams = new DeleteCommand({
-        TableName: this.tableName,
-        Key: { id: flowstateId },
-      });
-
-      await this.dynamoDbService.dynamoDBDocumentClient.send(deleteParams);
-      return {
-        success: true,
-        message: `Flowstate with id ${flowstateId} deleted successfully`,
-      };
-    } catch (error) {
-      console.error(
-        `Error deleting flowstate with id ${flowstateId}:`,
-        error,
-      );
-      throw new Error('Failed to delete flowstate');
-    }
   }
 }
