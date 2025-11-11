@@ -20,7 +20,7 @@ export class InstagramFlowstateRepositoryService {
     });
     const result =
       await this.dynamoDbService.dynamoDBDocumentClient.send(params);
-    return result.Item || null;
+    return result.Item?.flow || null;
   }
 
   async deleteFlowstate(id: string) {
