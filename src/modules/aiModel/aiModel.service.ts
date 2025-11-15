@@ -132,4 +132,80 @@ export class AIServices{
         }
       }
       
+
+      async getExtractFields(goal: string): Promise<any[]> {
+        const GPT_KEY = this.api.getGptKey();
+        console.log("GPT API Key:", GPT_KEY);
+      
+        if (!goal || goal.trim().length === 0) {
+          throw new Error("Goal is required to generate extraction fields.");
+        }
+      
+        const systemPrompt = `
+      You are an AI assistant that generates structured 'extraction_fields' JSON
+      based only on the provided goal.
+      
+      Output rules:
+      - Return ONLY a JSON array.
+      - Do NOT include any explanation.
+      - EACH element must follow this strict format:
+      
+      {
+        "field_name": "<string>",
+        "response_type": "text|number|phone_no|email|pincode|url|date|boolean",
+        "required": true or false,
+        "value": null
+      }
+      
+      - field_name must be lowercase_with_underscores.
+      - Infer the fields ONLY from the goal.
+      `;
+      
+        const userPrompt = `Goal: ${goal}\nGenerate extraction_fields JSON array.`;
+      
+        try {
+          const response = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${GPT_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "gpt-4o",
+              messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userPrompt }
+              ],
+              temperature: 0.2,
+              max_tokens: 250,
+            }),
+          });
+      
+          const data = await response.json();
+          console.log("ExtractFields API Response:", data);
+      
+          const raw = data?.choices?.[0]?.message?.content || "";
+      
+          // Try parsing JSON safely
+          let extractionJson;
+          try {
+            extractionJson = JSON.parse(raw);
+          } catch (e) {
+            console.error("Invalid JSON from GPT:", raw);
+            throw new Error("GPT returned invalid JSON.");
+          }
+      
+          if (!Array.isArray(extractionJson)) {
+            throw new Error("GPT returned a non-array JSON. Expected an array.");
+          }
+      
+          return extractionJson;
+      
+        } catch (error) {
+          console.error("Error calling GPT in getExtractFields:", error);
+          throw new Error("Failed to generate extraction fields");
+        }
+      }
+      
+      
 }
