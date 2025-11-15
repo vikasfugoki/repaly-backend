@@ -135,33 +135,61 @@ export class AIServices{
 
       async getExtractFields(goal: string): Promise<any[]> {
         const GPT_KEY = this.api.getGptKey();
-        console.log("GPT API Key:", GPT_KEY);
+        console.log("GPT API Key:", GPT_KEY ? "Present" : "Missing");
       
         if (!goal || goal.trim().length === 0) {
           throw new Error("Goal is required to generate extraction fields.");
         }
       
-        const systemPrompt = `
-      You are an AI assistant that generates structured 'extraction_fields' JSON
-      based only on the provided goal.
+        if (!GPT_KEY) {
+          throw new Error("GPT API Key is not configured.");
+        }
       
-      Output rules:
-      - Return ONLY a JSON array.
-      - Do NOT include any explanation.
-      - EACH element must follow this strict format:
+        const systemPrompt = `You are an AI assistant that generates structured 'extraction_fields' JSON based on the provided goal.
       
+      CRITICAL RULES:
+      - Return ONLY a valid JSON array, nothing else
+      - NO markdown code blocks (no \`\`\`json)
+      - NO explanations or additional text
+      - ONLY the raw JSON array
+      
+      Each element MUST follow this exact format:
       {
-        "field_name": "<string>",
+        "field_name": "<lowercase_with_underscores>",
         "response_type": "text|number|phone_no|email|pincode|url|date|boolean",
-        "required": true or false,
+        "required": true|false,
+        "prompt_hint": "<brief description for user>",
         "value": null
       }
       
-      - field_name must be lowercase_with_underscores.
-      - Infer the fields ONLY from the goal.
-      `;
+      Example output for goal "Collect customer contact info":
+      [
+        {
+          "field_name": "customer_name",
+          "response_type": "text",
+          "required": true,
+          "prompt_hint": "your full name",
+          "value": null
+        },
+        {
+          "field_name": "email_address",
+          "response_type": "email",
+          "required": true,
+          "prompt_hint": "email for order confirmation",
+          "value": null
+        },
+        {
+          "field_name": "phone_number",
+          "response_type": "phone_no",
+          "required": true,
+          "prompt_hint": "contact number",
+          "value": null
+        }
+      ]`;
       
-        const userPrompt = `Goal: ${goal}\nGenerate extraction_fields JSON array.`;
+        const userPrompt = `Goal: "${goal}"
+      
+      Generate the extraction_fields JSON array based on this goal. Return ONLY the JSON array.`;
       
         try {
           const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -171,41 +199,108 @@ export class AIServices{
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              model: "gpt-4o",
+              model: "gpt-4o-mini", // Changed to gpt-4o-mini - faster and cheaper for this task
               messages: [
                 { role: "system", content: systemPrompt },
                 { role: "user", content: userPrompt }
               ],
-              temperature: 0.2,
-              max_tokens: 250,
+              temperature: 0.1, // Lower temperature for more consistent output
+              max_tokens: 500, // Increased for more fields
             }),
           });
+      
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error("OpenAI API Error:", errorData);
+            throw new Error(`OpenAI API request failed: ${response.status} ${response.statusText}`);
+          }
       
           const data = await response.json();
           console.log("ExtractFields API Response:", data);
       
           const raw = data?.choices?.[0]?.message?.content || "";
+          console.log("Raw GPT Response:", raw);
       
-          // Try parsing JSON safely
-          let extractionJson;
+          if (!raw) {
+            throw new Error("GPT returned empty response.");
+          }
+      
+          // Clean up response - remove markdown code blocks if present
+          let cleanedJson = raw.trim();
+          
+          // Remove ```json and ``` if present
+          cleanedJson = cleanedJson.replace(/^```json\s*/i, '');
+          cleanedJson = cleanedJson.replace(/^```\s*/i, '');
+          cleanedJson = cleanedJson.replace(/\s*```$/i, '');
+          cleanedJson = cleanedJson.trim();
+      
+          // Try parsing JSON
+          let extractionJson: any[];
           try {
-            extractionJson = JSON.parse(raw);
-          } catch (e) {
-            console.error("Invalid JSON from GPT:", raw);
-            throw new Error("GPT returned invalid JSON.");
+            extractionJson = JSON.parse(cleanedJson);
+          } catch (parseError) {
+            console.error("JSON Parse Error:", parseError);
+            console.error("Attempted to parse:", cleanedJson);
+            throw new Error("GPT returned invalid JSON format. Please try again.");
           }
       
+          // Validate it's an array
           if (!Array.isArray(extractionJson)) {
-            throw new Error("GPT returned a non-array JSON. Expected an array.");
+            console.error("Expected array, got:", typeof extractionJson);
+            throw new Error("GPT returned non-array JSON. Expected an array of fields.");
           }
       
-          return extractionJson;
+          // Validate array is not empty
+          if (extractionJson.length === 0) {
+            throw new Error("GPT returned empty array. No fields generated from goal.");
+          }
       
-        } catch (error) {
-          console.error("Error calling GPT in getExtractFields:", error);
-          throw new Error("Failed to generate extraction fields");
+          // Validate each field has required properties
+          const validatedFields = extractionJson.map((field, index) => {
+            if (!field.field_name || typeof field.field_name !== 'string') {
+              throw new Error(`Field at index ${index} is missing 'field_name' property.`);
+            }
+      
+            if (!field.response_type || typeof field.response_type !== 'string') {
+              throw new Error(`Field '${field.field_name}' is missing 'response_type' property.`);
+            }
+      
+            const validTypes = ['text', 'number', 'phone_no', 'email', 'pincode', 'url', 'date', 'boolean'];
+            if (!validTypes.includes(field.response_type)) {
+              throw new Error(`Field '${field.field_name}' has invalid response_type: ${field.response_type}`);
+            }
+      
+            // Ensure required field exists (default to true if missing)
+            if (typeof field.required !== 'boolean') {
+              field.required = true;
+            }
+      
+            // Ensure value is null
+            field.value = null;
+      
+            // Add prompt_hint if missing
+            if (!field.prompt_hint) {
+              field.prompt_hint = field.field_name.replace(/_/g, ' ');
+            }
+      
+            return field;
+          });
+      
+          console.log("✓ Successfully generated", validatedFields.length, "extraction fields");
+          return validatedFields;
+      
+        } catch (error: any) {
+          console.error("Error in getExtractFields:", error);
+          
+          // Provide more helpful error messages
+          if (error.message?.includes("API request failed")) {
+            throw new Error(`Failed to connect to OpenAI API: ${error.message}`);
+          } else if (error.message?.includes("invalid JSON")) {
+            throw new Error("GPT returned malformed data. Please try again or simplify your goal.");
+          } else {
+            throw new Error(`Failed to generate extraction fields: ${error.message || 'Unknown error'}`);
+          }
         }
       }
-      
       
 }
