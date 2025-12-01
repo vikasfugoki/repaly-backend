@@ -1,9 +1,9 @@
 import {
   GetCommand,
   PutCommand,
-  ScanCommand,
   UpdateCommand,
   DeleteCommand,
+  QueryCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { Injectable } from '@nestjs/common';
 import { DynamoDBService } from '../dynamodb.service';
@@ -28,7 +28,7 @@ export class InstagramFlowstateRepositoryService {
       TableName: this.tableName,
       Key: { id: id },
     });
-      await this.dynamoDbService.dynamoDBDocumentClient.send(params);
+    await this.dynamoDbService.dynamoDBDocumentClient.send(params);
     return {
       success: true,
       message: 'Flowstate deleted successfully',
@@ -36,14 +36,22 @@ export class InstagramFlowstateRepositoryService {
   }
 
   async getFlowstatesByAccountId(accountId: string) {
-    const params = new ScanCommand({
+    const params = new QueryCommand({
       TableName: this.tableName,
-      FilterExpression: 'accountId = :accountId',
-      ExpressionAttributeValues: { ':accountId': accountId },
-      ProjectionExpression: 'flow',
+      IndexName: 'accountId-index', // your GSI name
+      KeyConditionExpression: 'accountId = :accountId',
+      ExpressionAttributeValues: {
+        ':accountId': accountId,
+      },
+      ProjectionExpression: '#flow',
+      ExpressionAttributeNames: {
+        '#flow': 'flow',
+      },
     });
+
     const result =
       await this.dynamoDbService.dynamoDBDocumentClient.send(params);
+
     return result.Items?.map((item) => item.flow) || [];
   }
 
@@ -67,37 +75,66 @@ export class InstagramFlowstateRepositoryService {
   }
 
   async activateFlowstate(flowstateId: string, accountId: string) {
-    // Step 1️⃣ — get all flowstates for that account
-    const scanParams = new ScanCommand({
+    const queryParams = new QueryCommand({
       TableName: this.tableName,
-      FilterExpression: 'accountId = :accountId',
-      ExpressionAttributeValues: { ':accountId': accountId },
+      IndexName: 'accountId-index',
+      KeyConditionExpression: 'accountId = :accountId',
+      ExpressionAttributeValues: {
+        ':accountId': accountId,
+      },
+      ProjectionExpression: 'id, isActiveAutomation, #flow.isActiveAutomation',
+      ExpressionAttributeNames: {
+        '#flow': 'flow',
+      },
     });
 
     const result =
-      await this.dynamoDbService.dynamoDBDocumentClient.send(scanParams);
+      await this.dynamoDbService.dynamoDBDocumentClient.send(queryParams);
     const flowstates = result.Items || [];
 
-    // Step 2️⃣ — update each one (except the active one)
-    const updatePromises = flowstates.map((flowstate) => {
-      const shouldBeActive = flowstate.id === flowstateId;
-      const updatedFlow = {
-        ...flowstate.flow,
-        isActiveAutomation: shouldBeActive,
-      };
-      const updateParams = new UpdateCommand({
-        TableName: this.tableName,
-        Key: { id: flowstate.id },
-        UpdateExpression:
-          'SET isActiveAutomation = :isActiveAutomation, flow = :flow',
-        ExpressionAttributeValues: {
-          ':isActiveAutomation': shouldBeActive,
-          ':flow': updatedFlow,
-        },
-      });
+    const updatePromises: Promise<any>[] = [];
 
-      return this.dynamoDbService.dynamoDBDocumentClient.send(updateParams);
+    // Deactivate currently active flowstates (except the one we’re activating)
+    const activeFlowstates = flowstates.filter(
+      (fs) => fs.flow?.isActiveAutomation === true && fs.id !== flowstateId,
+    );
+
+    activeFlowstates.forEach((flowstate) => {
+      updatePromises.push(
+        this.dynamoDbService.dynamoDBDocumentClient.send(
+          new UpdateCommand({
+            TableName: this.tableName,
+            Key: { id: flowstate.id },
+            UpdateExpression:
+              'SET isActiveAutomation = :false, #flow.isActiveAutomation = :false',
+            ExpressionAttributeNames: {
+              '#flow': 'flow',
+            },
+            ExpressionAttributeValues: {
+              ':false': false,
+            },
+          }),
+        ),
+      );
     });
+
+    // Activate the target flowstate
+    updatePromises.push(
+      this.dynamoDbService.dynamoDBDocumentClient.send(
+        new UpdateCommand({
+          TableName: this.tableName,
+          Key: { id: flowstateId },
+          UpdateExpression:
+            'SET isActiveAutomation = :true, #flow.isActiveAutomation = :true',
+          ExpressionAttributeNames: {
+            '#flow': 'flow',
+          },
+          ExpressionAttributeValues: {
+            ':true': true,
+          },
+        }),
+      ),
+    );
 
     await Promise.all(updatePromises);
 
