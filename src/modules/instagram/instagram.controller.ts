@@ -883,10 +883,7 @@ export class InstagramAccountController {
         accountId,
       );
     } catch (error) {
-      console.log(
-        'Failed to get the DM flowstates:',
-        (error as Error).message,
-      );
+      console.log('Failed to get the DM flowstates:', (error as Error).message);
       throw new Error('Failed to get the DM flowstates.');
     }
   }
@@ -899,7 +896,7 @@ export class InstagramAccountController {
   ) {
     try {
       return await this.instagramAccountService.deleteInstagramDMFlowstate(
-        flowstateId
+        flowstateId,
       );
     } catch (error) {
       console.log(
@@ -907,6 +904,22 @@ export class InstagramAccountController {
         (error as Error).message,
       );
       throw new Error('Failed to delete the DM flowstate.');
+    }
+  }
+
+  @InstagramResourceType('account')
+  @Get(':accountId/flowstate/:flowstateId')
+  async getFlowState(
+    @Param('accountId') accountId: string,
+    @Param('flowstateId') flowstateId: string,
+  ) {
+    try {
+      return await this.instagramAccountService.getInstagramDMFlowstateDetails(
+        flowstateId,
+      );
+    } catch (error) {
+      console.log('Failed to get the DM flowstate:', (error as Error).message);
+      throw new Error('Failed to get the DM flowstate.');
     }
   }
 }
