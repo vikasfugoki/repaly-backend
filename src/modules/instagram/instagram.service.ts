@@ -2646,6 +2646,7 @@ export class InstagramAccountService {
       // 🟩 If it's an AI node → aggregate values by field_name
       if (first.block_type === 'ai_node') {
         // Use a map to collect values per field
+        console.log('Aggregating AI node fields from items:', items);
         const aggregated: Record<string, string[]> = {};
   
         items.forEach(node => {
