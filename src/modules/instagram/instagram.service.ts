@@ -2643,7 +2643,30 @@ export class InstagramAccountService {
         };
       }
   
-      // 🟩 Non-text questions → return items normally
+      // 🟩 If it's an AI node → aggregate values by field_name
+      if (first.block_type === 'ai_node') {
+        // Use a map to collect values per field
+        const aggregated: Record<string, string[]> = {};
+  
+        items.forEach(node => {
+          node.extract_fields.forEach(field => {
+            if (!aggregated[field.field_name]) {
+              aggregated[field.field_name] = [];
+            }
+            aggregated[field.field_name].push(field.value);
+          });
+        });
+  
+        // Convert map to array of objects
+        const formatted = Object.entries(aggregated).map(([field_name, values]) => ({
+          field_name,
+          values: [...new Set(values.map(v => v.toString().trim()))], // unique & trimmed
+        }));
+  
+        return formatted;
+      }
+  
+      // 🟩 Default → return items normally
       return items;
   
     } catch (error) {
@@ -2654,6 +2677,7 @@ export class InstagramAccountService {
       throw error;
     }
   }
+  
   
 
   // async getAdAnalyticsById(accountId: string, adId: string) {
