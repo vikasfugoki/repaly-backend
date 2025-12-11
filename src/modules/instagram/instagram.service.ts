@@ -31,6 +31,7 @@ import { InstagramDmMessageDetailsService } from '@database/dynamodb/repository-
 import { InstagramDmMessagesService } from '@database/dynamodb/repository-services/instagram.dmMessages.service';
 import { InstagramQuickReplyRepositoryService } from '@database/dynamodb/repository-services/instagram.qucikReply.service';
 import { InstagramFlowstateRepositoryService } from '@database/dynamodb/repository-services/instagram.flowstate.service';
+import { InstagramDmFlowAnalyticsService } from '@database/dynamodb/repository-services/instagram.dmFlowAnalytics.service';
 import { v4 as uuidv4 } from 'uuid';
 import { TriggerTypes } from '../utils/enums';
 
@@ -55,6 +56,7 @@ export class InstagramAccountService {
     private readonly instagramDmMessagesService: InstagramDmMessagesService,
     private readonly instagramQuickReplyRepositoryService: InstagramQuickReplyRepositoryService,
     private readonly instagramFlowstateRepositoryService: InstagramFlowstateRepositoryService,
+    private readonly instagramDmFlowAnalyticsService: InstagramDmFlowAnalyticsService,
   ) {}
 
   private buildInsights(
@@ -2608,6 +2610,51 @@ export class InstagramAccountService {
       throw error;
     }
   }
+
+  async getDMAutomationStats(accountId: string, blockNodeId: string) {
+    try {
+      const result =
+        await this.instagramDmFlowAnalyticsService.getAnalyticsByBlockId(
+          blockNodeId,
+        );
+  
+      const items = result?.Items ?? [];
+  
+      if (items.length === 0) return null;
+  
+      const first = items[0];
+  
+      // 🟦 If it's a text question → aggregate all answers
+      if (first.block_type === 'text_question') {
+        const question = first.question ?? null;
+  
+        // Extract answer from each item
+        const answers = items
+          .map(item => item.answer ?? item.value ?? item.response)
+          .flat()
+          .filter(x => x)
+          .map(a => a.toString().trim());
+  
+        const uniqueAnswers = [...new Set(answers)];
+  
+        return {
+          question,
+          answer: uniqueAnswers,
+        };
+      }
+  
+      // 🟩 Non-text questions → return items normally
+      return items;
+  
+    } catch (error) {
+      console.error(
+        `Failed to get DM automation stats for account ${accountId}, blockNodeId ${blockNodeId}:`,
+        error,
+      );
+      throw error;
+    }
+  }
+  
 
   // async getAdAnalyticsById(accountId: string, adId: string) {
   //   try {

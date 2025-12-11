@@ -922,4 +922,26 @@ export class InstagramAccountController {
       throw new Error('Failed to get the DM flowstate.');
     }
   }
+
+  @InstagramResourceType('account')
+  @Get(':accountId/dm-automation-stats/:block_node_id')
+  async getDMAutomationStats(
+    @Param('accountId') accountId: string,
+    @Param('block_node_id') block_node_id: string,
+  ) {
+    try {
+      return await this.instagramAccountService.getDMAutomationStats(
+        accountId,
+        block_node_id,
+      );
+    } catch (error) {
+      console.log(
+        `Failed to get DM automation stats for block_node_id ${block_node_id} in account ${accountId}:`,
+        (error as Error).message,
+      );
+      throw new Error(
+        `Failed to get DM automation stats for block_node_id ${block_node_id} in account ${accountId}`,
+      );
+    }
+  }
 }
