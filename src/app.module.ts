@@ -45,7 +45,7 @@ import { InstagramDmMessageDetailsService } from '@database/dynamodb/repository-
 import { InstagramDmMessagesService } from '@database/dynamodb/repository-services/instagram.dmMessages.service';
 import { InstagramQuickReplyRepositoryService } from '@database/dynamodb/repository-services/instagram.qucikReply.service';
 import { InstagramFlowstateRepositoryService } from '@database/dynamodb/repository-services/instagram.flowstate.service';
-
+import { InstagramDmFlowAnalyticsService } from '@database/dynamodb/repository-services/instagram.dmFlowAnalytics.service';
 
 @Module({
   imports: [
@@ -102,6 +102,7 @@ import { InstagramFlowstateRepositoryService } from '@database/dynamodb/reposito
     InstagramDmMessagesService,
     InstagramQuickReplyRepositoryService,
     InstagramFlowstateRepositoryService,
+    InstagramDmFlowAnalyticsService,
   ],
   exports: [DynamoDBService],
 })
