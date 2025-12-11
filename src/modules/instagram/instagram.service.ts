@@ -2630,9 +2630,14 @@ export class InstagramAccountService {
   
         // Extract answer from each item
         const answers = items
-          .map(item => item.answer ?? item.value ?? item.response)
+          .map(item => {
+            const ans = item.answer ?? item.value ?? item.response;
+            // Replace undefined/null with 'None'
+            if (ans === undefined || ans === null) return 'None';
+            if (Array.isArray(ans)) return ans.map(a => (a === undefined || a === null ? 'None' : a));
+            return ans;
+          })
           .flat()
-          .filter(x => x)
           .map(a => a.toString().trim());
   
         const uniqueAnswers = [...new Set(answers)];
@@ -2643,10 +2648,8 @@ export class InstagramAccountService {
         };
       }
   
-      // 🟩 If it's an AI node → aggregate values by field_name
+      // 🟩 If it's an AI node → aggregate all field values
       if (first.block_type === 'ai_node') {
-        // Use a map to collect values per field
-        console.log('Aggregating AI node fields from items:', items);
         const aggregated: Record<string, string[]> = {};
   
         items.forEach(node => {
@@ -2654,20 +2657,22 @@ export class InstagramAccountService {
             if (!aggregated[field.field_name]) {
               aggregated[field.field_name] = [];
             }
-            aggregated[field.field_name].push(field.value);
+  
+            // Replace undefined/null with 'None'
+            const value = field.value !== undefined && field.value !== null ? field.value : 'None';
+            aggregated[field.field_name].push(value);
           });
         });
   
-        // Convert map to array of objects
         const formatted = Object.entries(aggregated).map(([field_name, values]) => ({
           field_name,
-          values: [...new Set(values.map(v => v.toString().trim()))], // unique & trimmed
+          values: [...new Set(values.map(v => v.toString().trim()))],
         }));
   
         return formatted;
       }
   
-      // 🟩 Default → return items normally
+      // 🟩 Non-text, non-AI → return items normally
       return items;
   
     } catch (error) {
@@ -2678,6 +2683,7 @@ export class InstagramAccountService {
       throw error;
     }
   }
+  
   
   
 
