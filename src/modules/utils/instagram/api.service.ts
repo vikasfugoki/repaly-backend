@@ -3,12 +3,11 @@ import { InstagramUrlService } from './url.service';
 import axios from 'axios';
 import {
   InstagramAccessTokenResponse,
-  InstagramMediaInsightResponse,
   InstagramMediaResponse,
   InstagramOauthResponse,
   InstagramUserInfoResponse,
   InstagramStoriesResponse,
-  InstagramMediaInsight
+  InstagramMediaInsight,
 } from '@lib/dto';
 import { EnvironmentService } from '../environment/environment.service';
 
@@ -81,14 +80,41 @@ export class InstagramApiService {
     }
   }
 
+  async getMediaPaginated(
+    userId: string,
+    access_token: string,
+    limit: number = 15,
+    after?: string, // Instagram cursor
+  ) {
+    const url = this.urlService.getMediaUrl(userId);
+    const params: any = {
+      fields:
+        'id,caption,media_type,media_url,timestamp,like_count,thumbnail_url,comments_count,permalink',
+      access_token,
+      limit,
+    };
+
+    // Add cursor if provided for subsequent pages
+    if (after) {
+      params.after = after;
+    }
+
+    try {
+      const response = await axios.get(url, { params });
+      return response.data; // Returns { data: [...], paging: { next, previous } }
+    } catch (error) {
+      console.log('Failed to fetch media', (error as Error).message);
+      throw new Error('Failed to fetch media');
+    }
+  }
+
   async getStories(userId: string, access_token: string) {
     const url = this.urlService.getStoryUrl(userId);
-    console.log("url:",url);
+    console.log('url:', url);
     const params = {
-      fields:
-      'id,media_type,media_url,thumbnail_url,timestamp',
+      fields: 'id,media_type,media_url,thumbnail_url,timestamp',
       access_token,
-      limit: 15
+      limit: 15,
     };
 
     try {
@@ -124,22 +150,24 @@ export class InstagramApiService {
 
   async getMediaCount(accountId: string, accessToken: string): Promise<number> {
     if (!accountId || !accessToken) {
-      throw new Error("Account ID and access token are required");
+      throw new Error('Account ID and access token are required');
     }
-  
+
     const url = `https://graph.instagram.com/${accountId}?fields=id,username,media_count&access_token=${accessToken}`;
-  
+
     try {
       const response = await fetch(url);
       if (!response.ok) {
         const errorBody = await response.text();
-        throw new Error(`Failed to fetch media_count: ${response.status} - ${errorBody}`);
+        throw new Error(
+          `Failed to fetch media_count: ${response.status} - ${errorBody}`,
+        );
       }
-  
+
       const data = await response.json();
       return data.media_count ?? 0;
     } catch (error) {
-      console.error("Error fetching media_count:", error);
+      console.error('Error fetching media_count:', error);
       return 0; // fallback if API fails
     }
   }
@@ -184,16 +212,18 @@ export class InstagramApiService {
         ? ['ig_reels_avg_watch_time', 'ig_reels_video_view_total_time']
         : []),
     ];
-  
-    const mockInsights: InstagramMediaInsight[] = defaultMetrics.map((metric) => ({
-      name: metric,
-      period: 'lifetime',
-      values: [{ value: 0 }],
-      title: metric.replace(/_/g, ' ').toUpperCase(),
-      description: `Mocked value for ${metric}`,
-      id: mediaId, // Assign mediaId here
-    }));
-  
+
+    const mockInsights: InstagramMediaInsight[] = defaultMetrics.map(
+      (metric) => ({
+        name: metric,
+        period: 'lifetime',
+        values: [{ value: 0 }],
+        title: metric.replace(/_/g, ' ').toUpperCase(),
+        description: `Mocked value for ${metric}`,
+        id: mediaId, // Assign mediaId here
+      }),
+    );
+
     return mockInsights;
   }
 
@@ -209,8 +239,8 @@ export class InstagramApiService {
       const response = await axios.get<InstagramUserInfoResponse>(url, {
         params,
       });
-      console.log("details from the longlive token: ", response.data);
-      
+      console.log('details from the longlive token: ', response.data);
+
       return response.data;
     } catch (error) {
       console.log('Failed to get user details.', (error as Error).message);
@@ -218,11 +248,15 @@ export class InstagramApiService {
     }
   }
 
-  async subscribeWebhookOfInstagram(userInstaId: string, accessToken: string): Promise<any> {
+  async subscribeWebhookOfInstagram(
+    userInstaId: string,
+    accessToken: string,
+  ): Promise<any> {
     const url = this.urlService.getInstagramWebhookSubscribeURL(userInstaId);
-    console.log('url', url)
+    console.log('url', url);
     const params = {
-      subscribed_fields: 'messages,messaging_postbacks,messaging_seen,messaging_handover,messaging_referral,messaging_optins,message_reactions,standby,comments,live_comments,mentions,story_insights,creator_marketplace_projects,creator_marketplace_invited_creator_onboarding,delta,story_reactions',
+      subscribed_fields:
+        'messages,messaging_postbacks,messaging_seen,messaging_handover,messaging_referral,messaging_optins,message_reactions,standby,comments,live_comments,mentions,story_insights,creator_marketplace_projects,creator_marketplace_invited_creator_onboarding,delta,story_reactions',
       access_token: accessToken,
     };
 
@@ -234,5 +268,4 @@ export class InstagramApiService {
       throw new Error('Failed to subscribe webhook.');
     }
   }
-  
 }
