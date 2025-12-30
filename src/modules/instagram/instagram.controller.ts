@@ -7,12 +7,15 @@ import {
   Patch,
   Post,
   Put,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiBody, ApiParam } from '@nestjs/swagger';
 import { InstagramAccountService } from './instagram.service';
 import { InstagramOwnershipGuard } from '../auth/instagram-ownership.guard';
 import { InstagramResourceType } from '../auth/instagram-resource-type.decorator';
+import { PaginatedResponse, PaginationQueryDto } from '@database/dto/pagination.dto';
+import { InstagramMediaPaginationService } from './instagram-media-pagination.service';
 
 @ApiTags('Instagram Account')
 @Controller('instagram')
@@ -20,6 +23,7 @@ import { InstagramResourceType } from '../auth/instagram-resource-type.decorator
 export class InstagramAccountController {
   constructor(
     private readonly instagramAccountService: InstagramAccountService,
+    private readonly instagramMediaPaginationService: InstagramMediaPaginationService,
   ) {}
 
   @InstagramResourceType('account')
@@ -106,18 +110,14 @@ export class InstagramAccountController {
 
   @InstagramResourceType('account')
   @Get(':accountId/get-media')
-  async getAccountMediaFromTable(@Param('accountId') accountId: string) {
-    try {
-      return await this.instagramAccountService.getInstagramMediaFromTable(
-        accountId,
-      );
-    } catch (error) {
-      console.log(
-        'Failed to get media from dynamodb table:',
-        (error as Error).message,
-      );
-      throw new Error('Failed to get media from dynamodb table');
-    }
+  async getAccountMediaPaginated(
+    @Param('accountId') accountId: string,
+    @Query() paginationDto: PaginationQueryDto,
+  ): Promise<PaginatedResponse<any>> {
+    return await this.instagramMediaPaginationService.getMediaWithPagination(
+      accountId,
+      paginationDto,
+    );
   }
 
   @InstagramResourceType('account')
