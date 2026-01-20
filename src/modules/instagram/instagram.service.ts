@@ -2729,7 +2729,7 @@ export class InstagramAccountService {
 
   //     return allComments;
   //   } catch (error) {
-  //     console.error(`Failed to get ad analytics for ${adId}:`, error);
+  //     console.error(`Failed to get ad_analytics for ${adId}:`, error);
   //     throw new Error('Unable to retrieve ad analytics');
   //   }
   // }
