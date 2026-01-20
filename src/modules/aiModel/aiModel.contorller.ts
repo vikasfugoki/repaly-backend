@@ -37,6 +37,8 @@ export class AIController {
         return await this.aiServices.suggestTagReplyGpt(body);
     }
 
+    
+
     @Post('extract-fields')
     async extractFields(@Body() body: {goal: string}) {
         return await this.aiServices.getExtractFields(body.goal);
