@@ -2718,11 +2718,6 @@ export class InstagramAccountService {
       return {  };
     }
 
-    // 3️⃣ Store & return
-    await this.instagramMediaRepositoryService.updateMediaDetails(
-      fetchedMedia,
-    );
-
     const insights = await this.instagramApiService.getMediaInsight(
               fetchedMedia.id,
               account.access_token,
