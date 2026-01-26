@@ -254,6 +254,7 @@ export class InstagramMediaPaginationService {
   const MAX_PAGES = 5;
 
   const account = await this.instagramAccountService.getAccount(accountId);
+  console.log("account:", account);
   if (!account || !account.access_token) {
     throw new Error(`Instagram account or access token not found for ${accountId}`);
   }

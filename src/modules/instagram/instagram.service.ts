@@ -2703,6 +2703,8 @@ export class InstagramAccountService {
         permalink,
       );
 
+      console.log("fetchMedia:", fetchedMedia);
+
     if (!fetchedMedia) {
       return { media_id: null };
     }
