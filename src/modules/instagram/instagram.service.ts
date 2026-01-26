@@ -591,54 +591,54 @@ export class InstagramAccountService {
       // );
 
       // await Promise.all(deletePromises);
-      await this.instagramMediaAnalyticsRepositoryService.deleteAccount(
-        accountId,
-      );
-      console.log(`deleted from 'instagram_analytics_repository'`);
+      // await this.instagramMediaAnalyticsRepositoryService.deleteAccount(
+      //   accountId,
+      // );
+      // console.log(`deleted from 'instagram_analytics_repository'`);
 
       // // delete the all media which have the given accountId from the 'instagram_media_repository'
-      await this.instagramMediaRepositoryService.deleteAccount(accountId);
-      console.log(`deleted from 'instagram_media_repository'`);
+      // await this.instagramMediaRepositoryService.deleteAccount(accountId);
+      // console.log(`deleted from 'instagram_media_repository'`);
 
-      // delete all the story for given accountId from the "instagram_story_repository"
-      await this.instagramStoryRepositoryService.deleteAccount(accountId);
-      console.log(`deleted from 'instagram_story_repository'`);
+      // // delete all the story for given accountId from the "instagram_story_repository"
+      // await this.instagramStoryRepositoryService.deleteAccount(accountId);
+      // console.log(`deleted from 'instagram_story_repository'`);
 
-      // delete all the story-analytics for given accountId from the "instagram_story_analytics_repository"
-      await this.instagramStoryAnalyticsRepositoryService.deleteAccount(
-        accountId,
-      );
-      console.log(`deleted from 'instagram_story_analytics_repository'`);
+      // // delete all the story-analytics for given accountId from the "instagram_story_analytics_repository"
+      // await this.instagramStoryAnalyticsRepositoryService.deleteAccount(
+      //   accountId,
+      // );
+      // console.log(`deleted from 'instagram_story_analytics_repository'`);
 
-      // delete all the conversation for given accountId from the "instagram_dm_categorization_repository"
-      await this.instagramDMService.deleteAccount(accountId);
-      console.log(`deleted from 'instagram_dm_categorization_repository'`);
+      // // delete all the conversation for given accountId from the "instagram_dm_categorization_repository"
+      // await this.instagramDMService.deleteAccount(accountId);
+      // console.log(`deleted from 'instagram_dm_categorization_repository'`);
 
-      // delete the instagram account and the attached facebook access_token from the "facebook_access_token_repository"
-      await this.instagramFbAccessTokenService.deleteAccount(accountId);
-      console.log(`delete from 'facebook_access_token_repository'`);
+      // // delete the instagram account and the attached facebook access_token from the "facebook_access_token_repository"
+      // await this.instagramFbAccessTokenService.deleteAccount(accountId);
+      // console.log(`delete from 'facebook_access_token_repository'`);
 
-      // delete all the ads related details for given accountId from "instagram_ads_repository"
-      await this.instagramAdsService.deleteAccount(accountId);
-      console.log(`deleted from 'instagram_ads_repository'`);
-      // delete all the ads analytics related details for given accountId from "instagram_ads_analytics_repository"
-      await this.instagramAdAnalyticsRepositoryService.deleteAccount(accountId);
-      console.log(`deleted from 'instagram_ads_analytics_repository'`);
+      // // delete all the ads related details for given accountId from "instagram_ads_repository"
+      // await this.instagramAdsService.deleteAccount(accountId);
+      // console.log(`deleted from 'instagram_ads_repository'`);
+      // // delete all the ads analytics related details for given accountId from "instagram_ads_analytics_repository"
+      // await this.instagramAdAnalyticsRepositoryService.deleteAccount(accountId);
+      // console.log(`deleted from 'instagram_ads_analytics_repository'`);
 
-      await this.instagramDmMessageDetailsService.deleteConversationDetails(
-        accountId,
-      );
-      console.log(`deleted from 'instagram_dm_message_details_repository'`);
-      await this.instagramDmMessagesService.deleteConversation(accountId);
-      console.log(`deleted from 'instagram_dm_messages_repository'`);
+      // await this.instagramDmMessageDetailsService.deleteConversationDetails(
+      //   accountId,
+      // );
+      // console.log(`deleted from 'instagram_dm_message_details_repository'`);
+      // await this.instagramDmMessagesService.deleteConversation(accountId);
+      // console.log(`deleted from 'instagram_dm_messages_repository'`);
 
-      // await new Promise((resolve) => setTimeout(resolve, 2 * 60 * 1000));
-      await this.instagramAccountLevelAnalyticsRepositoryService.deleteAccount(
-        accountId,
-      );
-      console.log(
-        `deleted from 'instagram_account_level_analytics_repository'`,
-      );
+      // // await new Promise((resolve) => setTimeout(resolve, 2 * 60 * 1000));
+      // await this.instagramAccountLevelAnalyticsRepositoryService.deleteAccount(
+      //   accountId,
+      // );
+      // console.log(
+      //   `deleted from 'instagram_account_level_analytics_repository'`,
+      // );
       return { success: true, message: `account has been removed.` };
     } catch (error) {
       console.error(`Failed to delete the account ${accountId}`);
