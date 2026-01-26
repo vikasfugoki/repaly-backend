@@ -65,15 +65,13 @@ export class InstagramMediaRepositoryService {
     return this.dynamoDbService.dynamoDBDocumentClient.send(params);
   }
 
-  async getMediaByPermalink(permalink: string, accountId: string) {
+  async getMediaByPermalink(permalink: string) {
   const params = new QueryCommand({
     TableName: this.tableName,
     IndexName: 'permalink-index',
-    KeyConditionExpression:
-      'permalink = :permalink AND accountId = :accountId',
+    KeyConditionExpression: 'permalink = :permalink',
     ExpressionAttributeValues: {
       ':permalink': permalink,
-      ':accountId': accountId,
     },
     Limit: 1,
   });

@@ -2687,7 +2687,7 @@ export class InstagramAccountService {
   async getOrFetchMedia(permalink: string, account_id: string) {
     try{
 
-      const mediaDetails = await this.instagramMediaRepositoryService.getMediaByPermalink(permalink, account_id);
+      const mediaDetails = await this.instagramMediaRepositoryService.getMediaByPermalink(permalink);
       
       if (mediaDetails) {
         return {
