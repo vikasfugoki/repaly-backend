@@ -2715,7 +2715,7 @@ export class InstagramAccountService {
     // 3️⃣ Check if media was found
     if (!fetchedMedia || fetchedMedia.id == null) {
       console.warn(`Media not found for permalink: ${permalink}`);
-      return { media_id: null };
+      return {  };
     }
 
     // 3️⃣ Store & return
@@ -2741,7 +2741,7 @@ export class InstagramAccountService {
         response,
       );
 
-    return this.instagramMediaRepositoryService.getMedia(response.id);
+    return (await this.instagramMediaRepositoryService.getMedia(response.id)).Item;
 
     } catch (error) {
       console.error(`Failed to search media_id for account ${account_id}:`, error);
