@@ -2736,7 +2736,7 @@ export class InstagramAccountService {
 
     
 
-    const response = {...mediaWithInsight, account_id};
+    const response = {...mediaWithInsight, "accountId": account_id};
     await this.instagramMediaRepositoryService.updateMediaDetails(
         response,
       );
