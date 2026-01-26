@@ -185,6 +185,12 @@ export class InstagramAccountController {
     }
   }
 
+  @InstagramResourceType("account")
+  @Get('media/search')
+  async searchMedia(@Body() input: { permalink: string; accountId: string}) {
+    return this.instagramAccountService.getOrFetchMedia(input['permalink'], input['accountId']);
+  }
+
   @InstagramResourceType('media')
   @Get(':mediaId/ai-enabled')
   async getAIEnabledFromTable(@Param('mediaId') mediaId: string) {
@@ -261,6 +267,9 @@ export class InstagramAccountController {
       throw new Error(`Error fetching time series for  comments on media`);
     }
   }
+
+
+  
 
   @InstagramResourceType('account')
   @Delete(':accountId/delete-account')

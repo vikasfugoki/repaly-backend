@@ -2683,6 +2683,25 @@ export class InstagramAccountService {
       throw error;
     }
   }
+
+  async getOrFetchMedia(permalink: string, account_id: string) {
+    try{
+
+      const mediaDetails = await this.instagramMediaRepositoryService.getMediaByPermalink(permalink, account_id);
+      
+      if (mediaDetails) {
+        return {
+          "media_id": mediaDetails.id,
+        };
+      }
+
+      // let's do the pagination since it is not present
+      return {"media_id":  null};
+
+    } catch (error) {
+      console.error(`Failed to search media_id for account ${account_id}:`, error);
+    }
+  }
   
   
   
