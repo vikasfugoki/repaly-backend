@@ -260,9 +260,16 @@ export class InstagramMediaPaginationService {
   }
 
   do {
+    // const response = await this.instagramApiService.getMediaPaginated(
+    //   accountId,
+    //   account.access_token,
+    //   limit,
+    //   instagramCursor,
+    // );
+
     const response = await this.instagramApiService.getMediaPaginated(
       accountId,
-      account.access_token,
+      "IGQWRhVjJwRjJQandjYlQySGVMWDhLUG13N2gtcHVlN1pPWXpCV2c2azViYUU4S19KaFZAQVWJoVE5jS0dHai04WTVURnVocFdlVG1QSW14ZA3JCbWxDSFc3NldfU1hnR1ZAFWm03V25INmV2UQZDZD",
       limit,
       instagramCursor,
     );
