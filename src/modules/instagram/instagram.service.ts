@@ -32,6 +32,7 @@ import { InstagramDmMessagesService } from '@database/dynamodb/repository-servic
 import { InstagramQuickReplyRepositoryService } from '@database/dynamodb/repository-services/instagram.qucikReply.service';
 import { InstagramFlowstateRepositoryService } from '@database/dynamodb/repository-services/instagram.flowstate.service';
 import { InstagramDmFlowAnalyticsService } from '@database/dynamodb/repository-services/instagram.dmFlowAnalytics.service';
+import { InstagramMediaPaginationService } from './instagram-media-pagination.service'
 import { v4 as uuidv4 } from 'uuid';
 import { TriggerTypes } from '../utils/enums';
 
@@ -57,6 +58,7 @@ export class InstagramAccountService {
     private readonly instagramQuickReplyRepositoryService: InstagramQuickReplyRepositoryService,
     private readonly instagramFlowstateRepositoryService: InstagramFlowstateRepositoryService,
     private readonly instagramDmFlowAnalyticsService: InstagramDmFlowAnalyticsService,
+    private readonly instagramMediaPaginationService: InstagramMediaPaginationService
   ) {}
 
   private buildInsights(
@@ -2687,15 +2689,24 @@ export class InstagramAccountService {
   async getOrFetchMedia(permalink: string, account_id: string) {
     try{
 
-      const mediaDetails = await this.instagramMediaRepositoryService.getMediaByPermalink(permalink);
+      // const mediaDetails = await this.instagramMediaRepositoryService.getMediaByPermalink(permalink);
       
-      if (mediaDetails) {
-        return {
-          "media_id": mediaDetails.id,
-        };
-      }
+      // if (mediaDetails) {
+      //   return {
+      //     "media_id": mediaDetails.id,
+      //   };
+      // }
       // let's do the pagination since it is not present
-      
+      const fetchedMedia =
+      await this.instagramMediaPaginationService.findMediaByPermalink(
+        account_id,
+        permalink,
+      );
+
+    if (!fetchedMedia) {
+      return { media_id: null };
+    }
+
       
       return {"media_id":  null};
 

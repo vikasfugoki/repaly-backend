@@ -246,7 +246,6 @@ export class InstagramMediaPaginationService {
 
   async findMediaByPermalink(
   accountId: string,
-  accessToken: string,
   permalink: string,
   limit = 25,
 ): Promise<InstagramMedia | null> {
