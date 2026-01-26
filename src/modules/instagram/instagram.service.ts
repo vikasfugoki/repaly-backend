@@ -2705,8 +2705,8 @@ export class InstagramAccountService {
 
       console.log("fetchMedia:", fetchedMedia);
 
-    if (!fetchedMedia) {
-      return { media_id: null };
+    if (fetchedMedia) {
+      return { media_id: fetchedMedia.id };
     }
 
       
