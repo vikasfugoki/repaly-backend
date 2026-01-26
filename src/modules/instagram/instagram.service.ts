@@ -2692,25 +2692,56 @@ export class InstagramAccountService {
       // const mediaDetails = await this.instagramMediaRepositoryService.getMediaByPermalink(permalink);
       
       // if (mediaDetails) {
-      //   return {
-      //     "media_id": mediaDetails.id,
-      //   };
+          // return mediaDetails;
       // }
       // let's do the pagination since it is not present
+
+      const account = await this.instagramAccountRepositoryService.getAccount(account_id);
+      console.log("account:", account);
+      if (!account || !account.access_token) {
+        throw new Error(`Instagram account or access token not found for ${account_id}`);
+      }
+
+
       const fetchedMedia =
       await this.instagramMediaPaginationService.findMediaByPermalink(
         account_id,
+        account.access_token,
         permalink,
       );
 
       console.log("fetchMedia:", fetchedMedia);
 
-    if (fetchedMedia) {
-      return { media_id: fetchedMedia.id };
+    // 3️⃣ Check if media was found
+    if (!fetchedMedia || fetchedMedia.id == null) {
+      console.warn(`Media not found for permalink: ${permalink}`);
+      return { media_id: null };
     }
 
-      
-      return {"media_id":  null};
+    // 3️⃣ Store & return
+    await this.instagramMediaRepositoryService.updateMediaDetails(
+      fetchedMedia,
+    );
+
+    const insights = await this.instagramApiService.getMediaInsight(
+              fetchedMedia.id,
+              account.access_token,
+              fetchedMedia.media_type,
+            );
+
+    const mediaWithInsight =
+              insights && insights.length > 0
+                ? this.buildInsights(fetchedMedia, insights)
+                : fetchedMedia;
+
+    
+
+    const response = {...mediaWithInsight, account_id};
+    await this.instagramMediaRepositoryService.updateMediaDetails(
+        response,
+      );
+
+    return this.instagramMediaRepositoryService.getMedia(response.id);
 
     } catch (error) {
       console.error(`Failed to search media_id for account ${account_id}:`, error);
