@@ -186,7 +186,7 @@ export class InstagramAccountController {
   }
 
   @InstagramResourceType("account")
-  @Get('media/search')
+  @Post('media/search')
   async searchMedia(@Body() input: { permalink: string; accountId: string}) {
     return this.instagramAccountService.getOrFetchMedia(input['permalink'], input['accountId']);
   }
