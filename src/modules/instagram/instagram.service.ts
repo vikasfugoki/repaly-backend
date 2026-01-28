@@ -32,6 +32,7 @@ import { InstagramDmMessagesService } from '@database/dynamodb/repository-servic
 import { InstagramQuickReplyRepositoryService } from '@database/dynamodb/repository-services/instagram.qucikReply.service';
 import { InstagramFlowstateRepositoryService } from '@database/dynamodb/repository-services/instagram.flowstate.service';
 import { InstagramDmFlowAnalyticsService } from '@database/dynamodb/repository-services/instagram.dmFlowAnalytics.service';
+import { InstagramMediaPaginationService } from './instagram-media-pagination.service'
 import { v4 as uuidv4 } from 'uuid';
 import { TriggerTypes } from '../utils/enums';
 
@@ -57,6 +58,7 @@ export class InstagramAccountService {
     private readonly instagramQuickReplyRepositoryService: InstagramQuickReplyRepositoryService,
     private readonly instagramFlowstateRepositoryService: InstagramFlowstateRepositoryService,
     private readonly instagramDmFlowAnalyticsService: InstagramDmFlowAnalyticsService,
+    private readonly instagramMediaPaginationService: InstagramMediaPaginationService
   ) {}
 
   private buildInsights(
@@ -589,54 +591,54 @@ export class InstagramAccountService {
       // );
 
       // await Promise.all(deletePromises);
-      await this.instagramMediaAnalyticsRepositoryService.deleteAccount(
-        accountId,
-      );
-      console.log(`deleted from 'instagram_analytics_repository'`);
+      // await this.instagramMediaAnalyticsRepositoryService.deleteAccount(
+      //   accountId,
+      // );
+      // console.log(`deleted from 'instagram_analytics_repository'`);
 
       // // delete the all media which have the given accountId from the 'instagram_media_repository'
-      await this.instagramMediaRepositoryService.deleteAccount(accountId);
-      console.log(`deleted from 'instagram_media_repository'`);
+      // await this.instagramMediaRepositoryService.deleteAccount(accountId);
+      // console.log(`deleted from 'instagram_media_repository'`);
 
-      // delete all the story for given accountId from the "instagram_story_repository"
-      await this.instagramStoryRepositoryService.deleteAccount(accountId);
-      console.log(`deleted from 'instagram_story_repository'`);
+      // // delete all the story for given accountId from the "instagram_story_repository"
+      // await this.instagramStoryRepositoryService.deleteAccount(accountId);
+      // console.log(`deleted from 'instagram_story_repository'`);
 
-      // delete all the story-analytics for given accountId from the "instagram_story_analytics_repository"
-      await this.instagramStoryAnalyticsRepositoryService.deleteAccount(
-        accountId,
-      );
-      console.log(`deleted from 'instagram_story_analytics_repository'`);
+      // // delete all the story-analytics for given accountId from the "instagram_story_analytics_repository"
+      // await this.instagramStoryAnalyticsRepositoryService.deleteAccount(
+      //   accountId,
+      // );
+      // console.log(`deleted from 'instagram_story_analytics_repository'`);
 
-      // delete all the conversation for given accountId from the "instagram_dm_categorization_repository"
-      await this.instagramDMService.deleteAccount(accountId);
-      console.log(`deleted from 'instagram_dm_categorization_repository'`);
+      // // delete all the conversation for given accountId from the "instagram_dm_categorization_repository"
+      // await this.instagramDMService.deleteAccount(accountId);
+      // console.log(`deleted from 'instagram_dm_categorization_repository'`);
 
-      // delete the instagram account and the attached facebook access_token from the "facebook_access_token_repository"
-      await this.instagramFbAccessTokenService.deleteAccount(accountId);
-      console.log(`delete from 'facebook_access_token_repository'`);
+      // // delete the instagram account and the attached facebook access_token from the "facebook_access_token_repository"
+      // await this.instagramFbAccessTokenService.deleteAccount(accountId);
+      // console.log(`delete from 'facebook_access_token_repository'`);
 
-      // delete all the ads related details for given accountId from "instagram_ads_repository"
-      await this.instagramAdsService.deleteAccount(accountId);
-      console.log(`deleted from 'instagram_ads_repository'`);
-      // delete all the ads analytics related details for given accountId from "instagram_ads_analytics_repository"
-      await this.instagramAdAnalyticsRepositoryService.deleteAccount(accountId);
-      console.log(`deleted from 'instagram_ads_analytics_repository'`);
+      // // delete all the ads related details for given accountId from "instagram_ads_repository"
+      // await this.instagramAdsService.deleteAccount(accountId);
+      // console.log(`deleted from 'instagram_ads_repository'`);
+      // // delete all the ads analytics related details for given accountId from "instagram_ads_analytics_repository"
+      // await this.instagramAdAnalyticsRepositoryService.deleteAccount(accountId);
+      // console.log(`deleted from 'instagram_ads_analytics_repository'`);
 
-      await this.instagramDmMessageDetailsService.deleteConversationDetails(
-        accountId,
-      );
-      console.log(`deleted from 'instagram_dm_message_details_repository'`);
-      await this.instagramDmMessagesService.deleteConversation(accountId);
-      console.log(`deleted from 'instagram_dm_messages_repository'`);
+      // await this.instagramDmMessageDetailsService.deleteConversationDetails(
+      //   accountId,
+      // );
+      // console.log(`deleted from 'instagram_dm_message_details_repository'`);
+      // await this.instagramDmMessagesService.deleteConversation(accountId);
+      // console.log(`deleted from 'instagram_dm_messages_repository'`);
 
-      // await new Promise((resolve) => setTimeout(resolve, 2 * 60 * 1000));
-      await this.instagramAccountLevelAnalyticsRepositoryService.deleteAccount(
-        accountId,
-      );
-      console.log(
-        `deleted from 'instagram_account_level_analytics_repository'`,
-      );
+      // // await new Promise((resolve) => setTimeout(resolve, 2 * 60 * 1000));
+      // await this.instagramAccountLevelAnalyticsRepositoryService.deleteAccount(
+      //   accountId,
+      // );
+      // console.log(
+      //   `deleted from 'instagram_account_level_analytics_repository'`,
+      // );
       return { success: true, message: `account has been removed.` };
     } catch (error) {
       console.error(`Failed to delete the account ${accountId}`);
@@ -2683,6 +2685,63 @@ export class InstagramAccountService {
       throw error;
     }
   }
+
+  async getOrFetchMedia(permalink: string, account_id: string) {
+    try{
+
+      // const mediaDetails = await this.instagramMediaRepositoryService.getMediaByPermalink(permalink);
+      
+      // if (mediaDetails) {
+          // return mediaDetails;
+      // }
+      // let's do the pagination since it is not present
+
+      const account = await this.instagramAccountRepositoryService.getAccount(account_id);
+      console.log("account:", account);
+      if (!account || !account.access_token) {
+        throw new Error(`Instagram account or access token not found for ${account_id}`);
+      }
+
+
+      const fetchedMedia =
+      await this.instagramMediaPaginationService.findMediaByPermalink(
+        account_id,
+        account.access_token,
+        permalink,
+      );
+
+      console.log("fetchMedia:", fetchedMedia);
+
+    // 3️⃣ Check if media was found
+    if (!fetchedMedia || fetchedMedia.id == null) {
+      console.warn(`Media not found for permalink: ${permalink}`);
+      return {  };
+    }
+
+    const insights = await this.instagramApiService.getMediaInsight(
+              fetchedMedia.id,
+              account.access_token,
+              fetchedMedia.media_type,
+            );
+
+    const mediaWithInsight =
+              insights && insights.length > 0
+                ? this.buildInsights(fetchedMedia, insights)
+                : fetchedMedia;
+
+    
+
+    const response = {...mediaWithInsight, "accountId": account_id};
+    await this.instagramMediaRepositoryService.updateMediaDetails(
+        response,
+      );
+
+    return (await this.instagramMediaRepositoryService.getMedia(response.id)).Item;
+
+    } catch (error) {
+      console.error(`Failed to search media_id for account ${account_id}:`, error);
+    }
+  }
   
   
   
@@ -2729,7 +2788,7 @@ export class InstagramAccountService {
 
   //     return allComments;
   //   } catch (error) {
-  //     console.error(`Failed to get ad analytics for ${adId}:`, error);
+  //     console.error(`Failed to get ad_analytics for ${adId}:`, error);
   //     throw new Error('Unable to retrieve ad analytics');
   //   }
   // }

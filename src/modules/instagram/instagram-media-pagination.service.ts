@@ -242,4 +242,45 @@ export class InstagramMediaPaginationService {
     });
     return media;
   }
+
+
+  async findMediaByPermalink(
+  accountId: string,
+  access_token: string,
+  permalink: string,
+  limit = 25,
+): Promise<InstagramMedia | null> {
+  let instagramCursor: string | undefined;
+  let pagesFetched = 0;
+  const MAX_PAGES = 5;
+
+  const account = await this.instagramAccountService.getAccount(accountId);
+  console.log("account:", account)
+  if (!account || !account.access_token) {
+    throw new Error(`Instagram account or access token not found for ${accountId}`);
+  }
+
+  do {
+    const response = await this.instagramApiService.getMediaPaginated(
+      accountId,
+      access_token,
+      limit,
+      instagramCursor,
+    );
+
+    for (const media of response.data ?? []) {
+      if (media.permalink === permalink) {
+        return media; // 🎯 FOUND → STOP
+      }
+    }
+
+    instagramCursor = response.paging?.next
+      ? this.extractCursorFromUrl(response.paging.next)
+      : undefined;
+
+    pagesFetched++;
+  } while (instagramCursor && pagesFetched < MAX_PAGES);
+
+  return null;
+}
 }

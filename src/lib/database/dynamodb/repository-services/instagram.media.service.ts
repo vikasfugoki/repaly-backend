@@ -65,6 +65,24 @@ export class InstagramMediaRepositoryService {
     return this.dynamoDbService.dynamoDBDocumentClient.send(params);
   }
 
+  async getMediaByPermalink(permalink: string) {
+  const params = new QueryCommand({
+    TableName: this.tableName,
+    IndexName: 'permalink-index',
+    KeyConditionExpression: 'permalink = :permalink',
+    ExpressionAttributeValues: {
+      ':permalink': permalink,
+    },
+    Limit: 1,
+  });
+
+  const result =
+    await this.dynamoDbService.dynamoDBDocumentClient.send(params);
+
+  return result.Items?.[0] ?? null;
+}
+
+
   async insertMediaDetails(mediaDetails: Record<string, any>) {
     try {
       const params = new PutCommand({

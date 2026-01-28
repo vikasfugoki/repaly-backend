@@ -75,68 +75,20 @@ export class InstagramFlowstateRepositoryService {
   }
 
   async activateFlowstate(flowstateId: string, accountId: string) {
-    const queryParams = new QueryCommand({
-      TableName: this.tableName,
-      IndexName: 'accountId-index',
-      KeyConditionExpression: 'accountId = :accountId',
-      ExpressionAttributeValues: {
-        ':accountId': accountId,
-      },
-      ProjectionExpression: 'id, isActiveAutomation, #flow.isActiveAutomation',
-      ExpressionAttributeNames: {
-        '#flow': 'flow',
-      },
-    });
-
-    const result =
-      await this.dynamoDbService.dynamoDBDocumentClient.send(queryParams);
-    const flowstates = result.Items || [];
-
-    const updatePromises: Promise<any>[] = [];
-
-    // Deactivate currently active flowstates (except the one we’re activating)
-    const activeFlowstates = flowstates.filter(
-      (fs) => fs.flow?.isActiveAutomation === true && fs.id !== flowstateId,
+    await this.dynamoDbService.dynamoDBDocumentClient.send(
+      new UpdateCommand({
+        TableName: this.tableName,
+        Key: { id: flowstateId },
+        UpdateExpression:
+          'SET isActiveAutomation = :true, #flow.isActiveAutomation = :true',
+        ExpressionAttributeNames: {
+          '#flow': 'flow',
+        },
+        ExpressionAttributeValues: {
+          ':true': true,
+        },
+      }),
     );
-
-    activeFlowstates.forEach((flowstate) => {
-      updatePromises.push(
-        this.dynamoDbService.dynamoDBDocumentClient.send(
-          new UpdateCommand({
-            TableName: this.tableName,
-            Key: { id: flowstate.id },
-            UpdateExpression:
-              'SET isActiveAutomation = :false, #flow.isActiveAutomation = :false',
-            ExpressionAttributeNames: {
-              '#flow': 'flow',
-            },
-            ExpressionAttributeValues: {
-              ':false': false,
-            },
-          }),
-        ),
-      );
-    });
-
-    // Activate the target flowstate
-    updatePromises.push(
-      this.dynamoDbService.dynamoDBDocumentClient.send(
-        new UpdateCommand({
-          TableName: this.tableName,
-          Key: { id: flowstateId },
-          UpdateExpression:
-            'SET isActiveAutomation = :true, #flow.isActiveAutomation = :true',
-          ExpressionAttributeNames: {
-            '#flow': 'flow',
-          },
-          ExpressionAttributeValues: {
-            ':true': true,
-          },
-        }),
-      ),
-    );
-
-    await Promise.all(updatePromises);
 
     return {
       success: true,
