@@ -2749,6 +2749,7 @@ export class InstagramAccountService {
     try {
       const result = await this.instagramNodeFlowAnalyticsService.getAnalyticsByFlowId(flowId);
       console.log("this is final result:", result);
+      return result;
     } catch (error) {
       console.error(`Failed to fetch the node analytics for flow_id ${flowId}:`, error);
     }
