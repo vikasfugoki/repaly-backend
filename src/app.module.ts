@@ -36,7 +36,7 @@ import { InstagramAdsService } from '@database/dynamodb/repository-services/inst
 import { InstagramFbAccessTokenService } from '@database/dynamodb/repository-services/instagram.fbAccessToken.service';
 import { InstagramAdAnalyticsRepositoryService } from '@database/dynamodb/repository-services/instagram.adAnalytics.service';
 import { InstagramAccountLevelAnalyticsRepositoryService } from '@database/dynamodb/repository-services/instagram.accountLevelAnalytics.service';
-
+import { InstagramNodeFlowAnalyticsService } from '@database/dynamodb/repository-services/instagram.flownodeAnalytics.service';
 
 // Import the JwtModule
 import { JwtModule } from '@nestjs/jwt';
@@ -104,7 +104,8 @@ import { InstagramMediaPaginationService } from './modules/instagram/instagram-m
     InstagramQuickReplyRepositoryService,
     InstagramFlowstateRepositoryService,
     InstagramDmFlowAnalyticsService,
-    InstagramMediaPaginationService
+    InstagramMediaPaginationService,
+    InstagramNodeFlowAnalyticsService
   ],
   exports: [DynamoDBService],
 })
