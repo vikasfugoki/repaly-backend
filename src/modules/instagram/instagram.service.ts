@@ -33,6 +33,7 @@ import { InstagramQuickReplyRepositoryService } from '@database/dynamodb/reposit
 import { InstagramFlowstateRepositoryService } from '@database/dynamodb/repository-services/instagram.flowstate.service';
 import { InstagramDmFlowAnalyticsService } from '@database/dynamodb/repository-services/instagram.dmFlowAnalytics.service';
 import { InstagramMediaPaginationService } from './instagram-media-pagination.service'
+import { InstagramNodeFlowAnalyticsService } from '@database/dynamodb/repository-services/instagram.flownodeAnalytics.service';
 import { v4 as uuidv4 } from 'uuid';
 import { TriggerTypes } from '../utils/enums';
 
@@ -58,7 +59,8 @@ export class InstagramAccountService {
     private readonly instagramQuickReplyRepositoryService: InstagramQuickReplyRepositoryService,
     private readonly instagramFlowstateRepositoryService: InstagramFlowstateRepositoryService,
     private readonly instagramDmFlowAnalyticsService: InstagramDmFlowAnalyticsService,
-    private readonly instagramMediaPaginationService: InstagramMediaPaginationService
+    private readonly instagramMediaPaginationService: InstagramMediaPaginationService,
+    private readonly instagramNodeFlowAnalyticsService: InstagramNodeFlowAnalyticsService
   ) {}
 
   private buildInsights(
@@ -2740,6 +2742,15 @@ export class InstagramAccountService {
 
     } catch (error) {
       console.error(`Failed to search media_id for account ${account_id}:`, error);
+    }
+  }
+
+  async getNodeFlowAnalytics (accountId: string, flowId: string) {
+    try {
+      const result =  this.instagramNodeFlowAnalyticsService.getAnalyticsByFlowId(flowId);
+      console.log("this is final result:", result);
+    } catch (error) {
+      console.error(`Failed to fetch the node analytics for flow_id ${flowId}:`, error);
     }
   }
   
