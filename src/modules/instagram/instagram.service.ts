@@ -2746,24 +2746,31 @@ export class InstagramAccountService {
   }
 
   async getNodeFlowAnalytics(accountId: string, flowId: string) {
-      try {
-        const items = await this.instagramNodeFlowAnalyticsService.getAnalyticsByFlowId(flowId);
+    try {
+      const items = await this.instagramNodeFlowAnalyticsService.getAnalyticsByFlowId(flowId);
 
-        const analyticsByNodeId = items.reduce((acc, item) => {
-          const { node_id, ...analytics } = item;
-          acc[node_id] = analytics;
-          return acc;
-        }, {} as Record<string, any>);
+      const analyticsByNodeId = items.reduce((acc, item) => {
+        const fullNodeId = item.node_id;
+        const realNodeId = fullNodeId.substring(0, fullNodeId.lastIndexOf('_'));
 
-        return analyticsByNodeId;
-      } catch (error) {
-        console.error(
-          `Failed to fetch the node analytics for flow_id ${flowId}:`,
-          error
-        );
-        throw error;
-      }
+        acc[realNodeId] = {
+          ...item,
+          node_id: realNodeId, // normalized
+        };
+
+        return acc;
+      }, {} as Record<string, any>);
+
+      return analyticsByNodeId;
+    } catch (error) {
+      console.error(
+        `Failed to fetch the node analytics for flow_id ${flowId}:`,
+        error
+      );
+      throw error;
     }
+  }
+
   
   
   
