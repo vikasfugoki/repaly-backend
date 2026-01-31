@@ -244,6 +244,16 @@ export class InstagramMediaPaginationService {
   }
 
 
+  private normalizeInstagramPermalink(url: string): string {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.origin}${parsed.pathname}`.replace(/\/$/, '');
+  } catch {
+    return url.replace(/\?.*$/, '').replace(/\/$/, '');
+  }
+}
+
+
   async findMediaByPermalink(
   accountId: string,
   access_token: string,
@@ -260,6 +270,8 @@ export class InstagramMediaPaginationService {
     throw new Error(`Instagram account or access token not found for ${accountId}`);
   }
 
+  const normalizedInputPermalink = this.normalizeInstagramPermalink(permalink);
+
   do {
     const response = await this.instagramApiService.getMediaPaginated(
       accountId,
@@ -269,7 +281,8 @@ export class InstagramMediaPaginationService {
     );
 
     for (const media of response.data ?? []) {
-      if (media.permalink === permalink) {
+      const normalizedMediaPermalink = this.normalizeInstagramPermalink(media.permalink);
+      if (normalizedMediaPermalink === normalizedInputPermalink) {
         return media; // 🎯 FOUND → STOP
       }
     }
