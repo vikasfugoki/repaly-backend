@@ -243,12 +243,34 @@ export class InstagramMediaPaginationService {
     return media;
   }
 
-  private normalizeInstagramPermalink(url: string): string {
+//   private normalizeInstagramPermalink(url: string): string {
+//   try {
+//     const parsed = new URL(url);
+//     return `${parsed.origin}${parsed.pathname}`.replace(/\/$/, '');
+//   } catch {
+//     return url.replace(/\?.*$/, '').replace(/\/$/, '');
+//   }
+// }
+
+
+private extractInstagramShortcode(url: string): string | null {
   try {
     const parsed = new URL(url);
-    return `${parsed.origin}${parsed.pathname}`.replace(/\/$/, '');
+    const parts = parsed.pathname.split('/').filter(Boolean);
+
+    // supports:
+    // /p/{code}/
+    // /reel/{code}/
+    // /p/{code}/extra
+    if (parts.length >= 2 && (parts[0] === 'p' || parts[0] === 'reel')) {
+      return parts[1];
+    }
+
+    return null;
   } catch {
-    return url.replace(/\?.*$/, '').replace(/\/$/, '');
+    // fallback for malformed URLs
+    const match = url.match(/\/(p|reel)\/([^/]+)/);
+    return match ? match[2] : null;
   }
 }
 
@@ -269,7 +291,12 @@ async findMediaByPermalink(
     throw new Error(`Instagram account or access token not found for ${accountId}`);
   }
 
-  const normalizedInputPermalink = this.normalizeInstagramPermalink(permalink);
+  // const normalizedInputPermalink = this.normalizeInstagramPermalink(permalink);
+  const targetShortcode = this.extractInstagramShortcode(permalink);
+
+  if (!targetShortcode) {
+    throw new Error(`Invalid Instagram permalink: ${permalink}`);
+  }
 
   do {
     const response = await this.instagramApiService.getMediaPaginated(
@@ -280,12 +307,16 @@ async findMediaByPermalink(
     );
 
     for (const media of response.data ?? []) {
-      const normalizedMediaPermalink =
-        this.normalizeInstagramPermalink(media.permalink);
+      // const normalizedMediaPermalink = this.normalizeInstagramPermalink(media.permalink);
+      const mediaShortcode = this.extractInstagramShortcode(media.permalink);
 
-      if (normalizedMediaPermalink === normalizedInputPermalink) {
+      if (mediaShortcode === targetShortcode) {
         return media; // 🎯 FOUND → STOP
       }
+
+      // if (normalizedMediaPermalink === normalizedInputPermalink) {
+      //   return media; // 🎯 FOUND → STOP
+      // }
     }
 
     instagramCursor = response.paging?.next
