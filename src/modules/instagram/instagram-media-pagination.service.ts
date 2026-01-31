@@ -271,6 +271,7 @@ export class InstagramMediaPaginationService {
   }
 
   const normalizedInputPermalink = this.normalizeInstagramPermalink(permalink);
+  console.log("normalized permalink:", normalizedInputPermalink);
 
   do {
     const response = await this.instagramApiService.getMediaPaginated(
@@ -281,9 +282,8 @@ export class InstagramMediaPaginationService {
     );
 
     for (const media of response.data ?? []) {
-      const normalizedMediaPermalink = this.normalizeInstagramPermalink(media.permalink);
-      if (normalizedMediaPermalink === normalizedInputPermalink) {
-        return media; // 🎯 FOUND → STOP
+      if (media.permalink === normalizedInputPermalink) {
+        return media; // FOUND → STOP
       }
     }
 
