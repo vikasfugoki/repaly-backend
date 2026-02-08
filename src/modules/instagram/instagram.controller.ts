@@ -954,4 +954,26 @@ export class InstagramAccountController {
       );
     }
   }
+
+  @InstagramResourceType('account')
+  @Get(':accountId/flow_node_analytics/:flow_id')
+  async getFlowNodeAnalytics(
+    @Param('accountId') accountId: string,
+    @Param('flow_id') flow_id: string
+  ) {
+      try {
+        return await this.instagramAccountService.getNodeFlowAnalytics(
+          accountId,
+          flow_id
+        );
+      } catch (error) {
+        console.log(
+          `Failed to get the node analytics of flow: ${flow_id} in account ${accountId}:`,
+          (error as Error).message,
+        );
+        throw new Error(
+          `Failed to get the node analytics of flow: ${flow_id} in account ${accountId}:`,
+        )
+      }
+  }
 }
