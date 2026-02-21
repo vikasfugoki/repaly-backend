@@ -2783,7 +2783,7 @@ export class InstagramAccountService {
       tag_and_value_pair: items.tag_and_value_pair,
       ai_enabled: items.ai_enabled,
     };
-      return items;
+      return result;
     } catch (error) {
       console.log(
         `Failed to fetch the account level automation ${accountId}:`,
@@ -2794,9 +2794,21 @@ export class InstagramAccountService {
 
   }
 
-  
-  
-  
+  async putAccountPostAutomation(accountId: string, input: Record<string, any>) {
+      try {
+        await this.instagramAccountRepositoryService.updateAccountDetails({
+            id: accountId,
+            ai_enabled: input.ai_enabled,
+            tag_and_value_pair: input.tag_and_value_pair,
+        });
+      } catch (error) {
+        console.log(
+          `Failed to Put the account level automation ${accountId}:`,
+          error
+        );
+        throw error;
+      }
+    }
 
   // async getAdAnalyticsById(accountId: string, adId: string) {
   //   try {

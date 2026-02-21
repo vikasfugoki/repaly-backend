@@ -977,22 +977,23 @@ export class InstagramAccountController {
       }
   }
 
-  // @InstagramResourceType('account')
-  // @Put(':account/post-account-automation')
-  // async putPostAccountAutomation(@Param('accountId') accountId: string) {
-  //   try {
-  //     return await this.instagramAccountService.putAccountPostAutomation(accountId) ;
-  //   } catch (error) {
-  //     console.log(
-  //       `Failed PUT the instagram level post analytics: ${accountId}:`,
-  //         (error as Error).message,
-  //     );
+  @InstagramResourceType('account')
+  @Put(':accountId/post-account-automation')
+  async putPostAccountAutomation(@Param('accountId') accountId: string,
+    @Body() input: Record<string, any>) {
+    try {
+      return await this.instagramAccountService.putAccountPostAutomation(accountId, input);
+    } catch (error) {
+      console.log(
+        `Failed PUT the instagram level post analytics: ${accountId}:`,
+          (error as Error).message,
+      );
 
-  //     throw new Error(
-  //       `Failed PUT the instagram level post analytics: ${accountId}`,
-  //     )
-  //   }
-  // }
+      throw new Error(
+        `Failed PUT the instagram level post analytics: ${accountId}`,
+      )
+    }
+  }
 
   @InstagramResourceType('account')
   @Get(':accountId/post-account-automation')

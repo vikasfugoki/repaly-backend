@@ -4,7 +4,8 @@ import {
   GetCommand,
   ScanCommand,
   QueryCommand,
-  DeleteCommand
+  DeleteCommand,
+  UpdateCommand
 } from '@aws-sdk/lib-dynamodb';
 import { InstagramAccountRepositoryDTO } from '../../dto/instagram.account.repository.dto';
 import { DynamoDBService } from '../dynamodb.service';
@@ -90,4 +91,59 @@ export class InstagramAccountRepositoryService {
   
     return this.dynamoDbService.dynamoDBDocumentClient.send(params);
   }
+
+  async updateAccountDetails(accountDetails: Record<string, any>) {
+  try {
+    const { id: account_id, ...updateFields } = accountDetails;
+
+    if (!account_id) {
+      throw new Error('account_id is required to update account');
+    }
+
+    // Prevent overwriting immutable fields
+    delete updateFields.id;
+    delete updateFields.created_time;
+
+    const updateExpression: string[] = [];
+    const expressionAttributeValues: Record<string, any> = {};
+    const expressionAttributeNames: Record<string, string> = {};
+
+    for (const [key, value] of Object.entries(updateFields)) {
+      const nameKey = `#${key}`;
+      const valueKey = `:${key}`;
+
+      expressionAttributeNames[nameKey] = key;
+      expressionAttributeValues[valueKey] = value;
+      updateExpression.push(`${nameKey} = ${valueKey}`);
+    }
+
+    // always update timestamp
+    expressionAttributeValues[':updated_time'] = new Date().toISOString();
+    expressionAttributeNames['#updated_time'] = 'updated_time';
+    updateExpression.push('#updated_time = :updated_time');
+
+    if (updateExpression.length === 0) {
+      throw new Error('No valid fields to update');
+    }
+
+    const params = new UpdateCommand({
+      TableName: this.tableName,
+      Key: { id: account_id },
+      UpdateExpression: `SET ${updateExpression.join(', ')}`,
+      ExpressionAttributeNames: expressionAttributeNames,
+      ExpressionAttributeValues: expressionAttributeValues,
+      ReturnValues: 'ALL_NEW',
+    });
+
+    const result =
+      await this.dynamoDbService.dynamoDBDocumentClient.send(params);
+
+    console.log('Account updated:', result.Attributes);
+
+    return result.Attributes;
+  } catch (error) {
+    console.error('Error updating account:', error);
+    throw new Error('Failed to update account');
+  }
+}
 }
