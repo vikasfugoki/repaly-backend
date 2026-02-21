@@ -995,7 +995,7 @@ export class InstagramAccountController {
   // }
 
   @InstagramResourceType('account')
-  @Get(':account/post-account-automation')
+  @Get(':accountId/post-account-automation')
   async getPostAccountAutomation(@Param('accountId') accountId: string) {
     try {
       return await this.instagramAccountService.getAccountPostAutomation(accountId);
