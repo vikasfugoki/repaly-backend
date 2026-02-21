@@ -10,7 +10,9 @@ export class InstagramAccountRepositoryDTO {
   created_time: string;
   updated_time: string;
   platformName: string;
-  pro_user_id: string
+  pro_user_id: string;
+  tag_and_value_pair?: object;
+  ai_enabled?: object; 
 }
 
 export class OmitInstagramAccountRepositoryDTO {

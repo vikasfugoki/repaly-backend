@@ -2775,6 +2775,14 @@ export class InstagramAccountService {
     try {
       const items = await this.instagramAccountRepositoryService.getAccount(accountId);
       console.log("account details:", items);
+
+      if (!items) {
+      throw new Error(`Account not found: ${accountId}`);
+      }
+      const result = {
+      tag_and_value_pair: items.tag_and_value_pair,
+      ai_enabled: items.ai_enabled,
+    };
       return items;
     } catch (error) {
       console.log(
