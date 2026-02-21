@@ -2771,6 +2771,20 @@ export class InstagramAccountService {
     }
   }
 
+  async getAccountPostAutomation(accountId: string) {
+    try {
+      const items = await this.instagramAccountRepositoryService.getAccount(accountId);
+      console.log("account details:", items);
+    } catch (error) {
+      console.log(
+        `Failed to fetch the account level automation ${accountId}:`,
+        error
+      );
+      throw error;
+    }
+
+  }
+
   
   
   

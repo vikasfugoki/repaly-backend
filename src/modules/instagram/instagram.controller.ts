@@ -976,4 +976,37 @@ export class InstagramAccountController {
         )
       }
   }
+
+  // @InstagramResourceType('account')
+  // @Put(':account/post-account-automation')
+  // async putPostAccountAutomation(@Param('accountId') accountId: string) {
+  //   try {
+  //     return await this.instagramAccountService.putAccountPostAutomation(accountId) ;
+  //   } catch (error) {
+  //     console.log(
+  //       `Failed PUT the instagram level post analytics: ${accountId}:`,
+  //         (error as Error).message,
+  //     );
+
+  //     throw new Error(
+  //       `Failed PUT the instagram level post analytics: ${accountId}`,
+  //     )
+  //   }
+  // }
+
+  @InstagramResourceType('account')
+  @Get(':account/post-account-automation')
+  async getPostAccountAutomation(@Param('accountId') accountId: string) {
+    try {
+      return await this.instagramAccountService.getAccountPostAutomation(accountId);
+    } catch (error) {
+      console.log(
+        `Failed GET the instagram level post analytics: ${accountId}:`,
+          (error as Error).message,
+      );
+      throw new Error(
+        `Failed GET the instagram level post analytics: ${accountId}`,
+      )
+    }
+  }
 }
