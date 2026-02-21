@@ -2775,6 +2775,7 @@ export class InstagramAccountService {
     try {
       const items = await this.instagramAccountRepositoryService.getAccount(accountId);
       console.log("account details:", items);
+      return items;
     } catch (error) {
       console.log(
         `Failed to fetch the account level automation ${accountId}:`,
