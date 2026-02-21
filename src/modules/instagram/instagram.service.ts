@@ -2796,7 +2796,7 @@ export class InstagramAccountService {
 
   async putAccountPostAutomation(accountId: string, input: Record<string, any>) {
       try {
-        await this.instagramAccountRepositoryService.updateAccountDetails({
+        return await this.instagramAccountRepositoryService.updateAccountDetails({
             id: accountId,
             ai_enabled: input.ai_enabled,
             tag_and_value_pair: input.tag_and_value_pair,
