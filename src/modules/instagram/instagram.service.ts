@@ -2650,11 +2650,11 @@ export class InstagramAccountService {
           .flat()
           .map(a => a.toString().trim());
   
-        const uniqueAnswers = [...new Set(answers)];
+        // const uniqueAnswers = [...new Set(answers)];
   
         return {
           question,
-          answer: uniqueAnswers,
+          answer: answers,
         };
       }
   
