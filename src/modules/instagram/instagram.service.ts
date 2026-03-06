@@ -2622,7 +2622,11 @@ export class InstagramAccountService {
           blockNodeId,
         );
   
-      const items = result?.Items ?? [];
+      // const items = result?.Items ?? [];
+
+      const items = (result?.Items ?? []).sort(
+        (a, b) => new Date(b.updated_timestamp).getTime() - new Date(a.updated_timestamp).getTime()
+      );
   
       if (items.length === 0) return null;
   
@@ -2631,6 +2635,8 @@ export class InstagramAccountService {
       // 🟦 If it's a text question → aggregate all answers
       if (first.block_type === 'text_question') {
         const question = first.question ?? null;
+
+
   
         // Extract answer from each item
         const answers = items
@@ -2644,11 +2650,11 @@ export class InstagramAccountService {
           .flat()
           .map(a => a.toString().trim());
   
-        const uniqueAnswers = [...new Set(answers)];
+        // const uniqueAnswers = [...new Set(answers)];
   
         return {
           question,
-          answer: uniqueAnswers,
+          answer: answers,
         };
       }
   
