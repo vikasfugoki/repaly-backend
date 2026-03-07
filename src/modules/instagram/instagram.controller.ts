@@ -956,6 +956,28 @@ export class InstagramAccountController {
   }
 
   @InstagramResourceType('account')
+  @Get(':accountId/text-block-stats/:block_node_id')
+  async getTextQuestionStats(
+    @Param('accountId') accountId: string,
+    @Param('block_node_id') block_node_id: string,
+  ) {
+    try {
+      return await this.instagramAccountService.getTextQuestionStats(
+        accountId,
+        block_node_id,
+      );
+    } catch (error) {
+      console.log(
+        `Failed to get DM automation stats for block_node_id ${block_node_id} in account ${accountId}:`,
+        (error as Error).message,
+      );
+      throw new Error(
+        `Failed to get DM automation stats for block_node_id ${block_node_id} in account ${accountId}`,
+      );
+    }
+  }
+
+  @InstagramResourceType('account')
   @Get(':accountId/flow_node_analytics/:flow_id')
   async getFlowNodeAnalytics(
     @Param('accountId') accountId: string,

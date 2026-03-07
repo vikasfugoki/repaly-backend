@@ -2694,6 +2694,60 @@ export class InstagramAccountService {
     }
   }
 
+  async getTextQuestionStats(accountId: string, blockNodeId: string) {
+
+    try {
+
+      const result =
+        await this.instagramDmFlowAnalyticsService.getAnalyticsByBlockId(
+          blockNodeId,
+        );
+
+        const items = (result?.Items ?? []).sort(
+        (a, b) => new Date(b.updated_timestamp).getTime() - new Date(a.updated_timestamp).getTime()
+      );
+  
+      if (items.length === 0) return null;
+  
+      const first = items[0];
+
+      if (first.block_type === 'text_question') {
+        const question = first.question ?? null;
+
+        const answers: string[] = [];
+        const updated_timestamps: (string | null)[] = [];
+        const usernames: (string | null)[] = [];
+
+        items.forEach(item => {
+          const ans = item.answer ?? item.value ?? item.response;
+          const resolved = (ans === undefined || ans === null) ? ['None'] : Array.isArray(ans) ? ans.map(a => (a === undefined || a === null ? 'None' : a.toString().trim())) : [ans.toString().trim()];
+
+          resolved.forEach(() => {
+            updated_timestamps.push(item.updated_timestamp ?? null);
+            usernames.push(item.username ?? null);
+          });
+
+          answers.push(...resolved);
+        });
+
+        return {
+          question,
+          answer: answers,
+          updated_timestamp: updated_timestamps,
+          username: usernames,
+        };
+      }
+
+    } catch (error) {
+      console.error(
+        `Failed to get TEXT BLOCK stats for account ${accountId}, blockNodeId ${blockNodeId}:`,
+        error,
+      );
+      throw error;
+    }
+
+  }
+
   async getOrFetchMedia(permalink: string, account_id: string) {
     try{
 
