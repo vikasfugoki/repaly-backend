@@ -71,7 +71,10 @@ private async fetchFromInstagramAndSync(
     // Sync each story to DynamoDB
     await Promise.all(
       instagramResponse.data.map(story =>
-        this.instagramStoryRepositoryService.updateStoryDetails(story),
+        this.instagramStoryRepositoryService.updateStoryDetails({
+          ...story,
+          accountId, // ✅ now saved to DynamoDB
+        }),
       ),
     );
 
