@@ -106,7 +106,8 @@ import { InstagramStoryPaginationService } from './modules/instagram/instagram-s
     InstagramFlowstateRepositoryService,
     InstagramDmFlowAnalyticsService,
     InstagramMediaPaginationService,
-    InstagramNodeFlowAnalyticsService
+    InstagramNodeFlowAnalyticsService,
+    InstagramStoryPaginationService
   ],
   exports: [DynamoDBService],
 })
