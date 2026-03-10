@@ -76,7 +76,7 @@ private async fetchFromInstagramAndSync(
     );
 
     // Fetch enriched data from DynamoDB
-    const storyIds = instagramResponse.data.map(s => s.story_id);
+    const storyIds = instagramResponse.data.map(s => s.id);
     console.log('Story IDs from Instagram:', storyIds);
     const enrichedData = await this.fetchEnrichedStoriesFromDynamoDB(
       accountId,
@@ -115,6 +115,8 @@ private async fetchEnrichedStoriesFromDynamoDB(
     // Single batch get call for all story IDs
     const storyItems =
       await this.instagramStoryRepositoryService.batchGetStoriesByIds(storyIds);
+
+    console.log("storyItems:", storyItems);
 
     // Filter by accountId (safety check)
     const enrichedStories = storyItems
