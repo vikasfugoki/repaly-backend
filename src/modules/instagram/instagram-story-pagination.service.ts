@@ -77,6 +77,7 @@ private async fetchFromInstagramAndSync(
 
     // Fetch enriched data from DynamoDB
     const storyIds = instagramResponse.data.map(s => s.id);
+    console.log('Story IDs from Instagram:', storyIds);
     const enrichedData = await this.fetchEnrichedStoriesFromDynamoDB(
       accountId,
       storyIds,

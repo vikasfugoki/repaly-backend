@@ -142,6 +142,8 @@ export class InstagramStoryRepositoryService {
     const chunk = storyIds.slice(i, i + BATCH_SIZE);
     const keys = chunk.map((id) => ({ story_id: id }));
 
+    console.log('Keys being sent to DynamoDB:', JSON.stringify(keys));
+
     const params = new BatchGetCommand({
       RequestItems: {
         [this.tableName]: {
