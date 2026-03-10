@@ -140,7 +140,7 @@ export class InstagramStoryRepositoryService {
 
   for (let i = 0; i < storyIds.length; i += BATCH_SIZE) {
     const chunk = storyIds.slice(i, i + BATCH_SIZE);
-    const keys = chunk.map((id) => ({ id }));
+    const keys = chunk.map((id) => ({ story_id: id }));
 
     const params = new BatchGetCommand({
       RequestItems: {
