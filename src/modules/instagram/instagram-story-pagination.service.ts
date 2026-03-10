@@ -76,7 +76,7 @@ private async fetchFromInstagramAndSync(
     );
 
     // Fetch enriched data from DynamoDB
-    const storyIds = instagramResponse.data.map(s => s.id);
+    const storyIds = instagramResponse.data.map(s => s.story_id);
     console.log('Story IDs from Instagram:', storyIds);
     const enrichedData = await this.fetchEnrichedStoriesFromDynamoDB(
       accountId,
@@ -125,7 +125,7 @@ private async fetchEnrichedStoriesFromDynamoDB(
 
     // Maintain original Instagram API order
     const orderedStories = storyIds
-      .map((id) => enrichedStories.find((s) => s.id === id))
+      .map((id) => enrichedStories.find((s) => s.story_id === id))
       .filter(Boolean);
 
     return orderedStories;
