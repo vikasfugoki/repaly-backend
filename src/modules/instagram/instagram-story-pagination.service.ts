@@ -44,7 +44,7 @@ export class InstagramStoryPaginationService {
 private async fetchFromInstagramAndSync(
   accountId: string,
   accessToken: string,
-  limit: number = 15,
+  limit: number = 1,
   instagramCursor?: string,
 ): Promise<PaginatedResponse<any>> {
   try {
