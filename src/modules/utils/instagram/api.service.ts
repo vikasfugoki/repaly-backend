@@ -108,13 +108,39 @@ export class InstagramApiService {
     }
   }
 
+  async getStoriesPaginated(
+  userId: string,
+  access_token: string,
+  limit: number = 15,
+  after?: string,
+) {
+  const url = this.urlService.getStoryUrl(userId);
+  const params: any = {
+    fields: 'id,media_type,media_url,thumbnail_url,timestamp',
+    access_token,
+    limit,
+  };
+
+  if (after) {
+    params.after = after;
+  }
+
+  try {
+    const response = await axios.get(url, { params });
+    return response.data; // Returns { data: [...], paging: { next, previous } }
+  } catch (error) {
+    console.log('Failed to fetch stories', (error as Error).message);
+    throw new Error('Failed to fetch stories');
+  }
+}
+
   async getStories(userId: string, access_token: string) {
     const url = this.urlService.getStoryUrl(userId);
     console.log('url:', url);
     const params = {
       fields: 'id,media_type,media_url,thumbnail_url,timestamp',
       access_token,
-      limit: 15,
+      limit: 50,
     };
 
     try {

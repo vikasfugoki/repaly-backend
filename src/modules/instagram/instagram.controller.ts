@@ -16,6 +16,7 @@ import { InstagramOwnershipGuard } from '../auth/instagram-ownership.guard';
 import { InstagramResourceType } from '../auth/instagram-resource-type.decorator';
 import { PaginatedResponse, PaginationQueryDto } from '@database/dto/pagination.dto';
 import { InstagramMediaPaginationService } from './instagram-media-pagination.service';
+import { InstagramStoryPaginationService } from './instagram-story-pagination.service';
 
 @ApiTags('Instagram Account')
 @Controller('instagram')
@@ -24,6 +25,7 @@ export class InstagramAccountController {
   constructor(
     private readonly instagramAccountService: InstagramAccountService,
     private readonly instagramMediaPaginationService: InstagramMediaPaginationService,
+    private readonly instagramStoryPaginationService: InstagramStoryPaginationService
   ) {}
 
   @InstagramResourceType('account')
@@ -307,20 +309,32 @@ export class InstagramAccountController {
   }
 
   // get all the story given the accountId
+  // @InstagramResourceType('account')
+  // @Get(':accountId/get-story')
+  // async getAccountStory(@Param('accountId') accountId: string) {
+  //   try {
+  //     return await this.instagramAccountService.getInstagramStoryFromTable(
+  //       accountId,
+  //     );
+  //   } catch (error) {
+  //     console.log(
+  //       'Failed to get STORY from dynamodb table:',
+  //       (error as Error).message,
+  //     );
+  //     throw new Error('Failed to get STORY from dynamodb table');
+  //   }
+  // }
+
   @InstagramResourceType('account')
   @Get(':accountId/get-story')
-  async getAccountStory(@Param('accountId') accountId: string) {
-    try {
-      return await this.instagramAccountService.getInstagramStoryFromTable(
-        accountId,
-      );
-    } catch (error) {
-      console.log(
-        'Failed to get STORY from dynamodb table:',
-        (error as Error).message,
-      );
-      throw new Error('Failed to get STORY from dynamodb table');
-    }
+  async getAccountStoryPaginated(
+    @Param('accountId') accountId: string,
+    @Query() paginationDto: PaginationQueryDto,
+  ): Promise<PaginatedResponse<any>> {
+    return await this.instagramStoryPaginationService.getStoryWithPagination(
+      accountId,
+      paginationDto,
+    );
   }
 
   @InstagramResourceType('story')

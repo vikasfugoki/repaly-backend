@@ -1,5 +1,14 @@
 import { Injectable } from '@nestjs/common';
-import { GetCommand, UpdateCommand, DeleteCommand, QueryCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
+// import { GetCommand, UpdateCommand, DeleteCommand, QueryCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
+import {
+  GetCommand,
+  QueryCommand,
+  PutCommand,
+  BatchWriteCommand,
+  UpdateCommand,
+  DeleteCommand,
+  BatchGetCommand,
+} from '@aws-sdk/lib-dynamodb';
 import { DynamoDBService } from '../dynamodb.service';
 
 @Injectable()
@@ -122,4 +131,37 @@ export class InstagramStoryRepositoryService {
     throw new Error(`Failed to delete all story for ${accountId} from 'instagram_story_repository' table.`);
   } 
   }
+
+  async batchGetStoriesByIds(storyIds: string[]): Promise<any[]> {
+  if (storyIds.length === 0) return [];
+
+  const BATCH_SIZE = 100;
+  const results: any[] = [];
+
+  for (let i = 0; i < storyIds.length; i += BATCH_SIZE) {
+    const chunk = storyIds.slice(i, i + BATCH_SIZE);
+    const keys = chunk.map((id) => ({ story_id: id }));
+
+    console.log('Keys being sent to DynamoDB:', JSON.stringify(keys));
+
+    const params = new BatchGetCommand({
+      RequestItems: {
+        [this.tableName]: {
+          Keys: keys,
+        },
+      },
+    });
+
+    try {
+      const response =
+        await this.dynamoDbService.dynamoDBDocumentClient.send(params);
+      const items = response.Responses?.[this.tableName] || [];
+      results.push(...items);
+    } catch (error) {
+      console.error('Batch get failed for chunk:', error);
+    }
+  }
+
+  return results;
+}
 }
