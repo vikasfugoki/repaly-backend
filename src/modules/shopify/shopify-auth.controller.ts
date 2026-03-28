@@ -5,7 +5,6 @@ import { ShopifyAuthRequest } from '@database/dto/shopify.account.repository.dto
 import { InstagramOwnershipGuard } from '../auth/instagram-ownership.guard';
 
 @Controller('shopify')
-@UseGuards(InstagramOwnershipGuard)
 export class ShopifyAuthController {
     constructor(
     private readonly shopifyAuthService: ShopifyAuthService,
