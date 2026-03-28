@@ -1,12 +1,23 @@
+import { IsString } from 'class-validator';
 
 export class ShopifyAuthRequest {
-  shop: string;                  // "repaly-store.myshopify.com"
-  instagramAccountId: string;    // "2324930430231"
+  @IsString()
+  shop: string;
+
+  @IsString()
+  instagramAccountId: string;
 }
 
 export class ShopifyCallbackDto {
-  code: string;       // auth code from Shopify to exchange for access token
-  shop: string;       // repaly-store.myshopify.com
-  state: string;      // instagramAccountId — carried from initiateAuth
-  hmac: string;       // signature to verify request is from Shopify
+  @IsString()
+  code: string;
+
+  @IsString()
+  shop: string;
+
+  @IsString()
+  state: string;
+
+  @IsString()
+  hmac: string;
 }
