@@ -1,10 +1,15 @@
 import { Injectable, ConflictException, HttpException, HttpStatus, ConsoleLogger } from '@nestjs/common';
 import { ShopifyAuthController } from './shopify-auth.controller';
+import { ShopifyConnectionsRepositoryService } from '@database/dynamodb/repository-services/shopify.connection.service';
 import { ShopifyAuthRequest, ShopifyCallbackDto } from '@database/dto/shopify.account.repository.dto';
 
 
 @Injectable()
 export class ShopifyAuthService {
+
+  constructor(
+    private readonly shopifyConnectionsRepositoryService: ShopifyConnectionsRepositoryService
+  ){}
 
     async initiateAuth(input: ShopifyAuthRequest & { userId: string }) {
   const { shop, instagramAccountId } = input;
@@ -67,17 +72,15 @@ async handleCallback(input: ShopifyCallbackDto): Promise<{ success: boolean }> {
     console.log("shop name:", shopResponse.shop.name);
 
   // Step 4 — save to DynamoDB
-//   await this.shopifyConnectionRepository.save({
-//     instagramAccountId,
-//     shopifyShopId: String(shopResponse.shop.id),
-//     shopifyDomain: shopResponse.shop.myshopify_domain,
-//     shopName: shopResponse.shop.name,
-//     accessToken: access_token,
-//     scopes,
-//     tokenStatus: 'active',
-//     createdTimestamp: Date.now(),
-//     updatedTimestamp: Date.now(),
-//   });
+  await this.shopifyConnectionsRepositoryService.add_shopify_connection({
+    instagram_account_id: instagramAccountId,
+    shopify_shop_id: String(shopResponse.shop.id),
+    shopify_domain: shopResponse.shop.myshopify_domain,
+    shop_name: shopResponse.shop.name,
+    access_token: access_token,
+    scopes,
+    token_status: 'active',
+  });
 
   return { success: true };
 }
