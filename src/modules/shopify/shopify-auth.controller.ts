@@ -1,9 +1,11 @@
-import { Body, Controller, Post, Param, HttpCode, Req, HttpException, HttpStatus, Query, Get,Res } from '@nestjs/common';
+import { Body, Controller, Post, Param, HttpCode, Req, HttpException, HttpStatus, Query, Get,Res, UseGuards } from '@nestjs/common';
 import {UserRepositoryService} from '@database/dynamodb/repository-services/user.service';
 import { ShopifyAuthService } from './shopify-auth.service';
 import { ShopifyAuthRequest } from '@database/dto/shopify.account.repository.dto';
+import { InstagramOwnershipGuard } from '../auth/instagram-ownership.guard';
 
 @Controller('shopify')
+@UseGuards(InstagramOwnershipGuard)
 export class ShopifyAuthController {
     constructor(
     private readonly shopifyAuthService: ShopifyAuthService,
