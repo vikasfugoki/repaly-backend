@@ -1,4 +1,5 @@
 import { Body, Controller, Post, Param, HttpCode, Req, HttpException, HttpStatus, Query, Get,Res, UseGuards } from '@nestjs/common';
+import { Public } from '../auth/public.decorator';
 import {UserRepositoryService} from '@database/dynamodb/repository-services/user.service';
 import { ShopifyAuthService } from './shopify-auth.service';
 import { ShopifyAuthRequest } from '@database/dto/shopify.account.repository.dto';
@@ -36,6 +37,7 @@ async initiateShopifyAuth(@Body() input: ShopifyAuthRequest, @Req() req) {
 }
 
 @Get('callback')
+@Public()
 async shopifyCallback(
   @Query('code') code: string,
   @Query('shop') shop: string,
