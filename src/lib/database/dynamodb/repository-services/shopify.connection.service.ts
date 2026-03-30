@@ -42,7 +42,7 @@ export class ShopifyConnectionsRepositoryService {
       },
     });
     const result = await this.dynamoDbService.dynamoDBDocumentClient.send(params);
-    return result.Item;
+    return result.Item ?? null;  // explicit null instead of undefined
   }
 }
 
