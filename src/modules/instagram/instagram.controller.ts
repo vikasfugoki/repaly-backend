@@ -1046,4 +1046,20 @@ export class InstagramAccountController {
       )
     }
   }
+
+  @InstagramResourceType('account')
+  @Get(":accountId/shopify/connection")
+  async getShopifyConnection(@Param('accountId') accountId: string) {
+    try {
+      return await this.instagramAccountService.getShopifyConnection(accountId);
+    } catch (error) {
+      console.log(
+        `Failed to get shopify connection status for account ${accountId}:`,
+          (error as Error).message,
+      );
+      throw new Error(
+        `Failed to get shopify connection status for account ${accountId}`,
+      )
+    }
+  }
 }

@@ -34,6 +34,7 @@ import { InstagramFlowstateRepositoryService } from '@database/dynamodb/reposito
 import { InstagramDmFlowAnalyticsService } from '@database/dynamodb/repository-services/instagram.dmFlowAnalytics.service';
 import { InstagramMediaPaginationService } from './instagram-media-pagination.service'
 import { InstagramNodeFlowAnalyticsService } from '@database/dynamodb/repository-services/instagram.flownodeAnalytics.service';
+import { ShopifyConnectionsRepositoryService } from '@database/dynamodb/repository-services/shopify.connection.service';
 import { v4 as uuidv4 } from 'uuid';
 import { TriggerTypes } from '../utils/enums';
 
@@ -60,7 +61,8 @@ export class InstagramAccountService {
     private readonly instagramFlowstateRepositoryService: InstagramFlowstateRepositoryService,
     private readonly instagramDmFlowAnalyticsService: InstagramDmFlowAnalyticsService,
     private readonly instagramMediaPaginationService: InstagramMediaPaginationService,
-    private readonly instagramNodeFlowAnalyticsService: InstagramNodeFlowAnalyticsService
+    private readonly instagramNodeFlowAnalyticsService: InstagramNodeFlowAnalyticsService,
+    private readonly shopifyConnectionsRepositoryService: ShopifyConnectionsRepositoryService
   ) {}
 
   private buildInsights(
@@ -2870,50 +2872,21 @@ export class InstagramAccountService {
       }
     }
 
-  // async getAdAnalyticsById(accountId: string, adId: string) {
-  //   try {
-  //     const adAnalytics = await this.instagramAdAnalyticsRepositoryService.getAdAnalytics(adId);
-  //     if (!adAnalytics || Object.keys(adAnalytics).length === 0) {
-  //       throw new Error(`No analytics found for adId: ${adId}`);
-  //     }
+    async getShopifyConnection(accountId: string) {
+      try {
+        const connection = await this.shopifyConnectionsRepositoryService.getShopifyConnection(accountId);
+        if (!connection?.access_token || (!connection?.shop_name && !connection?.shopify_domain)) {
+          throw new Error(`Shopify connection not found for account ${accountId}`);
+        }
+        return connection.shop_name || connection.shopify_domain;
+      } catch (error) {
+        console.error(
+          `Failed to fetch the shopify connection for account ${accountId}:`,
+          error
+        );
+        throw error;
+      }
+    }
 
-  //     const commentsByType = adAnalytics.comments_by_type || {};
-  //     const allComments: Array<{
-  //       comment_timestamp: number;
-  //       commenter_username: string;
-  //       comment: string;
-  //       response_comment: string;
-  //       response_dm: string;
-  //       reply_timestamp: number;
-  //       category: string;
-  //     }> = [];
-
-  //     for (const [category, comments] of Object.entries(commentsByType)) {
-  //       for (const commentArr of comments as any[]) {
-  //         const [
-  //           comment_timestamp,
-  //           commenter_username,
-  //           comment,
-  //           response,
-  //           reply_timestamp
-  //         ] = commentArr;
-
-  //         allComments.push({
-  //           comment_timestamp,
-  //           commenter_username,
-  //           comment,
-  //           response_comment: category.includes('dm') ? '' : response,
-  //           response_dm: category.includes('dm') ? response : '',
-  //           reply_timestamp,
-  //           category
-  //         });
-  //       }
-  //     }
-
-  //     return allComments;
-  //   } catch (error) {
-  //     console.error(`Failed to get ad_analytics for ${adId}:`, error);
-  //     throw new Error('Unable to retrieve ad analytics');
-  //   }
-  // }
+ 
 }

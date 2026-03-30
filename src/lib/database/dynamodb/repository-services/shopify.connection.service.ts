@@ -33,6 +33,17 @@ export class ShopifyConnectionsRepositoryService {
         });
         return this.dynamoDbService.dynamoDBDocumentClient.send(params);
   }
+
+  async getShopifyConnection(instagram_account_id: string) {
+    const params = new GetCommand({
+      TableName: this.tableName,
+      Key: {
+        instagram_account_id,
+      },
+    });
+    const result = await this.dynamoDbService.dynamoDBDocumentClient.send(params);
+    return result.Item;
+  }
 }
 
 
