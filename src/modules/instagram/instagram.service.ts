@@ -2876,8 +2876,10 @@ export class InstagramAccountService {
       try {
         const connection = await this.shopifyConnectionsRepositoryService.getShopifyConnection(accountId);
         if (!connection?.access_token || (!connection?.shop_name && !connection?.shopify_domain)) {
-          throw new Error(`Shopify connection not found for account ${accountId}`);
-        }
+          throw Object.assign(new Error(`Shopify is not connected for account ${accountId}`), {
+            code: 'SHOPIFY_NOT_CONNECTED',
+          });
+    }
         return {
           shop_name: connection.shop_name || connection.shopify_domain
         };
