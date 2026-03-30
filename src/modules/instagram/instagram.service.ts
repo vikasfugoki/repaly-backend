@@ -2878,7 +2878,9 @@ export class InstagramAccountService {
         if (!connection?.access_token || (!connection?.shop_name && !connection?.shopify_domain)) {
           throw new Error(`Shopify connection not found for account ${accountId}`);
         }
-        return connection.shop_name || connection.shopify_domain;
+        return {
+          shop_name: connection.shop_name || connection.shopify_domain
+        };
       } catch (error) {
         console.error(
           `Failed to fetch the shopify connection for account ${accountId}:`,
