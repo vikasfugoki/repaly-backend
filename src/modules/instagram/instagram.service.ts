@@ -2875,19 +2875,19 @@ export class InstagramAccountService {
     async getShopifyConnection(accountId: string) {
       try {
         const connection = await this.shopifyConnectionsRepositoryService.getShopifyConnection(accountId);
+
         if (!connection?.access_token || (!connection?.shop_name && !connection?.shopify_domain)) {
           throw Object.assign(new Error(`Shopify is not connected for account ${accountId}`), {
             code: 'SHOPIFY_NOT_CONNECTED',
           });
-    }
+        }
+
         return {
-          shop_name: connection.shop_name || connection.shopify_domain
+          shop_name: connection.shop_name || connection.shopify_domain,
         };
       } catch (error) {
-        console.error(
-          `Failed to fetch the shopify connection for account ${accountId}:`,
-          error
-        );
+        if (error.code === 'SHOPIFY_NOT_CONNECTED') throw error; // expected, don't log
+        console.error(`Failed to fetch the shopify connection for account ${accountId}:`, error);
         throw error;
       }
     }

@@ -9,6 +9,7 @@ import {
   Put,
   Query,
   UseGuards,
+  HttpException, HttpStatus
 } from '@nestjs/common';
 import { ApiTags, ApiBody, ApiParam } from '@nestjs/swagger';
 import { InstagramAccountService } from './instagram.service';
@@ -1049,17 +1050,15 @@ export class InstagramAccountController {
 
   @InstagramResourceType('account')
   @Get(":accountId/shopify/connection")
-  async getShopifyConnection(@Param('accountId') accountId: string) {
-    try {
-      return await this.instagramAccountService.getShopifyConnection(accountId);
-    } catch (error) {
-      console.log(
-        `Failed to get shopify connection status for account ${accountId}:`,
-          (error as Error).message,
-      );
-      throw new Error(
-        `Failed to get shopify connection status for account ${accountId}`,
-      )
+      async getShopifyConnection(@Param('accountId') accountId: string) {
+      try {
+        return await this.instagramAccountService.getShopifyConnection(accountId);
+      } catch (error) {
+        if (error.code === 'SHOPIFY_NOT_CONNECTED') {
+          throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+        }
+        console.log(`Failed to get shopify connection status for account ${accountId}:`, error.message);
+        throw new HttpException('Failed to get shopify connection status', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
     }
-  }
 }
