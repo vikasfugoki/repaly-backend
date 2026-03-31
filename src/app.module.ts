@@ -51,6 +51,8 @@ import { InstagramStoryPaginationService } from './modules/instagram/instagram-s
 import { ShopifyAuthController } from './modules/shopify/shopify-auth.controller';
 import { ShopifyAuthService } from './modules/shopify/shopify-auth.service';
 import { ShopifyConnectionsRepositoryService } from '@database/dynamodb/repository-services/shopify.connection.service';
+import { ShopifyApiService } from './modules/utils/shopify/api.service';
+
 
 @Module({
   imports: [
@@ -113,7 +115,8 @@ import { ShopifyConnectionsRepositoryService } from '@database/dynamodb/reposito
     InstagramNodeFlowAnalyticsService,
     InstagramStoryPaginationService,
     ShopifyAuthService,
-    ShopifyConnectionsRepositoryService
+    ShopifyConnectionsRepositoryService,
+    ShopifyApiService
   ],
   exports: [DynamoDBService],
 })
