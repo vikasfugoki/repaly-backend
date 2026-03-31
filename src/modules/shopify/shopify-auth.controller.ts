@@ -55,4 +55,27 @@ async shopifyCallback(
   }
 }
 
+// ---- GDPR Webhooks ----
+
+    @Post('webhooks/customers/data_request')
+    @Public()
+    @HttpCode(200)
+    async customersDataRequest(@Body() body: any) {
+      return { status: 'ok' };
+    }
+
+    @Post('webhooks/customers/redact')
+    @Public()
+    @HttpCode(200)
+    async customersRedact(@Body() body: any) {
+      return { status: 'ok' };
+    }
+
+    @Post('webhooks/shop/redact')
+    @Public()
+    @HttpCode(200)
+    async shopRedact(@Body() body: any) {
+      return { status: 'ok' };
+    }
+
 }
