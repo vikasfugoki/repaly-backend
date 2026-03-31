@@ -9,7 +9,8 @@ export class ShopifyApiService {
         accessToken: string,
         query: Record<string, any>
     ): Promise<any> {
-        const url = `https://${shopName}/admin/api/2026-01/products.json`;
+        const shopDomain = shopName.includes('.') ? shopName : `${shopName}.myshopify.com`;
+        const url = `https://${shopDomain}/admin/api/2026-01/products.json`;
 
         const headers = {
             'X-Shopify-Access-Token': accessToken,
@@ -35,11 +36,14 @@ export class ShopifyApiService {
                 status: p.status,
             }));
         } catch (error) {
+            const errorMessage = (error as Error).message;
             console.error(
                 `Failed to search products for shop ${shopName}:`,
-                (error as Error).message,
+                errorMessage,
             );
-            throw new Error('Failed to search products on Shopify.');
+            throw new Error(
+                `Failed to search products on Shopify: ${errorMessage}`,
+            );
         }
     }
 }
