@@ -35,6 +35,7 @@ import { InstagramDmFlowAnalyticsService } from '@database/dynamodb/repository-s
 import { InstagramMediaPaginationService } from './instagram-media-pagination.service'
 import { InstagramNodeFlowAnalyticsService } from '@database/dynamodb/repository-services/instagram.flownodeAnalytics.service';
 import { ShopifyConnectionsRepositoryService } from '@database/dynamodb/repository-services/shopify.connection.service';
+import { ShopifyApiService } from '../utils/shopify/api.service';
 import { v4 as uuidv4 } from 'uuid';
 import { TriggerTypes } from '../utils/enums';
 
@@ -62,7 +63,8 @@ export class InstagramAccountService {
     private readonly instagramDmFlowAnalyticsService: InstagramDmFlowAnalyticsService,
     private readonly instagramMediaPaginationService: InstagramMediaPaginationService,
     private readonly instagramNodeFlowAnalyticsService: InstagramNodeFlowAnalyticsService,
-    private readonly shopifyConnectionsRepositoryService: ShopifyConnectionsRepositoryService
+    private readonly shopifyConnectionsRepositoryService: ShopifyConnectionsRepositoryService,
+    private readonly shopifyApiService: ShopifyApiService,
   ) {}
 
   private buildInsights(
@@ -2888,6 +2890,25 @@ export class InstagramAccountService {
       } catch (error) {
         if (error.code === 'SHOPIFY_NOT_CONNECTED') throw error; // expected, don't log
         console.error(`Failed to fetch the shopify connection for account ${accountId}:`, error);
+        throw error;
+      }
+    }
+
+    async getShopifySearch(accountId: string, query: Record<string, any>) {
+      try {
+        const connection = await this.shopifyConnectionsRepositoryService.getShopifyConnection(accountId);
+
+        if (!connection?.access_token || (!connection?.shop_name && !connection?.shopify_domain)) {
+          throw Object.assign(new Error(`Shopify is not connected for account ${accountId}`), {
+            code: 'SHOPIFY_NOT_CONNECTED',
+          });
+        }
+
+        const shopName = connection.shop_name || connection.shopify_domain;
+        return await this.shopifyApiService.searchProducts(shopName, connection.access_token, query);
+      } catch (error) {
+        if (error.code === 'SHOPIFY_NOT_CONNECTED') throw error; // expected, don't log
+        console.error(`Failed to search shopify products for account ${accountId}:`, error);
         throw error;
       }
     }

@@ -1061,4 +1061,16 @@ export class InstagramAccountController {
         throw new HttpException('Failed to get shopify connection status', HttpStatus.INTERNAL_SERVER_ERROR);
       }
     }
+
+    @InstagramResourceType('account')
+    @Post(":accountId/shopify_search")
+    async getShopifySearch(@Param('accountId') accountId: string, @Body() query: Record<string, any>) {
+      try {
+        return await this.instagramAccountService.getShopifySearch(accountId, query);
+      } catch (error) {
+        console.log(`Failed to search shopify products for account ${accountId}:`, error.message);
+        throw new HttpException('Failed to search shopify products', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+    }
+
 }
