@@ -2,13 +2,14 @@ import { Injectable, ConflictException, HttpException, HttpStatus, ConsoleLogger
 import { ShopifyAuthController } from './shopify-auth.controller';
 import { ShopifyConnectionsRepositoryService } from '@database/dynamodb/repository-services/shopify.connection.service';
 import { ShopifyAuthRequest, ShopifyCallbackDto } from '@database/dto/shopify.account.repository.dto';
-
+import { InstagramAccountRepositoryService } from '@database/dynamodb/repository-services/instagram.account.service';
 
 @Injectable()
 export class ShopifyAuthService {
 
   constructor(
-    private readonly shopifyConnectionsRepositoryService: ShopifyConnectionsRepositoryService
+    private readonly shopifyConnectionsRepositoryService: ShopifyConnectionsRepositoryService,
+    private readonly instagramAccountRepositoryService: InstagramAccountRepositoryService,
   ){}
 
     async initiateAuth(input: ShopifyAuthRequest & { userId: string }) {
@@ -80,6 +81,12 @@ async handleCallback(input: ShopifyCallbackDto): Promise<{ success: boolean }> {
     access_token: access_token,
     scopes,
     token_status: 'active',
+  });
+
+  // step 5 - save to instagram account's connected platforms (TODO)
+  this.instagramAccountRepositoryService.updateAccountDetails({
+    id: instagramAccountId,
+    is_shopify_connected: true,
   });
 
   return { success: true };
