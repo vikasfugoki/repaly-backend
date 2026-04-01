@@ -1,9 +1,12 @@
-import { Body, Controller, Post, Param, HttpCode, Req, HttpException, HttpStatus, Query, Get,Res, UseGuards } from '@nestjs/common';
+// import { Body, Controller, Post, Param, HttpCode, Req, HttpException, HttpStatus, Query, Get,Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, HttpCode, Req, HttpException, HttpStatus, Query, Get, Res, Headers as NestHeaders, RawBodyRequest } from '@nestjs/common';
 import { Public } from '../auth/public.decorator';
 import {UserRepositoryService} from '@database/dynamodb/repository-services/user.service';
 import { ShopifyAuthService } from './shopify-auth.service';
 import { ShopifyAuthRequest } from '@database/dto/shopify.account.repository.dto';
 import { InstagramOwnershipGuard } from '../auth/instagram-ownership.guard';
+import * as crypto from 'crypto';
+import { Request } from 'express';
 
 @Controller('shopify')
 export class ShopifyAuthController {
@@ -57,25 +60,54 @@ async shopifyCallback(
 
 // ---- GDPR Webhooks ----
 
-    @Post('webhooks/customers/data_request')
-    @Public()
-    @HttpCode(200)
-    async customersDataRequest(@Body() body: any) {
-      return { status: 'ok' };
-    }
+  verifyShopifyHmac(rawBody: Buffer, hmacHeader: string): boolean {
+  const secret = process.env.SHOPIFY_API_SECRET!;
+  const hash = crypto
+    .createHmac('sha256', secret)
+    .update(rawBody)
+    .digest('base64');
+  return hash === hmacHeader;
+}
 
-    @Post('webhooks/customers/redact')
-    @Public()
-    @HttpCode(200)
-    async customersRedact(@Body() body: any) {
-      return { status: 'ok' };
-    }
+// ---- GDPR Webhooks ----
 
-    @Post('webhooks/shop/redact')
-    @Public()
-    @HttpCode(200)
-    async shopRedact(@Body() body: any) {
-      return { status: 'ok' };
-    }
+@Post('webhooks/customers/data_request')
+@Public()
+@HttpCode(200)
+async customersDataRequest(
+  @NestHeaders('x-shopify-hmac-sha256') hmac: string,
+  @Req() req: RawBodyRequest<Request>
+){
+  if (!req.rawBody || !this.verifyShopifyHmac(req.rawBody, hmac)) {
+  throw new HttpException('Unauthorized', HttpStatus.UNAUTHORIZED);
+  }
+  return { status: 'ok' };
+}
+
+@Post('webhooks/customers/redact')
+@Public()
+@HttpCode(200)
+async customersRedact(
+  @NestHeaders('x-shopify-hmac-sha256') hmac: string,
+  @Req() req: RawBodyRequest<Request>
+) {
+  if (!req.rawBody || !this.verifyShopifyHmac(req.rawBody, hmac)) {
+    throw new HttpException('Unauthorized', HttpStatus.UNAUTHORIZED);
+  }
+  return { status: 'ok' };
+}
+
+@Post('webhooks/shop/redact')
+@Public()
+@HttpCode(200)
+async shopRedact(
+  @NestHeaders('x-shopify-hmac-sha256') hmac: string,
+  @Req() req: RawBodyRequest<Request>
+) {
+  if (!req.rawBody || !this.verifyShopifyHmac(req.rawBody, hmac)) {
+    throw new HttpException('Unauthorized', HttpStatus.UNAUTHORIZED);
+  }
+  return { status: 'ok' };
+}
 
 }
