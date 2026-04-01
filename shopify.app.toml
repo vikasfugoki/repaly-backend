@@ -3,17 +3,12 @@ name = "repaly.ai"
 application_url = "https://influex-staging-vikas.vercel.app"
 embedded = false
 
-[[webhooks.subscriptions]]
-  topics = ["CUSTOMERS_DATA_REQUEST"]
-  uri = "https://influex-staging-vikas.vercel.app/shopify/webhooks/customers/data_request"
+[webhooks]
+api_version = "2026-01"
 
   [[webhooks.subscriptions]]
-  topics = ["CUSTOMERS_REDACT"]
-  uri = "https://influex-staging-vikas.vercel.app/shopify/webhooks/customers/redact"
-
-  [[webhooks.subscriptions]]
-  topics = ["SHOP_REDACT"]
-  uri = "https://influex-staging-vikas.vercel.app/shopify/webhooks/shop/redact"
+  compliance_topics = ["customers/data_request", "customers/redact", "shop/redact"]
+  uri = "https://influex-staging-vikas.vercel.app/shopify/webhooks"
 
 [access_scopes]
 scopes = "read_orders,read_products"
