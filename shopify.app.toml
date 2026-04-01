@@ -1,0 +1,29 @@
+client_id = "f92875562d612a34b21dda6f2107f7da"
+name = "repaly.ai"
+application_url = "https://influex-staging-vikas.vercel.app"
+embedded = false
+
+[webhooks]
+api_version = "2026-01"
+
+  [[webhooks.subscriptions]]
+  topics = ["customers/data_request"]
+  uri = "https://influex-staging-vikas.vercel.app/shopify/webhooks/customers/data_request"
+
+  [[webhooks.subscriptions]]
+  topics = ["customers/redact"]
+  uri = "https://influex-staging-vikas.vercel.app/shopify/webhooks/customers/redact"
+
+  [[webhooks.subscriptions]]
+  topics = ["shop/redact"]
+  uri = "https://influex-staging-vikas.vercel.app/shopify/webhooks/shop/redact"
+
+[access_scopes]
+scopes = "read_orders,read_products"
+optional_scopes = []
+use_legacy_install_flow = false
+
+[auth]
+redirect_urls = [
+  "https://sb7dfmogp4.execute-api.us-west-1.amazonaws.com/repaly-test/shopify/callback"
+]
