@@ -26,11 +26,11 @@ export class InstagramTemplatesRepositoryService {
         return this.dynamoDbService.dynamoDBDocumentClient.send(params);
   }
 
-  async get_template(instagram_account_id: string, type?: 'media' | 'story') {
+ async get_template(instagram_account_id: string, type?: 'media' | 'story') {
   const params = new QueryCommand({
     TableName: this.tableName,
-    IndexName: 'accountId', // your GSI name
-    KeyConditionExpression: 'instagram_account_id = :accountId',
+    IndexName: 'type',
+    KeyConditionExpression: 'accountId = :accountId',
     ExpressionAttributeValues: {
       ':accountId': instagram_account_id,
       ...(type && { ':type': type }),
