@@ -1091,7 +1091,7 @@ export class InstagramAccountController {
     }
 
     @InstagramResourceType('account')
-    @Post(':accountId/templates')
+    @Post(':accountId/template')
     async createTemplate(
       @Param('accountId') accountId: string,
       @Body() input: Record<string, any>,
