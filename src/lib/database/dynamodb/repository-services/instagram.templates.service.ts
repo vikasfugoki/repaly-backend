@@ -27,18 +27,21 @@ export class InstagramTemplatesRepositoryService {
   }
 
   async get_template(instagram_account_id: string, type?: 'media' | 'story') {
-    const params = new QueryCommand({
-      TableName: this.tableName,
-      KeyConditionExpression: 'instagram_account_id = :accountId AND #type = :type',
-      ExpressionAttributeNames: {
-        '#type': 'type', // 'type' is a reserved keyword in DynamoDB, so we use an alias
-      },
-      ExpressionAttributeValues: {
-        ':accountId': instagram_account_id,
-        ':type': type,
-      },
-    });
-    const result = await this.dynamoDbService.dynamoDBDocumentClient.send(params);
-    return result.Items ?? [];  // explicit empty array instead of undefined
-    }
+  const params = new QueryCommand({
+    TableName: this.tableName,
+    IndexName: 'accountId-type-index', // your GSI name
+    KeyConditionExpression: 'instagram_account_id = :accountId',
+    ExpressionAttributeValues: {
+      ':accountId': instagram_account_id,
+      ...(type && { ':type': type }),
+    },
+    ...(type && {
+      FilterExpression: '#type = :type',
+      ExpressionAttributeNames: { '#type': 'type' },
+    }),
+  });
+
+  const result = await this.dynamoDbService.dynamoDBDocumentClient.send(params);
+  return result.Items ?? [];
+}
 }
