@@ -29,7 +29,7 @@ export class InstagramTemplatesRepositoryService {
   async get_template(instagram_account_id: string, type?: 'media' | 'story') {
   const params = new QueryCommand({
     TableName: this.tableName,
-    IndexName: 'accountId-type-index', // your GSI name
+    IndexName: 'accountId', // your GSI name
     KeyConditionExpression: 'instagram_account_id = :accountId',
     ExpressionAttributeValues: {
       ':accountId': instagram_account_id,
