@@ -36,6 +36,7 @@ import { InstagramMediaPaginationService } from './instagram-media-pagination.se
 import { InstagramNodeFlowAnalyticsService } from '@database/dynamodb/repository-services/instagram.flownodeAnalytics.service';
 import { ShopifyConnectionsRepositoryService } from '@database/dynamodb/repository-services/shopify.connection.service';
 import { ShopifyApiService } from '../utils/shopify/api.service';
+import { InstagramTemplatesRepositoryService } from '@database/dynamodb/repository-services/instagram.templates.service';
 import { v4 as uuidv4 } from 'uuid';
 import { TriggerTypes } from '../utils/enums';
 
@@ -65,6 +66,7 @@ export class InstagramAccountService {
     private readonly instagramNodeFlowAnalyticsService: InstagramNodeFlowAnalyticsService,
     private readonly shopifyConnectionsRepositoryService: ShopifyConnectionsRepositoryService,
     private readonly shopifyApiService: ShopifyApiService,
+    private readonly instagramTemplatesRepositoryService: InstagramTemplatesRepositoryService,
   ) {}
 
   private buildInsights(
@@ -2888,7 +2890,7 @@ export class InstagramAccountService {
           shop_name: connection.shop_name || connection.shopify_domain,
         };
       } catch (error) {
-        if (error.code === 'SHOPIFY_NOT_CONNECTED') throw error; // expected, don't log
+        if (error instanceof Error && (error as any).code === 'SHOPIFY_NOT_CONNECTED') throw error;
         console.error(`Failed to fetch the shopify connection for account ${accountId}:`, error);
         throw error;
       }
@@ -2907,11 +2909,34 @@ export class InstagramAccountService {
         const shopName = connection.shop_name || connection.shopify_domain;
         return await this.shopifyApiService.searchProducts(shopName, connection.access_token, query);
       } catch (error) {
-        if (error.code === 'SHOPIFY_NOT_CONNECTED') throw error; // expected, don't log
+        if (error instanceof Error && (error as any).code === 'SHOPIFY_NOT_CONNECTED') throw error;
         console.error(`Failed to search shopify products for account ${accountId}:`, error);
         throw error;
       }
     }
 
+    async getTemplates(accountId: string, type?: 'media' | 'story' ) {
+      try {
+        const templates = await this.instagramTemplatesRepositoryService.get_template(accountId, type);
+        return templates;
+      } catch (error) {
+        console.error(`Failed to fetch templates for account ${accountId}:`, error);
+        throw error;
+      }
+    }  
+
+    async createTemplate(accountId: string, templateData: Record<string, any>) {
+      try {
+        const templateDetails = {
+          accountId: accountId,
+          ...templateData,
+        }
+        const newTemplate = await this.instagramTemplatesRepositoryService.add_template(templateDetails);
+        return newTemplate;
+      } catch (error) {
+        console.error(`Failed to create template for account ${accountId}:`, error);
+        throw error;
+      }
+    }
  
 }
