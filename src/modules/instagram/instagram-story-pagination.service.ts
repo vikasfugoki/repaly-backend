@@ -164,6 +164,28 @@ private async fetchEnrichedStoriesFromDynamoDB(
   }
 
   private isAutomatedPost(image: any): boolean {
+    const ai_enabled = image?.ai_enabled;
+    const tag_and_value_pair = image?.tag_and_value_pair;
+
+    // Check ai_enabled logic
+    if (ai_enabled && typeof ai_enabled === 'object') {
+      for (const category of Object.values(ai_enabled)) {
+        if (category && typeof category === 'object') {
+          const mode = (category as any)?.mode;
+          if (mode && mode !== 'leave_comment') {
+            return true;
+          }
+        }
+      }
+    }
+
+    // Check tag_and_value_pair as array
+    if (Array.isArray(tag_and_value_pair) && tag_and_value_pair.length > 0) {
+      return true;
+    }
+
+
+    // for new format
     const keyword_value_pair = image?.keyword_value_pair;
 
     const tags = keyword_value_pair?.tags;
