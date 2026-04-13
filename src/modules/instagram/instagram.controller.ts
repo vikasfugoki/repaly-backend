@@ -9,6 +9,7 @@ import {
   Put,
   Query,
   UseGuards,
+  HttpException, HttpStatus
 } from '@nestjs/common';
 import { ApiTags, ApiBody, ApiParam } from '@nestjs/swagger';
 import { InstagramAccountService } from './instagram.service';
@@ -1046,4 +1047,62 @@ export class InstagramAccountController {
       )
     }
   }
+
+  @InstagramResourceType('account')
+  @Get(":accountId/shopify/connection")
+      async getShopifyConnection(@Param('accountId') accountId: string) {
+      try {
+        return await this.instagramAccountService.getShopifyConnection(accountId);
+      } catch (error) {
+        if (error instanceof Error && (error as any).code === 'SHOPIFY_NOT_CONNECTED') {
+          throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+        }
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        console.log(`Failed to get shopify connection status for account ${accountId}:`, message);
+        throw new HttpException('Failed to get shopify connection status', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+    }
+
+    @InstagramResourceType('account')
+    @Post(":accountId/shopify_search")
+    async getShopifySearch(@Param('accountId') accountId: string, @Body() query: Record<string, any>) {
+      try {
+        return await this.instagramAccountService.getShopifySearch(accountId, query);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        console.log(`Failed to search shopify products for account ${accountId}:`, message);
+        throw new HttpException('Failed to search shopify products', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+    }
+
+    @InstagramResourceType('account')
+    @Get(':accountId/templates')
+    async getTemplates(
+      @Param('accountId') accountId: string,
+      @Query('type') type?: 'media' | 'story',
+    ) {
+      try {
+        return await this.instagramAccountService.getTemplates(accountId, type);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        console.log(`Failed to get templates for account ${accountId}:`, message);
+        throw new HttpException('Failed to get templates', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+    }
+
+    @InstagramResourceType('account')
+    @Post(':accountId/template')
+    async createTemplate(
+      @Param('accountId') accountId: string,
+      @Body() input: Record<string, any>,
+    ) {
+      try {
+        return await this.instagramAccountService.createTemplate(accountId, input);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        console.log(`Failed to create template for account ${accountId}:`, message);
+        throw new HttpException('Failed to create template', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+    }
+
 }

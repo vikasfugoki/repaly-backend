@@ -34,6 +34,9 @@ import { InstagramFlowstateRepositoryService } from '@database/dynamodb/reposito
 import { InstagramDmFlowAnalyticsService } from '@database/dynamodb/repository-services/instagram.dmFlowAnalytics.service';
 import { InstagramMediaPaginationService } from './instagram-media-pagination.service'
 import { InstagramNodeFlowAnalyticsService } from '@database/dynamodb/repository-services/instagram.flownodeAnalytics.service';
+import { ShopifyConnectionsRepositoryService } from '@database/dynamodb/repository-services/shopify.connection.service';
+import { ShopifyApiService } from '../utils/shopify/api.service';
+import { InstagramTemplatesRepositoryService } from '@database/dynamodb/repository-services/instagram.templates.service';
 import { v4 as uuidv4 } from 'uuid';
 import { TriggerTypes } from '../utils/enums';
 
@@ -60,7 +63,10 @@ export class InstagramAccountService {
     private readonly instagramFlowstateRepositoryService: InstagramFlowstateRepositoryService,
     private readonly instagramDmFlowAnalyticsService: InstagramDmFlowAnalyticsService,
     private readonly instagramMediaPaginationService: InstagramMediaPaginationService,
-    private readonly instagramNodeFlowAnalyticsService: InstagramNodeFlowAnalyticsService
+    private readonly instagramNodeFlowAnalyticsService: InstagramNodeFlowAnalyticsService,
+    private readonly shopifyConnectionsRepositoryService: ShopifyConnectionsRepositoryService,
+    private readonly shopifyApiService: ShopifyApiService,
+    private readonly instagramTemplatesRepositoryService: InstagramTemplatesRepositoryService,
   ) {}
 
   private buildInsights(
@@ -2870,50 +2876,67 @@ export class InstagramAccountService {
       }
     }
 
-  // async getAdAnalyticsById(accountId: string, adId: string) {
-  //   try {
-  //     const adAnalytics = await this.instagramAdAnalyticsRepositoryService.getAdAnalytics(adId);
-  //     if (!adAnalytics || Object.keys(adAnalytics).length === 0) {
-  //       throw new Error(`No analytics found for adId: ${adId}`);
-  //     }
+    async getShopifyConnection(accountId: string) {
+      try {
+        const connection = await this.shopifyConnectionsRepositoryService.getShopifyConnection(accountId);
 
-  //     const commentsByType = adAnalytics.comments_by_type || {};
-  //     const allComments: Array<{
-  //       comment_timestamp: number;
-  //       commenter_username: string;
-  //       comment: string;
-  //       response_comment: string;
-  //       response_dm: string;
-  //       reply_timestamp: number;
-  //       category: string;
-  //     }> = [];
+        if (!connection?.access_token || (!connection?.shop_name && !connection?.shopify_domain)) {
+          throw Object.assign(new Error(`Shopify is not connected for account ${accountId}`), {
+            code: 'SHOPIFY_NOT_CONNECTED',
+          });
+        }
 
-  //     for (const [category, comments] of Object.entries(commentsByType)) {
-  //       for (const commentArr of comments as any[]) {
-  //         const [
-  //           comment_timestamp,
-  //           commenter_username,
-  //           comment,
-  //           response,
-  //           reply_timestamp
-  //         ] = commentArr;
+        return {
+          shop_name: connection.shop_name || connection.shopify_domain,
+        };
+      } catch (error) {
+        if (error instanceof Error && (error as any).code === 'SHOPIFY_NOT_CONNECTED') throw error;
+        console.error(`Failed to fetch the shopify connection for account ${accountId}:`, error);
+        throw error;
+      }
+    }
 
-  //         allComments.push({
-  //           comment_timestamp,
-  //           commenter_username,
-  //           comment,
-  //           response_comment: category.includes('dm') ? '' : response,
-  //           response_dm: category.includes('dm') ? response : '',
-  //           reply_timestamp,
-  //           category
-  //         });
-  //       }
-  //     }
+    async getShopifySearch(accountId: string, query: Record<string, any>) {
+      try {
+        const connection = await this.shopifyConnectionsRepositoryService.getShopifyConnection(accountId);
 
-  //     return allComments;
-  //   } catch (error) {
-  //     console.error(`Failed to get ad_analytics for ${adId}:`, error);
-  //     throw new Error('Unable to retrieve ad analytics');
-  //   }
-  // }
+        if (!connection?.access_token || (!connection?.shop_name && !connection?.shopify_domain)) {
+          throw Object.assign(new Error(`Shopify is not connected for account ${accountId}`), {
+            code: 'SHOPIFY_NOT_CONNECTED',
+          });
+        }
+
+        const shopName = connection.shop_name || connection.shopify_domain;
+        return await this.shopifyApiService.searchProducts(shopName, connection.access_token, query);
+      } catch (error) {
+        if (error instanceof Error && (error as any).code === 'SHOPIFY_NOT_CONNECTED') throw error;
+        console.error(`Failed to search shopify products for account ${accountId}:`, error);
+        throw error;
+      }
+    }
+
+    async getTemplates(accountId: string, type?: 'media' | 'story' ) {
+      try {
+        const templates = await this.instagramTemplatesRepositoryService.get_template(accountId, type);
+        return templates;
+      } catch (error) {
+        console.error(`Failed to fetch templates for account ${accountId}:`, error);
+        throw error;
+      }
+    }  
+
+    async createTemplate(accountId: string, templateData: Record<string, any>) {
+      try {
+        const templateDetails = {
+          accountId: accountId,
+          ...templateData,
+        }
+        const newTemplate = await this.instagramTemplatesRepositoryService.add_template(templateDetails);
+        return newTemplate;
+      } catch (error) {
+        console.error(`Failed to create template for account ${accountId}:`, error);
+        throw error;
+      }
+    }
+ 
 }

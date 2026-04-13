@@ -68,6 +68,18 @@ async function bootstrap() {
   const expressApp = express();
   app = await NestFactory.create(AppModule, new ExpressAdapter(expressApp));
 
+  // Add rawBody middleware BEFORE json parser
+    // Only capture rawBody for Shopify webhook routes
+  expressApp.use('/shopify/webhooks', (req: any, res, next) => {
+    let data = '';
+    req.setEncoding('utf8');
+    req.on('data', (chunk) => { data += chunk; });
+    req.on('end', () => {
+      req.rawBody = Buffer.from(data);
+      next();
+    });
+  });
+
   // Explicitly tell Express to parse JSON body
   expressApp.use(express.json());
 

@@ -66,6 +66,10 @@ jobs:
           INSTAGRAM_OAUTH_URL=${{ secrets.INSTAGRAM_OAUTH_URL }}
           INSTAGRAM_REDIRECT_URL='https://influex-staging-vikas.vercel.app/exchange-code/instagram'
           JWT_SECRET=${{ secrets.JWT_SECRET }}
+          SHOPIFY_API_KEY=${{ secrets.SHOPIFY_API_KEY }}
+          SHOPIFY_API_SECRET=${{ secrets.SHOPIFY_API_SECRET }}
+          SHOPIFY_REDIRECT_URI='https://sb7dfmogp4.execute-api.us-west-1.amazonaws.com/repaly-test/shopify/callback'
+          FRONTEND_URL='https://influex-staging-vikas.vercel.app'
           EOF
 
       - name: Build Docker image
