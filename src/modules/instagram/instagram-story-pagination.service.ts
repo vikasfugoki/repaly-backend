@@ -172,10 +172,10 @@ private async fetchEnrichedStoriesFromDynamoDB(
 
     const hasTags = Array.isArray(tags) && tags.length > 0;
     const hasValidPayload =
-        dmPayload != null &&
-        typeof dmPayload === "object" &&
-        Object.keys(dmPayload).length > 0;
+      dmPayload != null &&
+      typeof dmPayload === "object" &&
+      Object.keys(dmPayload).length > 0;
 
     return (hasTags || replyToAll) && hasValidPayload;
-}
+  }
 }
