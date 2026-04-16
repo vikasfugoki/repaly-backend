@@ -27,21 +27,21 @@ export class InstagramTemplatesRepositoryService {
   }
 
  async get_template(instagram_account_id: string, type?: 'media' | 'story') {
-  const params = new QueryCommand({
-    TableName: this.tableName,
-    IndexName: 'type',
-    KeyConditionExpression: 'accountId = :accountId',
-    ExpressionAttributeValues: {
-      ':accountId': instagram_account_id,
-      ...(type && { ':type': type }),
-    },
-    ...(type && {
-      FilterExpression: '#type = :type',
-      ExpressionAttributeNames: { '#type': 'type' },
-    }),
-  });
+    const params = new QueryCommand({
+      TableName: this.tableName,
+      IndexName: 'accountId-index',  // ← fix this to your actual GSI name
+      KeyConditionExpression: 'accountId = :accountId',
+      ExpressionAttributeValues: {
+        ':accountId': instagram_account_id,
+        ...(type && { ':type': type }),
+      },
+      ...(type && {
+        FilterExpression: '#type = :type',
+        ExpressionAttributeNames: { '#type': 'type' },
+      }),
+    });
 
-  const result = await this.dynamoDbService.dynamoDBDocumentClient.send(params);
-  return result.Items ?? [];
-}
+    const result = await this.dynamoDbService.dynamoDBDocumentClient.send(params);
+    return result.Items ?? [];
+  }
 }
