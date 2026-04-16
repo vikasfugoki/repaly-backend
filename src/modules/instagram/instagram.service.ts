@@ -2928,9 +2928,10 @@ export class InstagramAccountService {
     async createTemplate(accountId: string, templateData: Record<string, any>) {
       try {
         const templateDetails = {
-          accountId: accountId,
+          id: uuidv4(),  // ← generate here, always
+          accountId,
           ...templateData,
-        }
+        };
         const newTemplate = await this.instagramTemplatesRepositoryService.add_template(templateDetails);
         return newTemplate;
       } catch (error) {

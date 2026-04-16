@@ -10,7 +10,7 @@ import { DynamoDBService } from '../dynamodb.service';
 
 @Injectable()
 export class InstagramTemplatesRepositoryService {
-    private readonly tableName = 'instagram_templates_repository';
+    private readonly tableName = 'instagram_templates_repository_v2';
     constructor(private readonly dynamoDbService: DynamoDBService) {}
 
     async add_template(templateDetails:Record<string, any>) {
