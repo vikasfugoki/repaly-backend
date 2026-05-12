@@ -1,0 +1,63 @@
+import { Injectable, ConflictException, HttpException, HttpStatus, ConsoleLogger } from '@nestjs/common';
+import { InstagramAccountRepositoryService } from '@database/dynamodb/repository-services/instagram.account.service';
+import { WhatsappConnectionsRepositoryService } from '@database/dynamodb/repository-services/whatsapp.account.service';
+
+@Injectable()
+export class WhatsappAuthService {
+    constructor(
+        private readonly whatsappConnectionsRepositoryService: WhatsappConnectionsRepositoryService,
+        private readonly instagramAccountRepositoryService: InstagramAccountRepositoryService,
+    ){}
+
+    async initiateAuth(input: { code: string; instagramAccountId: string }) {
+        const { code, instagramAccountId } = input;
+
+        // Step 1 — exchange code for access token
+        const tokenResponse = await fetch(
+            `https://graph.facebook.com/v23.0/oauth/access_token`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    client_id: process.env.META_APP_ID,
+                    client_secret: process.env.META_APP_SECRET,
+                    grant_type: 'authorization_code',
+                    code,
+                    redirect_uri: process.env.WHATSAPP_REDIRECT_URI,
+                }),
+            }
+        );
+        const { access_token } = await tokenResponse.json();
+
+        // Step 2 — fetch WABA ID + business name
+        const wabaResponse = await fetch(
+            `https://graph.facebook.com/v23.0/me?fields=id,name&access_token=${access_token}`
+        );
+        const { id: waba_id, name: business_name } = await wabaResponse.json();
+
+        // Step 3 — fetch phone number ID
+        const phoneResponse = await fetch(
+            `https://graph.facebook.com/v23.0/${waba_id}/phone_numbers?access_token=${access_token}`
+        );
+        const phoneData = await phoneResponse.json();
+        const phone_number_id = phoneData.data?.[0]?.id;
+
+        // Step 4 — store in DynamoDB
+        await this.whatsappConnectionsRepositoryService.add_whatsapp_connection({
+        instagramAccountId,
+        access_token,
+        phone_number_id,
+        waba_id,
+        business_name,
+        connected_at: new Date().toISOString(),
+        });
+
+        // step 5 - save to instagram account's connected platforms (TODO)
+        this.instagramAccountRepositoryService.updateAccountDetails({
+            id: instagramAccountId,
+            is_whatsapp_connected: true,
+        });
+
+        return { success: true };
+    }
+}

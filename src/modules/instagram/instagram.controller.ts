@@ -1105,4 +1105,19 @@ export class InstagramAccountController {
       }
     }
 
+    @InstagramResourceType('account')
+    @Get(':accountId/whatsapp/connection')
+    async getWhatsappConnection(@Param('accountId') accountId: string) {
+      try {
+        return await this.instagramAccountService.getWhatsappConnection(accountId);
+      } catch (error) {
+        if (error instanceof Error && (error as any).code === 'WHATSAPP_NOT_CONNECTED') {
+          throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+        }
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        console.log(`Failed to get whatsapp connection status for account ${accountId}:`, message);
+        throw new HttpException('Failed to get whatsapp connection status', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+    }
+
 }
