@@ -3,17 +3,17 @@ import { IsNotEmpty, IsString, IsOptional } from 'class-validator';
 
 export class ExchangePlatformCodeRequest {
   @ApiProperty()
-  userId: string;
+  userId!: string;
 
   @ApiProperty()
   @IsNotEmpty()
   @IsString()
-  platformName: string;
+  platformName!: string;
 
   @ApiProperty()
   @IsNotEmpty()
   @IsString()
-  code: string;
+  code!: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
