@@ -1,4 +1,5 @@
 import { Injectable, ConflictException, HttpException, HttpStatus, ConsoleLogger } from '@nestjs/common';
+import { EnvironmentService } from '../utils/environment/environment.service';
 import { InstagramAccountRepositoryService } from '@database/dynamodb/repository-services/instagram.account.service';
 import { WhatsappConnectionsRepositoryService } from '@database/dynamodb/repository-services/whatsapp.account.service';
 
@@ -7,6 +8,7 @@ export class WhatsappAuthService {
     constructor(
         private readonly whatsappConnectionsRepositoryService: WhatsappConnectionsRepositoryService,
         private readonly instagramAccountRepositoryService: InstagramAccountRepositoryService,
+        private readonly environmentService: EnvironmentService,
     ){}
 
     async initiateAuth(input: { code: string; instagramAccountId: string }) {
@@ -19,8 +21,8 @@ export class WhatsappAuthService {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    client_id: process.env.META_APP_ID,
-                    client_secret: process.env.META_APP_SECRET,
+                    client_id: this.environmentService.getEnvVariable('FACEBOOK_CLIENT_ID'),
+                    client_secret: this.environmentService.getEnvVariable('META_APP_SECRET'),
                     grant_type: 'authorization_code',
                     code,
                     redirect_uri: process.env.WHATSAPP_REDIRECT_URI,
