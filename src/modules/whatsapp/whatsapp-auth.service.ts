@@ -24,7 +24,7 @@ export class WhatsappAuthService {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     client_id: this.environmentService.getEnvVariable('FACEBOOK_CLIENT_ID'),
-                    client_secret: this.environmentService.getEnvVariable('META_APP_SECRET'),
+                    client_secret: this.environmentService.getEnvVariable('FACEBOOK_CLIENT_SECRET'),
                     grant_type: 'authorization_code',
                     code,
                     redirect_uri: this.environmentService.getEnvVariable('WHATSAPP_REDIRECT_URI'),
