@@ -34,6 +34,11 @@ export class WhatsappAuthService {
         const { access_token } = await tokenResponse.json();
 
         console.log('Received access token from Facebook:', access_token);
+
+        const debugRes = await fetch(
+        `https://graph.facebook.com/debug_token?input_token=${access_token}&access_token=${access_token}`
+        );
+        console.log(await debugRes.json());
     
         // Step 2 — fetch WABA ID + business name
         // const wabaResponse = await fetch(
@@ -46,6 +51,7 @@ export class WhatsappAuthService {
             `https://graph.facebook.com/v23.0/me/whatsapp_business_accounts?access_token=${access_token}`
         );
         const wabaData = await wabaResponse.json();
+        console.log("WABA API response:", JSON.stringify(wabaData, null, 2));
         const waba_id = wabaData.data?.[0]?.id;
         const business_name = wabaData.data?.[0]?.name;
 
