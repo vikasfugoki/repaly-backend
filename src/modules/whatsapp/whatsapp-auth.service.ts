@@ -36,10 +36,27 @@ export class WhatsappAuthService {
         console.log('Received access token from Facebook:', access_token);
     
         // Step 2 — fetch WABA ID + business name
+        // const wabaResponse = await fetch(
+        //     `https://graph.facebook.com/v23.0/me?fields=id,name&access_token=${access_token}`
+        // );
+        // const { id: waba_id, name: business_name } = await wabaResponse.json();
+
+        // Step 2 — fetch WABA ID
         const wabaResponse = await fetch(
-            `https://graph.facebook.com/v23.0/me?fields=id,name&access_token=${access_token}`
+            `https://graph.facebook.com/v23.0/me/whatsapp_business_accounts?access_token=${access_token}`
         );
-        const { id: waba_id, name: business_name } = await wabaResponse.json();
+        const wabaData = await wabaResponse.json();
+        const waba_id = wabaData.data?.[0]?.id;
+        const business_name = wabaData.data?.[0]?.name;
+
+        console.log('WABA ID:', waba_id, 'Business Name:', business_name);
+
+        if (!waba_id) {
+            throw new HttpException(
+                'No WhatsApp Business Account found for this user.',
+                HttpStatus.BAD_REQUEST
+            );
+        }
 
         // Step 3 — fetch phone number ID
         const phoneResponse = await fetch(
