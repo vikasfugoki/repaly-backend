@@ -14,7 +14,7 @@ export class WhatsappConnectionsRepositoryService{
     constructor(private readonly dynamoDbService: DynamoDBService) {}
 
     async add_whatsapp_connection(connectionDetails: {
-        instagramAccountId: string;
+        id: string;
         access_token: string;
         phone_number_id: string;
         waba_id: string;
