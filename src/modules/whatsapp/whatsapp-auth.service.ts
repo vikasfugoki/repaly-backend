@@ -50,7 +50,7 @@ export class WhatsappAuthService {
 
         // Step 4 — store in DynamoDB
         await this.whatsappConnectionsRepositoryService.add_whatsapp_connection({
-        instagramAccountId,
+        id: instagramAccountId,
         access_token,
         phone_number_id,
         waba_id,
