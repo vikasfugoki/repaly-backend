@@ -11,7 +11,7 @@ export class WhatsappAuthService {
         private readonly environmentService: EnvironmentService,
     ){}
 
-    async initiateAuth(input: { code: string; instagramAccountId: string }) {
+    async initiateAuth(input: { code: string; instagramAccountId: string; waba_id?: string; phone_number_id?: string }) {
         const { code, instagramAccountId } = input;
         
         console.log('Initiating WhatsApp auth with code:', code, 'and Instagram Account ID:', instagramAccountId);
