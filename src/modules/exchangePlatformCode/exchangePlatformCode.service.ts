@@ -16,12 +16,12 @@ export class ExchangePlatformCodeService {
 
     console.log(`here are we:`, userId, platformName, code);
 
-    if (platformName !== 'instagram') {
-      throw new HttpException(
-        `No services for platform: ${platformName}`,
-        HttpStatus.BAD_REQUEST
-      );
-    }
+    // if (platformName !== 'instagram') {
+    //   throw new HttpException(
+    //     `No services for platform: ${platformName}`,
+    //     HttpStatus.BAD_REQUEST
+    //   );
+    // }
 
     if (platformName === 'instagram') {
       try {
