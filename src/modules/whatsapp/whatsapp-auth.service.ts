@@ -13,7 +13,9 @@ export class WhatsappAuthService {
 
     async initiateAuth(input: { code: string; instagramAccountId: string }) {
         const { code, instagramAccountId } = input;
-
+        
+        console.log('Initiating WhatsApp auth with code:', code, 'and Instagram Account ID:', instagramAccountId);
+        try {
         // Step 1 — exchange code for access token
         const tokenResponse = await fetch(
             `https://graph.facebook.com/v23.0/oauth/access_token`,
@@ -25,12 +27,14 @@ export class WhatsappAuthService {
                     client_secret: this.environmentService.getEnvVariable('META_APP_SECRET'),
                     grant_type: 'authorization_code',
                     code,
-                    redirect_uri: process.env.WHATSAPP_REDIRECT_URI,
+                    redirect_uri: this.environmentService.getEnvVariable('WHATSAPP_REDIRECT_URI'),
                 }),
             }
         );
         const { access_token } = await tokenResponse.json();
 
+        console.log('Received access token from Facebook:', access_token);
+    
         // Step 2 — fetch WABA ID + business name
         const wabaResponse = await fetch(
             `https://graph.facebook.com/v23.0/me?fields=id,name&access_token=${access_token}`
@@ -61,5 +65,13 @@ export class WhatsappAuthService {
         });
 
         return { success: true };
+        } catch (error) {
+        console.error('Error during WhatsApp auth:', error);
+        if (error instanceof HttpException) throw error;
+        throw new HttpException(
+            'Error: Failed to complete WhatsApp OAuth.',
+            HttpStatus.INTERNAL_SERVER_ERROR
+        );
+        }
     }
 }
