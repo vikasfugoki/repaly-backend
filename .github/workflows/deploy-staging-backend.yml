@@ -58,7 +58,7 @@ jobs:
           GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
           GOOGLE_OAUTH_URL=${{ secrets.GOOGLE_OAUTH_URL }}
-          GOOGLE_REDIRECT_URL='https://influex-staging-vikas.vercel.app/auth/google'
+          GOOGLE_REDIRECT_URL='https://d37f-103-195-202-157.ngrok-free.app/auth/google'
           GPT_KEY=${{ secrets.GPT_KEY }}
           INSTAGRAM_BASE_URL=${{ secrets.INSTAGRAM_BASE_URL }}
           INSTAGRAM_CLIENT_ID=${{ secrets.INSTAGRAM_CLIENT_ID }}
