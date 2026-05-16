@@ -41,19 +41,22 @@ export class WhatsappAuthService {
         console.log(await debugRes.json());
     
         // Step 2 — fetch WABA ID + business name
-        // const wabaResponse = await fetch(
-        //     `https://graph.facebook.com/v23.0/me?fields=id,name&access_token=${access_token}`
-        // );
-        // const { id: waba_id, name: business_name } = await wabaResponse.json();
+        const wabaResponse = await fetch(
+            `https://graph.facebook.com/v23.0/me?fields=id,name&access_token=${access_token}`
+        );
+
+        const  wabaresponse = await wabaResponse.json();
+        console.log("WABA API response:", JSON.stringify(wabaresponse, null, 2));
+        const { id: waba_id, name: business_name } = wabaresponse
 
         // Step 2 — fetch WABA ID
-        const wabaResponse = await fetch(
-            `https://graph.facebook.com/v23.0/me/whatsapp_business_accounts?access_token=${access_token}`
-        );
-        const wabaData = await wabaResponse.json();
-        console.log("WABA API response:", JSON.stringify(wabaData, null, 2));
-        const waba_id = wabaData.data?.[0]?.id;
-        const business_name = wabaData.data?.[0]?.name;
+        // const wabaResponse = await fetch(
+        //     `https://graph.facebook.com/v23.0/me/whatsapp_business_accounts?access_token=${access_token}`
+        // );
+        // const wabaData = await wabaResponse.json();
+        // console.log("WABA API response:", JSON.stringify(wabaData, null, 2));
+        // const waba_id = wabaData.data?.[0]?.id;
+        // const business_name = wabaData.data?.[0]?.name;
 
         console.log('WABA ID:', waba_id, 'Business Name:', business_name);
 
