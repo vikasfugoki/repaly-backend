@@ -24,4 +24,9 @@ export class ExchangePlatformCodeRequest {
   @IsOptional()
   @IsString()
   phone_number_id?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  instagramAccountId?: string;
 }

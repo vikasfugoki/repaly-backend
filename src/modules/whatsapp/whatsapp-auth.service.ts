@@ -11,10 +11,10 @@ export class WhatsappAuthService {
         private readonly environmentService: EnvironmentService,
     ){}
 
-    async initiateAuth(input: { code: string; instagramAccountId: string; waba_id: string; phone_number_id: string }) {
-    const { code, instagramAccountId, waba_id, phone_number_id } = input;
+    async initiateAuth(input: { code: string; userId: string; waba_id: string; phone_number_id: string, instagram_account_id: string }) {
+    const { code, userId, waba_id, phone_number_id, instagram_account_id} = input;
 
-    console.log('Initiating WhatsApp auth with input:', JSON.stringify({ code, instagramAccountId, waba_id, phone_number_id }));
+    console.log('Initiating WhatsApp auth with input:', JSON.stringify({ code, userId, waba_id, phone_number_id }));
 
     try {
         // Step 1 — exchange code for access token
@@ -56,9 +56,9 @@ export class WhatsappAuthService {
         console.log('Business name:', business_name);
 
         // Step 3 — store in DynamoDB
-        console.log('Saving WhatsApp connection to DynamoDB:', JSON.stringify({ instagramAccountId, waba_id, phone_number_id, business_name }));
+        console.log('Saving WhatsApp connection to DynamoDB:', JSON.stringify({ userId, waba_id, phone_number_id, business_name }));
         await this.whatsappConnectionsRepositoryService.add_whatsapp_connection({
-            id: instagramAccountId,
+            id: instagram_account_id,  // Use Instagram account ID as the primary key for WhatsApp connections
             access_token,
             phone_number_id,
             waba_id,
@@ -68,9 +68,9 @@ export class WhatsappAuthService {
         console.log('WhatsApp connection saved successfully');
 
         // Step 4 — mark whatsapp as connected on instagram account
-        console.log('Updating instagram account is_whatsapp_connected for:', instagramAccountId);
+        console.log('Updating instagram account is_whatsapp_connected for:', instagram_account_id);
         await this.instagramAccountRepositoryService.updateAccountDetails({
-            id: instagramAccountId,
+            id: instagram_account_id,
             is_whatsapp_connected: true,
         });
         console.log('Instagram account updated successfully');
