@@ -22,8 +22,8 @@ export class WhatsappAuthService {
             client_id: this.environmentService.getEnvVariable('FACEBOOK_CLIENT_ID'),
             client_secret: this.environmentService.getEnvVariable('FACEBOOK_CLIENT_SECRET'),
             grant_type: 'authorization_code',
-            code,
-            redirect_uri: this.environmentService.getEnvVariable('WHATSAPP_REDIRECT_URI'),
+            code
+            // redirect_uri: this.environmentService.getEnvVariable('WHATSAPP_REDIRECT_URI'),
         });
 
         console.log('Exchanging code for access token...');
