@@ -14,7 +14,7 @@ export class WhatsappAuthService {
     async initiateAuth(input: { code: string; userId: string; waba_id: string; phone_number_id: string, instagram_account_id: string }) {
     const { code, userId, waba_id, phone_number_id, instagram_account_id} = input;
 
-    console.log('Initiating WhatsApp auth with input:', JSON.stringify({ code, userId, waba_id, phone_number_id }));
+    console.log('Initiating WhatsApp auth with input:', JSON.stringify({ code, userId, waba_id, phone_number_id, instagram_account_id }));
 
     try {
         // Step 1 — exchange code for access token
