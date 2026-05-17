@@ -87,14 +87,19 @@ export class ExchangePlatformCodeService {
     }
     
     else if (platformName === 'whatsapp') {
-      return await this.whatsappAuthService.initiateAuth({ 
+    if (!input.waba_id || !input.phone_number_id) {
+        throw new HttpException(
+            'waba_id and phone_number_id are required for WhatsApp auth',
+            HttpStatus.BAD_REQUEST
+        );
+    }
+    return await this.whatsappAuthService.initiateAuth({ 
         code, 
         instagramAccountId: userId,
         waba_id: input.waba_id,
         phone_number_id: input.phone_number_id,
     });
-
-    }
+  }
     else {
       throw new Error(`No services for platform: ${platformName}`);
     }
