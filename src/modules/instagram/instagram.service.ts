@@ -37,8 +37,10 @@ import { InstagramNodeFlowAnalyticsService } from '@database/dynamodb/repository
 import { ShopifyConnectionsRepositoryService } from '@database/dynamodb/repository-services/shopify.connection.service';
 import { ShopifyApiService } from '../utils/shopify/api.service';
 import { InstagramTemplatesRepositoryService } from '@database/dynamodb/repository-services/instagram.templates.service';
+import { WhatsappConnectionsRepositoryService } from '@database/dynamodb/repository-services/whatsapp.account.service';
 import { v4 as uuidv4 } from 'uuid';
 import { TriggerTypes } from '../utils/enums';
+import { connected } from 'process';
 
 const s3Client = new S3Client({ region: process.env.AWS_REGION });
 
@@ -67,6 +69,7 @@ export class InstagramAccountService {
     private readonly shopifyConnectionsRepositoryService: ShopifyConnectionsRepositoryService,
     private readonly shopifyApiService: ShopifyApiService,
     private readonly instagramTemplatesRepositoryService: InstagramTemplatesRepositoryService,
+    private readonly whatsappConnectionsRepositoryService: WhatsappConnectionsRepositoryService,
   ) {}
 
   private buildInsights(
@@ -2939,5 +2942,39 @@ export class InstagramAccountService {
         throw error;
       }
     }
- 
+
+    async deleteTemplate(accountId: string, templateId: string) {
+      try {
+        await this.instagramTemplatesRepositoryService.delete_template(templateId);
+        return { success: true, message: 'Template deleted successfully' };
+      } catch (error) {
+        console.error(`Failed to delete template ${templateId} for account ${accountId}:`, error);
+        throw error;
+      }
+    }
+
+
+    async getWhatsappConnection(accountId: string) {
+      try {
+        const connection = await this.whatsappConnectionsRepositoryService.getWhatsappConnection(accountId);
+
+        if (!connection?.access_token || (!connection?.shop_name && !connection?.shopify_domain)) {
+          return {
+            connected: false
+          }
+        }
+
+        return {
+          phone_number: connection.phone_number,
+          business_name: connection.business_name,
+          connected_at: connection.connected_at,
+          connected: true
+        };
+      } catch (error) {
+        if (error instanceof Error && (error as any).code === 'WHATSAPP_NOT_CONNECTED') throw error;
+        console.error(`Failed to fetch the whatsapp connection for account ${accountId}:`, error);
+        throw error;
+      }
+    }
+
 }

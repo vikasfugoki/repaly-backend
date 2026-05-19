@@ -53,6 +53,9 @@ import { ShopifyAuthService } from './modules/shopify/shopify-auth.service';
 import { ShopifyConnectionsRepositoryService } from '@database/dynamodb/repository-services/shopify.connection.service';
 import { ShopifyApiService } from './modules/utils/shopify/api.service';
 import { InstagramTemplatesRepositoryService } from '@database/dynamodb/repository-services/instagram.templates.service';
+import { WhatsappConnectionsRepositoryService } from '@database/dynamodb/repository-services/whatsapp.account.service';
+import { WhatsappAuthController } from './modules/whatsapp/whatsapp-auth.controller';
+import { WhatsappAuthService } from './modules/whatsapp/whatsapp-auth.service';
 
 @Module({
   imports: [
@@ -117,7 +120,10 @@ import { InstagramTemplatesRepositoryService } from '@database/dynamodb/reposito
     ShopifyAuthService,
     ShopifyConnectionsRepositoryService,
     ShopifyApiService,
-    InstagramTemplatesRepositoryService
+    InstagramTemplatesRepositoryService,
+    WhatsappConnectionsRepositoryService,
+    WhatsappAuthController,
+    WhatsappAuthService
   ],
   exports: [DynamoDBService],
 })

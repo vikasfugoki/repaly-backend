@@ -2,24 +2,26 @@ import { Injectable, ConflictException, HttpException, HttpStatus, ConsoleLogger
 import { InstagramApiService } from '../utils/instagram/api.service';
 import { InstagramAccountRepositoryService } from '@database/dynamodb/repository-services/instagram.account.service';
 import { ExchangePlatformCodeRequest } from '@lib/dto';
+import { WhatsappAuthService } from '../whatsapp/whatsapp-auth.service';
 
 @Injectable()
 export class ExchangePlatformCodeService {
   constructor(
     private readonly api: InstagramApiService,
     private readonly instagramRepository: InstagramAccountRepositoryService,
+    private readonly whatsappAuthService: WhatsappAuthService,
   ) {}
   async exchangeInstagramCode(input: ExchangePlatformCodeRequest) {
     const { userId, platformName, code } = input;
 
     console.log(`here are we:`, userId, platformName, code);
 
-    if (platformName !== 'instagram') {
-      throw new HttpException(
-        `No services for platform: ${platformName}`,
-        HttpStatus.BAD_REQUEST
-      );
-    }
+    // if (platformName !== 'instagram') {
+    //   throw new HttpException(
+    //     `No services for platform: ${platformName}`,
+    //     HttpStatus.BAD_REQUEST
+    //   );
+    // }
 
     if (platformName === 'instagram') {
       try {
@@ -82,7 +84,24 @@ export class ExchangePlatformCodeService {
         HttpStatus.INTERNAL_SERVER_ERROR
       );
       }
-    } else {
+    }
+    
+    else if (platformName === 'whatsapp') {
+    if (!input.waba_id || !input.phone_number_id || !input.instagramAccountId) {
+        throw new HttpException(
+            'waba_id and phone_number_id are required for WhatsApp auth',
+            HttpStatus.BAD_REQUEST
+        );
+    }
+    return await this.whatsappAuthService.initiateAuth({ 
+        code, 
+        userId: userId,
+        waba_id: input.waba_id,
+        phone_number_id: input.phone_number_id,
+        instagram_account_id: input.instagramAccountId
+    });
+  }
+    else {
       throw new Error(`No services for platform: ${platformName}`);
     }
   }

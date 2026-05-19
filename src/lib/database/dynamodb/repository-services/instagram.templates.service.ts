@@ -44,4 +44,12 @@ export class InstagramTemplatesRepositoryService {
     const result = await this.dynamoDbService.dynamoDBDocumentClient.send(params);
     return result.Items ?? [];
   }
+
+  async delete_template(template_id: string) {
+    const params = new DeleteCommand({
+      TableName: this.tableName,
+      Key: { id: template_id },
+    });
+    return this.dynamoDbService.dynamoDBDocumentClient.send(params);
+  }
 }
