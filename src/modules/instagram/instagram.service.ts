@@ -2943,6 +2943,17 @@ export class InstagramAccountService {
       }
     }
 
+    async deleteTemplate(accountId: string, templateId: string) {
+      try {
+        await this.instagramTemplatesRepositoryService.delete_template(templateId);
+        return { success: true, message: 'Template deleted successfully' };
+      } catch (error) {
+        console.error(`Failed to delete template ${templateId} for account ${accountId}:`, error);
+        throw error;
+      }
+    }
+
+
     async getWhatsappConnection(accountId: string) {
       try {
         const connection = await this.whatsappConnectionsRepositoryService.getWhatsappConnection(accountId);

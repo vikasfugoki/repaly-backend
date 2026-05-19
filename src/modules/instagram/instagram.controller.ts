@@ -1089,6 +1089,22 @@ export class InstagramAccountController {
         throw new HttpException('Failed to get templates', HttpStatus.INTERNAL_SERVER_ERROR);
       }
     }
+    
+
+    @InstagramResourceType('account')
+    @Delete(':accountId/template/:templateId')
+    async deleteTemplate(
+      @Param('accountId') accountId: string,
+      @Param('templateId') templateId: string,
+    ) {
+      try {
+        return await this.instagramAccountService.deleteTemplate(accountId, templateId);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        console.log(`Failed to delete template ${templateId} for account ${accountId}:`, message);
+        throw new HttpException('Failed to delete template', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+    }
 
     @InstagramResourceType('account')
     @Post(':accountId/template')
