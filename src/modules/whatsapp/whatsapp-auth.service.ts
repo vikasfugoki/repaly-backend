@@ -70,6 +70,22 @@ export class WhatsappAuthService {
             throw new HttpException('Failed to subscribe to WABA webhooks', HttpStatus.BAD_GATEWAY);
         }
 
+        // Before registering, turn off existing 2-step verification
+        const disableResponse = await fetch(
+            `https://graph.facebook.com/v23.0/${phone_number_id}`,
+            {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${access_token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    pin: ''  // empty string disables it
+                })
+            }
+        );
+        console.log('Disable 2FA:', await disableResponse.json());
+
         // Step 4 (docs) — Register the phone number with a PIN
         const pin = 432165; // 6-digit
         const registerResponse = await fetch(
