@@ -71,23 +71,23 @@ export class WhatsappAuthService {
         }
 
         // Before registering, turn off existing 2-step verification
-        const disableResponse = await fetch(
-            `https://graph.facebook.com/v23.0/${phone_number_id}`,
-            {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${access_token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    pin: ''  // empty string disables it
-                })
-            }
-        );
-        console.log('Disable 2FA:', await disableResponse.json());
+        // const disableResponse = await fetch(
+        //     `https://graph.facebook.com/v23.0/${phone_number_id}`,
+        //     {
+        //         method: 'POST',
+        //         headers: {
+        //             'Authorization': `Bearer ${access_token}`,
+        //             'Content-Type': 'application/json'
+        //         },
+        //         body: JSON.stringify({
+        //             pin: ''  // empty string disables it
+        //         })
+        //     }
+        // );
+        // console.log('Disable 2FA:', await disableResponse.json());
 
         // Step 4 (docs) — Register the phone number with a PIN
-        const pin = 432165; // 6-digit
+        // const pin = 432165; // 6-digit
         const registerResponse = await fetch(
             `https://graph.facebook.com/v23.0/${phone_number_id}/register`,
             {
@@ -98,7 +98,7 @@ export class WhatsappAuthService {
                 },
                 body: JSON.stringify({
                     messaging_product: 'whatsapp',
-                    pin
+                    pin: '432165'
                 })
             }
         );
