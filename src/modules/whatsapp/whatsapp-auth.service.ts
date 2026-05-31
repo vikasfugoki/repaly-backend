@@ -71,7 +71,7 @@ export class WhatsappAuthService {
         }
 
         // Step 4 (docs) — Register the phone number with a PIN
-        const pin = this.environmentService.getEnvVariable('WHATSAPP_DEFAULT_PIN'); // 6-digit
+        const pin = this.environmentService.getEnvVariable('432165'); // 6-digit
         const registerResponse = await fetch(
             `https://graph.facebook.com/v23.0/${phone_number_id}/register`,
             {
