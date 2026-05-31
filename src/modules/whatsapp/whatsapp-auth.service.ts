@@ -98,7 +98,7 @@ export class WhatsappAuthService {
                 },
                 body: JSON.stringify({
                     messaging_product: 'whatsapp',
-                    pin: '432165'
+                    pin: '123456'
                 })
             }
         );
