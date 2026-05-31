@@ -55,6 +55,46 @@ export class WhatsappAuthService {
         }
         console.log('Business name:', business_name);
 
+        // Step 3 (docs) — Subscribe to webhooks on the customer's WABA
+        const wabaSubscribeResponse = await fetch(
+            `https://graph.facebook.com/v23.0/${waba_id}/subscribed_apps`,
+            {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${access_token}` }
+            }
+        );
+
+        const wabaSubscribeData = await wabaSubscribeResponse.json();
+        console.log('WABA webhook subscription:', JSON.stringify(wabaSubscribeData));
+        if (!wabaSubscribeData.success) {
+            throw new HttpException('Failed to subscribe to WABA webhooks', HttpStatus.BAD_GATEWAY);
+        }
+
+        // Step 4 (docs) — Register the phone number with a PIN
+        const pin = this.environmentService.getEnvVariable('WHATSAPP_DEFAULT_PIN'); // 6-digit
+        const registerResponse = await fetch(
+            `https://graph.facebook.com/v23.0/${phone_number_id}/register`,
+            {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${access_token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    messaging_product: 'whatsapp',
+                    pin
+                })
+            }
+        );
+        const registerData = await registerResponse.json();
+        console.log('Phone number registration:', JSON.stringify(registerData));
+        if (!registerData.success) {
+            throw new HttpException(
+                `Failed to register phone number: ${JSON.stringify(registerData)}`,
+                HttpStatus.BAD_GATEWAY
+            );
+        }
+
         // Step 3 — store in DynamoDB
         console.log('Saving WhatsApp connection to DynamoDB:', JSON.stringify({ userId, waba_id, phone_number_id, business_name }));
         await this.whatsappConnectionsRepositoryService.add_whatsapp_connection({
