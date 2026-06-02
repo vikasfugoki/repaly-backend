@@ -3122,4 +3122,51 @@ export class InstagramAccountService {
     
     }
 
+    async deleteWhatsappTemplate(accountId: string, templateId: string) {
+        try {
+          const connection = await this.whatsappConnectionsRepositoryService.getWhatsappConnection(accountId);
+          const accessToken = connection?.access_token;
+          const wabaId = connection?.waba_id;
+
+          if (!accessToken || !wabaId) {
+            throw Object.assign(new Error(`Whatsapp is not connected for account ${accountId}`), {
+              code: 'WHATSAPP_NOT_CONNECTED',
+            });
+          }
+
+          // fetch template from DB to get name + meta_template_id
+          const template = await this.whatsappTemplateRepositoryService.getTemplateById(templateId);
+          if (!template) throw new Error(`Template ${templateId} not found`);
+
+          const templateName = template.template?.name;
+          const metaTemplateId = template.template?.meta_template_id;
+
+          // delete from Meta (requires both name and hsm_id)
+          const url = `https://graph.facebook.com/v21.0/${wabaId}/message_templates?hsm_id=${metaTemplateId}&name=${templateName}`;
+          const res = await fetch(url, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          const metaResult = await res.json();
+          console.log('Meta template delete response:', metaResult);
+
+          if (!res.ok) {
+            throw Object.assign(
+              new Error(metaResult?.error?.message || 'Failed to delete template from WhatsApp'),
+              { code: 'META_API_ERROR', details: metaResult?.error }
+            );
+          }
+
+          // delete from DB only after Meta succeeds
+          await this.whatsappTemplateRepositoryService.deleteTemplate(templateId);
+          return { success: true, message: 'Template deleted successfully' };
+
+        } catch (error) {
+          if (error instanceof Error && (error as any).code === 'WHATSAPP_NOT_CONNECTED') throw error;
+          if (error instanceof Error && (error as any).code === 'META_API_ERROR') throw error;
+          console.error(`Failed to delete whatsapp template ${templateId}:`, error);
+          throw error;
+        }
+      }
+
 }
