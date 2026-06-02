@@ -2981,9 +2981,65 @@ export class InstagramAccountService {
 
     async getWhatsappTemplates(accountId: string) {
       try {
+        const connection = await this.whatsappConnectionsRepositoryService.getWhatsappConnection(accountId);
+        const accessToken = connection?.access_token;
+        const wabaId = connection?.waba_id;
+
+        if (!accessToken || !wabaId) {
+          throw Object.assign(new Error(`Whatsapp is not connected for account ${accountId}`), {
+            code: 'WHATSAPP_NOT_CONNECTED',
+          });
+        }
+
         const templates = await this.whatsappTemplateRepositoryService.getTemplates(accountId);
 
-        return templates;
+        // refresh status from Meta for non-final templates
+        const updated = await Promise.all(
+          templates.map(async (item) => {
+            const status = item.template?.status;
+            if (status === 'APPROVED' || status === 'REJECTED') return item;
+
+            try {
+              const metaTemplateId = item.template?.meta_template_id;
+              const url = `https://graph.facebook.com/v21.0/${metaTemplateId}?fields=status,rejection_reason`;
+              const res = await fetch(url, {
+                headers: { Authorization: `Bearer ${accessToken}` },
+              });
+              const metaData = await res.json();
+
+              if (res.ok && metaData.status) {
+                // persist updated status if changed
+                if (metaData.status !== status) {
+                  await this.whatsappTemplateRepositoryService.addTemplate(
+                    accountId,
+                    wabaId,
+                    item.id,
+                    {
+                      ...item.template,
+                      status: metaData.status,
+                      rejection_reason: metaData.rejection_reason ?? null,
+                    }
+                  );
+                }
+                return {
+                  ...item,
+                  template: {
+                    ...item.template,
+                    status: metaData.status,
+                    rejection_reason: metaData.rejection_reason ?? null,
+                  },
+                };
+              }
+            } catch (e) {
+              console.warn(`Failed to refresh status for template ${item.id}:`, e);
+            }
+
+            return item; // return stale if Meta call fails
+          })
+        );
+
+        return updated;
+
       } catch (error) {
         if (error instanceof Error && (error as any).code === 'WHATSAPP_NOT_CONNECTED') throw error;
         console.error(`Failed to fetch whatsapp templates for account ${accountId}:`, error);
