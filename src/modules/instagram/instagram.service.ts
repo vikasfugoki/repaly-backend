@@ -2991,4 +2991,59 @@ export class InstagramAccountService {
       }
     }
 
+    async createWhatsappTemplate(accountId: string, templateData: any) {
+     
+      try{
+
+        // fetch the whatsapp connection details
+        const connection = await this.whatsappConnectionsRepositoryService.getWhatsappConnection(accountId);
+        console.log("whatsapp connection details:", connection);
+
+        const accessToken = connection?.access_token;
+        const waba_id = connection?.waba_id;
+
+        if (!accessToken || !waba_id) {
+          throw Object.assign(new Error(`Whatsapp is not connected for account ${accountId}`), {
+            code: 'WHATSAPP_NOT_CONNECTED',
+          });
+        }
+
+        // submit template to Meta for approval
+        const url = `https://graph.facebook.com/v21.0/${waba_id}/message_templates`;
+        const metaResponse = await fetch(url, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: templateData.name,
+            language: templateData.language,
+            category: templateData.category,
+            components: templateData.components,
+          }),
+        });
+
+        const metaResult = await metaResponse.json();
+        console.log("meta template creation response:", metaResult);
+
+        if (!metaResponse.ok) {
+          throw Object.assign(
+            new Error(metaResult?.error?.message || 'Failed to create template on WhatsApp'),
+            { code: 'META_API_ERROR', details: metaResult?.error }
+          );
+        }
+
+        // create the template on whatsapp using the access token and waba_id
+        const createdTemplate = await this.whatsappTemplateRepositoryService.addTemplate(accessToken, waba_id, templateData);
+        console.log("created whatsapp template:", createdTemplate);
+
+      } catch (error) {
+        if (error instanceof Error && (error as any).code === 'WHATSAPP_NOT_CONNECTED') throw error;
+        console.error(`Failed to create whatsapp template for account ${accountId}:`, error);
+        throw error;
+      }
+    
+    }
+
 }

@@ -1138,7 +1138,7 @@ export class InstagramAccountController {
 
     // whatsapp template related api
     @InstagramResourceType('account')
-    @Get(':accountId/whatsapp/templates')
+    @Get('whatsapp/:accountId/whatsapp/templates')
     async getWhatsappTemplates(@Param('accountId') accountId: string) {
       try {
         return await this.instagramAccountService.getWhatsappTemplates(accountId);
@@ -1146,6 +1146,21 @@ export class InstagramAccountController {
         const message = error instanceof Error ? error.message : 'Unknown error';
         console.log(`Failed to get whatsapp templates for account ${accountId}:`, message);
         throw new HttpException('Failed to get whatsapp templates', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+    }
+
+    @InstagramResourceType('account')
+    @Post('/whatsapp/:accountId/whatsapp/templates')
+    async createWhatsappTemplate(
+      @Param('accountId') accountId: string,
+      @Body() template: Record<string, any>,
+    ) {
+      try {
+        return await this.instagramAccountService.createWhatsappTemplate(accountId, template);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        console.log(`Failed to create whatsapp template for account ${accountId}:`, message);
+        throw new HttpException('Failed to create whatsapp template', HttpStatus.INTERNAL_SERVER_ERROR);
       }
     }
 
