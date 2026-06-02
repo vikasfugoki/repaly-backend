@@ -3047,6 +3047,19 @@ export class InstagramAccountService {
       }
     }
 
+    async getWhatsappSingleTemplate(accountId: string, templateId: string) {
+      try {
+        const template = await this.whatsappTemplateRepositoryService.getTemplateById(templateId);
+        if (!template) {
+          throw new Error(`Template with id ${templateId} not found for account ${accountId}`);
+        }
+        return template;
+      } catch (error) {
+        console.error(`Failed to fetch whatsapp template ${templateId} for account ${accountId}:`, error);
+        throw error;
+      }
+    }
+
     async createWhatsappTemplate(accountId: string, templateData: any) {
      
       try{

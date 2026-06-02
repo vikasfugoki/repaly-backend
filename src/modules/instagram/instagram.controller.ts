@@ -1150,6 +1150,21 @@ export class InstagramAccountController {
     }
 
     @InstagramResourceType('account')
+    @Delete('whatsapp/:accountId/template/:templateId')
+    async getWhatsappSingleTemplate(
+      @Param('accountId') accountId: string,
+      @Param('templateId') templateId: string
+    ) {
+      try {
+        return await this.instagramAccountService.getWhatsappSingleTemplate(accountId, templateId);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        console.log(`Failed to get whatsapp template ${templateId} for account ${accountId}:`, message);
+        throw new HttpException('Failed to get whatsapp template', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+    }
+
+    @InstagramResourceType('account')
     @Post('/whatsapp/:accountId/templates')
     async createWhatsappTemplate(
       @Param('accountId') accountId: string,
