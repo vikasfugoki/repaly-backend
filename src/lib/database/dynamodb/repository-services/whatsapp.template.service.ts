@@ -41,15 +41,16 @@ async getTemplates(instagram_account_id: string) {
   }
 
   async getTemplateById(template_id: string) {
-    const params = new GetCommand({
+    const params = new QueryCommand({
         TableName: this.tableName,
-        Key: {
-            id: template_id,
+        KeyConditionExpression: 'id = :id',
+        ExpressionAttributeValues: {
+        ':id': template_id,
         },
     });
     const result = await this.dynamoDbService.dynamoDBDocumentClient.send(params);
-    return result.Item ?? null;
-  }
+    return result.Items?.[0] ?? null;
+    }
 
 async deleteTemplate(template_id: string) {
     const params = new DeleteCommand({
