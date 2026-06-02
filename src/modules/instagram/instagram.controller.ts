@@ -1150,7 +1150,7 @@ export class InstagramAccountController {
     }
 
     @InstagramResourceType('account')
-    @Post('/whatsapp/:accountId/whatsapp/templates')
+    @Post('/whatsapp/:accountId/templates')
     async createWhatsappTemplate(
       @Param('accountId') accountId: string,
       @Body() template: Record<string, any>,
