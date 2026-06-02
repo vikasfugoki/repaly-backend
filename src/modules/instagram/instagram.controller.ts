@@ -1150,7 +1150,7 @@ export class InstagramAccountController {
     }
 
     @InstagramResourceType('account')
-    @Delete('whatsapp/:accountId/templates/:templateId')
+    @Get('whatsapp/:accountId/templates/:templateId')
     async getWhatsappSingleTemplate(
       @Param('accountId') accountId: string,
       @Param('templateId') templateId: string
