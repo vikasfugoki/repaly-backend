@@ -2985,6 +2985,8 @@ export class InstagramAccountService {
         const accessToken = connection?.access_token;
         const wabaId = connection?.waba_id;
 
+        console.log("whatsapp connection details:", connection);
+
         if (!accessToken || !wabaId) {
           throw Object.assign(new Error(`Whatsapp is not connected for account ${accountId}`), {
             code: 'WHATSAPP_NOT_CONNECTED',
@@ -2992,6 +2994,7 @@ export class InstagramAccountService {
         }
 
         const templates = await this.whatsappTemplateRepositoryService.getTemplates(accountId);
+        console.log(`Fetched ${templates.length} templates from DB for account ${accountId}`);
 
         // refresh status from Meta for non-final templates
         const updated = await Promise.all(
