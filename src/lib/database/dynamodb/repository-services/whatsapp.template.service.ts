@@ -52,14 +52,19 @@ async getTemplates(instagram_account_id: string) {
     return result.Items?.[0] ?? null;
     }
 
-async deleteTemplate(template_id: string) {
-    const params = new DeleteCommand({
-        TableName: this.tableName,
-        Key: {
+    async deleteTemplate(template_id: string) {
+        // first fetch to get the SK (instagram_account_id)
+        const item = await this.getTemplateById(template_id);
+        if (!item) throw new Error(`Template ${template_id} not found`);
+
+        const params = new DeleteCommand({
+            TableName: this.tableName,
+            Key: {
             id: template_id,
-        },
-    });
-    await this.dynamoDbService.dynamoDBDocumentClient.send(params);
-  }
+            instagram_account_id: item.instagram_account_id,
+            },
+        });
+        await this.dynamoDbService.dynamoDBDocumentClient.send(params);
+        }
 
 }
