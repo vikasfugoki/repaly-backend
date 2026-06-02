@@ -1138,7 +1138,7 @@ export class InstagramAccountController {
 
     // whatsapp template related api
     @InstagramResourceType('account')
-    @Get('whatsapp/:accountId/whatsapp/templates')
+    @Get('whatsapp/:accountId/templates')
     async getWhatsappTemplates(@Param('accountId') accountId: string) {
       try {
         return await this.instagramAccountService.getWhatsappTemplates(accountId);
