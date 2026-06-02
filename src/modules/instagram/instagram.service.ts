@@ -38,6 +38,7 @@ import { ShopifyConnectionsRepositoryService } from '@database/dynamodb/reposito
 import { ShopifyApiService } from '../utils/shopify/api.service';
 import { InstagramTemplatesRepositoryService } from '@database/dynamodb/repository-services/instagram.templates.service';
 import { WhatsappConnectionsRepositoryService } from '@database/dynamodb/repository-services/whatsapp.account.service';
+import { WhatsappTemplateRepositoryService } from '@database/dynamodb/repository-services/whatsapp.template.service';
 import { v4 as uuidv4 } from 'uuid';
 import { TriggerTypes } from '../utils/enums';
 import { connected } from 'process';
@@ -70,6 +71,7 @@ export class InstagramAccountService {
     private readonly shopifyApiService: ShopifyApiService,
     private readonly instagramTemplatesRepositoryService: InstagramTemplatesRepositoryService,
     private readonly whatsappConnectionsRepositoryService: WhatsappConnectionsRepositoryService,
+    private readonly whatsappTemplateRepositoryService: WhatsappTemplateRepositoryService,
   ) {}
 
   private buildInsights(
@@ -2973,6 +2975,18 @@ export class InstagramAccountService {
       } catch (error) {
         if (error instanceof Error && (error as any).code === 'WHATSAPP_NOT_CONNECTED') throw error;
         console.error(`Failed to fetch the whatsapp connection for account ${accountId}:`, error);
+        throw error;
+      }
+    }
+
+    async getWhatsappTemplates(accountId: string) {
+      try {
+        const templates = await this.whatsappTemplateRepositoryService.getTemplates(accountId);
+
+        return templates;
+      } catch (error) {
+        if (error instanceof Error && (error as any).code === 'WHATSAPP_NOT_CONNECTED') throw error;
+        console.error(`Failed to fetch whatsapp templates for account ${accountId}:`, error);
         throw error;
       }
     }

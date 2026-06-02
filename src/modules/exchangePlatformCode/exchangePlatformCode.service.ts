@@ -93,6 +93,10 @@ export class ExchangePlatformCodeService {
             HttpStatus.BAD_REQUEST
         );
     }
+
+    // exchange token code for the business token
+    
+
     return await this.whatsappAuthService.initiateAuth({ 
         code, 
         userId: userId,
