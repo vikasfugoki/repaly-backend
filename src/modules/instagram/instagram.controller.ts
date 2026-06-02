@@ -1179,4 +1179,19 @@ export class InstagramAccountController {
       }
     }
 
+    @InstagramResourceType('account')
+    @Delete('/whatsapp/:accountId/template/:templateId')
+    async deleteWhatsappTemplate(
+      @Param('accountId') accountId: string,
+      @Param('templateId') templateId: string,
+    ) {
+      try {
+        return await this.instagramAccountService.deleteWhatsappTemplate(accountId, templateId);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        console.log(`Failed to delete whatsapp template ${templateId} for account ${accountId}:`, message);
+        throw new HttpException('Failed to delete whatsapp template', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+    }
+
 }
