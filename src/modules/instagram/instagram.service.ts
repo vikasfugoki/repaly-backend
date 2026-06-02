@@ -3035,7 +3035,11 @@ export class InstagramAccountService {
         }
 
         // create the template on whatsapp using the access token and waba_id
-        const createdTemplate = await this.whatsappTemplateRepositoryService.addTemplate(accessToken, waba_id, templateData);
+        templateData.status = metaResult?.status || 'pending';
+        templateData.meta_template_id = metaResult?.id;
+        templateData.rejection_reason = metaResult?.rejection_reason || null;
+        templateData.category = templateData.category;
+        const createdTemplate = await this.whatsappTemplateRepositoryService.addTemplate(accountId, waba_id, metaResult?.id, templateData);
         console.log("created whatsapp template:", createdTemplate);
 
       } catch (error) {
