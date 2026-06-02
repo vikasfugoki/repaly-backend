@@ -33,14 +33,14 @@ export class WhatsappConnectionsRepositoryService{
         return this.dynamoDbService.dynamoDBDocumentClient.send(params);
     }
 
-    async getWhatsappConnection(whatsapp_account_id: string) {
-    const params = new GetCommand({
-      TableName: this.tableName,
-      Key: {
-        whatsapp_account_id,
-      },
-    });
-    const result = await this.dynamoDbService.dynamoDBDocumentClient.send(params);
-    return result.Item ?? null;  // explicit null instead of undefined
-  }
+    async getWhatsappConnection(instagram_account_id: string) {
+        const params = new GetCommand({
+          TableName: this.tableName,
+          Key: {
+            id: instagram_account_id,
+          },
+        });
+        const result = await this.dynamoDbService.dynamoDBDocumentClient.send(params);
+        return result.Item ?? null;  // explicit null instead of undefined
+      }
 }

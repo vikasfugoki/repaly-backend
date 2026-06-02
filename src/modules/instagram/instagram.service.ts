@@ -2960,7 +2960,7 @@ export class InstagramAccountService {
       try {
         const connection = await this.whatsappConnectionsRepositoryService.getWhatsappConnection(accountId);
 
-        if (!connection?.access_token || (!connection?.shop_name && !connection?.shopify_domain)) {
+        if (!connection?.access_token) {
           return {
             connected: false
           }
