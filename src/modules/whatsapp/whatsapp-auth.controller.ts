@@ -20,8 +20,12 @@ export class WhatsappAuthController {
         throw new HttpException('User is not allowed to make this request', HttpStatus.FORBIDDEN);
       }
 
+      // initiateAuth resolves waba_id/phone_number_id from the code itself; it only needs
+      // the account to link to. Map the frontend's camelCase instagramAccountId to the
+      // snake_case the service expects (tolerant of either spelling).
       const updatedInput = {
-        ...input,
+        code: input.code,
+        instagram_account_id: input.instagram_account_id ?? input.instagramAccountId,
         userId: userItem.id ?? '',
       };
 

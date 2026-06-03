@@ -2967,7 +2967,7 @@ export class InstagramAccountService {
         }
 
         return {
-          phone_number: connection.phone_number,
+          phone_number: connection.display_phone_number ?? '',
           business_name: connection.business_name,
           connected_at: connection.connected_at,
           connected: true
