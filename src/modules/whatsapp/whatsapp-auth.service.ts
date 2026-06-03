@@ -62,9 +62,8 @@ export class WhatsappAuthService {
         try {
             const clientId = this.environmentService.getEnvVariable('FACEBOOK_CLIENT_ID');
             const clientSecret = this.environmentService.getEnvVariable('FACEBOOK_CLIENT_SECRET');
-            // Must be byte-for-byte identical to the redirect_uri the frontend used in the
-            // auth link, and whitelisted in Meta App -> Facebook Login -> Valid OAuth Redirect URIs.
-            const redirectUri = this.environmentService.getEnvVariable('WHATSAPP_REDIRECT_URL');
+            const frontendOrigin = this.environmentService.getEnvVariable('FRONTEND_URL').replace(/\/+$/, '');
+            const redirectUri = `${frontendOrigin}/exchange-code/whatsapp`;
 
             // Step 1 — exchange the authorization code for a (short-lived) user access token.
             const tokenParams = new URLSearchParams({
@@ -179,7 +178,7 @@ export class WhatsappAuthService {
             // for *sending* messages (handled later), and it fails for numbers that are already
             // registered or have their own 2-step PIN. We never let it break the connect.
             try {
-                const pin = this.environmentService.getEnvVariable('WHATSAPP_REGISTRATION_PIN');
+                const pin = '123456';
                 const regRes = await fetch(`${GRAPH_BASE}/${phone_number_id}/register`, {
                     method: 'POST',
                     headers: {
