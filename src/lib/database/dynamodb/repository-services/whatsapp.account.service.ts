@@ -19,6 +19,8 @@ export class WhatsappConnectionsRepositoryService{
         phone_number_id: string;
         waba_id: string;
         business_name: string;
+        display_phone_number?: string;
+        verified_name?: string;
         connected_at: string;
     }) {
         const timestamp = new Date().toISOString();
