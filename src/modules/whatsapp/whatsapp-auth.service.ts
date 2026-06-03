@@ -240,23 +240,23 @@ export class WhatsappAuthService {
             // Step 6 — register the phone number for Cloud API sending. Non-fatal: this only matters
             // for *sending* messages (handled later), and it fails for numbers that are already
             // registered or have their own 2-step PIN. We never let it break the connect.
-            try {
-                const pin = '123456';
-                const regRes = await fetch(`${GRAPH_BASE}/${phone_number_id}/register`, {
-                    method: 'POST',
-                    headers: {
-                        Authorization: `Bearer ${accessToken}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ messaging_product: 'whatsapp', pin }),
-                });
-                const regData = await regRes.json();
-                if (!regData?.success) {
-                    console.warn('Phone number registration did not succeed (non-fatal):', JSON.stringify(regData));
-                }
-            } catch (e) {
-                console.warn('Phone number registration threw (non-fatal):', e);
-            }
+            // try {
+            //     const pin = '123456';
+            //     const regRes = await fetch(`${GRAPH_BASE}/${phone_number_id}/register`, {
+            //         method: 'POST',
+            //         headers: {
+            //             Authorization: `Bearer ${accessToken}`,
+            //             'Content-Type': 'application/json',
+            //         },
+            //         body: JSON.stringify({ messaging_product: 'whatsapp', pin }),
+            //     });
+            //     const regData = await regRes.json();
+            //     if (!regData?.success) {
+            //         console.warn('Phone number registration did not succeed (non-fatal):', JSON.stringify(regData));
+            //     }
+            // } catch (e) {
+            //     console.warn('Phone number registration threw (non-fatal):', e);
+            // }
 
             // Step 7 — persist the connection, keyed by the Instagram account id.
             await this.whatsappConnectionsRepositoryService.add_whatsapp_connection({

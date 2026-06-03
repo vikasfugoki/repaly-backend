@@ -3224,6 +3224,13 @@ export class InstagramAccountService {
         );
       }
 
+      const accountDetails = await this.instagramAccountRepositoryService.getAccount(accountId);
+      this.instagramAccountRepositoryService.updateAccountDetails({
+        ...accountDetails,
+        is_whatsapp_registered: true,
+      });
+      
+
       return { success: true };
 
     } catch (error) {
