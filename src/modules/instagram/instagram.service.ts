@@ -3193,4 +3193,44 @@ export class InstagramAccountService {
         }
       }
 
+  async registerWhatsappPhoneNumber(accountId: string, pin: string) {
+    try {
+      const connection = await this.whatsappConnectionsRepositoryService.getWhatsappConnection(accountId);
+      const accessToken = connection?.access_token;
+      const phone_number_id = connection?.phone_number_id;
+
+      if (!accessToken || !phone_number_id) {
+        throw Object.assign(new Error(`Whatsapp is not connected for account ${accountId}`), {
+          code: 'WHATSAPP_NOT_CONNECTED',
+        });
+      }
+
+      const res = await fetch(`https://graph.facebook.com/v21.0/${phone_number_id}/register`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ messaging_product: 'whatsapp', pin }),
+      });
+
+      const data = await res.json();
+      console.log('Phone number registration response:', data);
+
+      if (!res.ok || !data?.success) {
+        throw Object.assign(
+          new Error(data?.error?.message || 'Failed to register phone number'),
+          { code: 'META_API_ERROR', details: data?.error }
+        );
+      }
+
+      return { success: true };
+
+    } catch (error) {
+      if (error instanceof Error && (error as any).code === 'WHATSAPP_NOT_CONNECTED') throw error;
+      console.error(`Failed to register phone number for account ${accountId}:`, error);
+      throw error;
+    }
+  }
+
 }

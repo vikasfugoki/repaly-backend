@@ -1207,4 +1207,30 @@ export class InstagramAccountController {
       }
     }
 
+    @InstagramResourceType('account')
+    @Post('/whatsapp/:accountId/register')
+    async registerWhatsappPhoneNumber(
+      @Param('accountId') accountId: string,
+      @Body() body: { pin: string },
+    ) {
+      try {
+        return await this.instagramAccountService.registerWhatsappPhoneNumber(accountId, body.pin);
+      } catch (error) {
+        if ((error as any).code === 'WHATSAPP_NOT_CONNECTED') {
+          throw new HttpException('WhatsApp is not connected', HttpStatus.BAD_REQUEST);
+        }
+        if ((error as any).code === 'META_API_ERROR') {
+          throw new HttpException(
+            {
+              message: (error as any).details?.message || 'Meta API error',
+              code: 'META_API_ERROR',
+              details: (error as any).details,
+            },
+            HttpStatus.UNPROCESSABLE_ENTITY,
+          );
+        }
+        throw new HttpException('Failed to register phone number', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+    }
+
 }
