@@ -34,20 +34,30 @@ export class WhatsappAuthService {
     ) {}
 
     /**
-     * Connects a WhatsApp Business Account from the redirect-based OAuth flow.
+     * Connects a WhatsApp Business Account from the JS-SDK Embedded Signup popup flow.
      *
-     * The frontend redirect flow only delivers the authorization `code` — it cannot
-     * send `waba_id` / `phone_number_id` (those only arrive via the JS-SDK popup's
-     * postMessage). So we resolve them server-side from the code:
-     *   1. exchange code -> user access token   (redirect_uri must match the frontend's)
+     * The `code` always comes from the popup (never a browser redirect), so it's exchanged
+     * WITHOUT a redirect_uri — passing one would fail with a redirect_uri mismatch.
+     * `waba_id` / `phone_number_id` arrive via the popup's postMessage and the frontend forwards
+     * them when Meta supplies them; when present they're authoritative. Meta doesn't always
+     * supply them, so when they're absent we resolve them server-side from the code:
+     *   1. exchange code -> user access token (no redirect_uri — popup flow, not a redirect)
      *   2. upgrade to a long-lived (~60 day) token so templates keep working
-     *   3. resolve waba_id from the token's granted scopes (debug_token)
-     *   4. resolve phone_number_id (+ display number / verified name) from the WABA
+     *   3. waba_id: use the supplied id, else resolve it from the supplied phone_number_id,
+     *      else derive it from the token's granted scopes (debug_token)
+     *   4. phone_number_id: use the supplied id (+ its display number / verified name, falling
+     *      back to the WABA listing), else resolve the first phone number from the WABA
      *   5. subscribe our app to the WABA for webhooks (non-fatal)
      *   6. register the phone number for Cloud API sending (non-fatal — sending is handled later)
      *   7. persist the connection and flag the Instagram account as WhatsApp-connected
      */
-    async initiateAuth(input: { code: string; userId: string; instagram_account_id: string }) {
+    async initiateAuth(input: {
+        code: string;
+        userId: string;
+        instagram_account_id: string;
+        waba_id?: string;
+        phone_number_id?: string;
+    }) {
         const { code, userId, instagram_account_id } = input;
 
         if (!instagram_account_id) {
@@ -62,14 +72,14 @@ export class WhatsappAuthService {
         try {
             const clientId = this.environmentService.getEnvVariable('FACEBOOK_CLIENT_ID');
             const clientSecret = this.environmentService.getEnvVariable('FACEBOOK_CLIENT_SECRET');
-            const frontendOrigin = this.environmentService.getEnvVariable('FRONTEND_URL').replace(/\/+$/, '');
-            const redirectUri = `${frontendOrigin}/exchange-code/whatsapp`;
 
             // Step 1 — exchange the authorization code for a (short-lived) user access token.
+            // This is the Embedded Signup popup flow: the code comes from the JS-SDK popup, not a
+            // browser redirect, so it MUST be exchanged WITHOUT a redirect_uri (passing one fails
+            // with a redirect_uri mismatch).
             const tokenParams = new URLSearchParams({
                 client_id: clientId,
                 client_secret: clientSecret,
-                redirect_uri: redirectUri,
                 code,
             });
             const tokenData = await this.graphGet<GraphTokenResponse>(
@@ -77,8 +87,8 @@ export class WhatsappAuthService {
             );
             let accessToken = tokenData.access_token;
             if (!accessToken) {
-                // Expired/used code OR a redirect_uri mismatch both surface here. The latter is a
-                // config issue (not the user's fault) — log it so it's debuggable, show the user a retry message.
+                // The code is expired/already used (popup codes are single-use and short-lived).
+                // Log the Graph error for debugging; show the user a retry message.
                 console.error('WhatsApp token exchange failed:', JSON.stringify(tokenData));
                 throw new HttpException(
                     'Authorization expired, please try connecting again.',
@@ -111,42 +121,95 @@ export class WhatsappAuthService {
             }
             accessToken = longLived.access_token;
 
-            // Step 3 — resolve waba_id from the token's granted scopes. Debug the token with an
-            // app access token (`{app_id}|{app_secret}`) and read granular_scopes.
-            const debugParams = new URLSearchParams({
-                input_token: accessToken,
-                access_token: `${clientId}|${clientSecret}`,
-            });
-            const debugData = await this.graphGet<DebugTokenResponse>(
-                `${GRAPH_BASE}/debug_token?${debugParams.toString()}`,
-            );
-            const granularScopes = debugData.data?.granular_scopes ?? [];
-            const wabaScope = granularScopes.find((s) => s.scope === 'whatsapp_business_management');
-            const waba_id = wabaScope?.target_ids?.[0];
+            // Step 3 — resolve waba_id. Prefer the id supplied by the Embedded Signup popup
+            // (authoritative). If it's absent but we have a phone_number_id, resolve its parent
+            // WABA (a phone number belongs to exactly one WABA) — this works even when the token's
+            // granular scopes don't surface the WABA. Only as a last resort do we derive it from
+            // the token's granted scopes: debug the token with an app access token
+            // (`{app_id}|{app_secret}`) and read granular_scopes.
+            let waba_id = input.waba_id;
+            if (!waba_id && input.phone_number_id) {
+                try {
+                    const phoneWaba = await this.graphGet<{ whatsapp_business_account?: { id?: string } }>(
+                        `${GRAPH_BASE}/${input.phone_number_id}?fields=whatsapp_business_account&access_token=${encodeURIComponent(accessToken)}`,
+                    );
+                    waba_id = phoneWaba.whatsapp_business_account?.id;
+                } catch (e) {
+                    console.warn('Could not resolve WABA from phone_number_id; falling back to token scopes.', e);
+                }
+            }
             if (!waba_id) {
-                console.error('No WABA in granular_scopes:', JSON.stringify(debugData));
-                throw new HttpException(
-                    'No WhatsApp Business Account was selected.',
-                    HttpStatus.BAD_REQUEST,
+                const debugParams = new URLSearchParams({
+                    input_token: accessToken,
+                    access_token: `${clientId}|${clientSecret}`,
+                });
+                const debugData = await this.graphGet<DebugTokenResponse>(
+                    `${GRAPH_BASE}/debug_token?${debugParams.toString()}`,
                 );
+                const granularScopes = debugData.data?.granular_scopes ?? [];
+                const wabaScope = granularScopes.find((s) => s.scope === 'whatsapp_business_management');
+                waba_id = wabaScope?.target_ids?.[0];
+                if (!waba_id) {
+                    console.error('No WABA in granular_scopes:', JSON.stringify(debugData));
+                    throw new HttpException(
+                        'No WhatsApp Business Account was selected.',
+                        HttpStatus.BAD_REQUEST,
+                    );
+                }
             }
 
-            // Step 4 — resolve the phone number on the WABA (and its display number / verified name).
-            const phoneParams = new URLSearchParams({ access_token: accessToken });
-            const phoneData = await this.graphGet<PhoneNumbersResponse>(
-                `${GRAPH_BASE}/${waba_id}/phone_numbers?${phoneParams.toString()}`,
-            );
-            const phone = phoneData.data?.[0];
-            if (!phone?.id) {
-                console.error('No phone numbers on WABA:', JSON.stringify(phoneData));
-                throw new HttpException(
-                    'No phone number found on the WhatsApp Business Account.',
-                    HttpStatus.BAD_REQUEST,
+            // Step 4 — resolve the phone number (id + display number / verified name).
+            // Prefer the phone_number_id supplied by the Embedded Signup popup (authoritative) and
+            // fetch its display metadata. If that lookup is unusable — a thrown error, OR a Graph
+            // error object that graphGet parses without throwing (leaving the fields empty) — we
+            // recover the display fields from the WABA's phone-number listing rather than persist a
+            // blank connection. We never override the authoritative supplied id. Without a supplied
+            // id, resolve the first phone number on the WABA (fatal if there is none).
+            let phone_number_id = input.phone_number_id;
+            let display_phone_number = '';
+            let verified_name = '';
+            if (phone_number_id) {
+                try {
+                    const phoneInfo = await this.graphGet<{ display_phone_number?: string; verified_name?: string }>(
+                        `${GRAPH_BASE}/${phone_number_id}?fields=display_phone_number,verified_name&access_token=${encodeURIComponent(accessToken)}`,
+                    );
+                    display_phone_number = phoneInfo.display_phone_number ?? '';
+                    verified_name = phoneInfo.verified_name ?? '';
+                } catch (e) {
+                    console.warn('Failed to fetch metadata for supplied phone_number_id; will try the WABA listing.', e);
+                }
+                if (!display_phone_number) {
+                    try {
+                        const phoneParams = new URLSearchParams({ access_token: accessToken });
+                        const phoneData = await this.graphGet<PhoneNumbersResponse>(
+                            `${GRAPH_BASE}/${waba_id}/phone_numbers?${phoneParams.toString()}`,
+                        );
+                        const match = (phoneData.data ?? []).find((p) => p.id === phone_number_id);
+                        if (match) {
+                            display_phone_number = match.display_phone_number ?? '';
+                            verified_name = match.verified_name ?? '';
+                        }
+                    } catch (e) {
+                        console.warn('WABA phone-number listing fallback failed (non-fatal):', e);
+                    }
+                }
+            } else {
+                const phoneParams = new URLSearchParams({ access_token: accessToken });
+                const phoneData = await this.graphGet<PhoneNumbersResponse>(
+                    `${GRAPH_BASE}/${waba_id}/phone_numbers?${phoneParams.toString()}`,
                 );
+                const phone = phoneData.data?.[0];
+                if (!phone?.id) {
+                    console.error('No phone numbers on WABA:', JSON.stringify(phoneData));
+                    throw new HttpException(
+                        'No phone number found on the WhatsApp Business Account.',
+                        HttpStatus.BAD_REQUEST,
+                    );
+                }
+                phone_number_id = phone.id;
+                display_phone_number = phone.display_phone_number ?? '';
+                verified_name = phone.verified_name ?? '';
             }
-            const phone_number_id = phone.id;
-            const display_phone_number = phone.display_phone_number ?? '';
-            const verified_name = phone.verified_name ?? '';
 
             // Business name for display. Prefer the WABA's name; fall back to the phone's verified name.
             let business_name = verified_name;

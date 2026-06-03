@@ -94,12 +94,12 @@ export class ExchangePlatformCodeService {
         );
     }
 
-    // waba_id and phone_number_id are resolved server-side from the code
-    // (the redirect flow can't deliver them) inside initiateAuth.
     return await this.whatsappAuthService.initiateAuth({
         code,
         userId: userId,
-        instagram_account_id: input.instagramAccountId
+        instagram_account_id: input.instagramAccountId,
+        waba_id: input.waba_id,
+        phone_number_id: input.phone_number_id,
     });
   }
     else {
