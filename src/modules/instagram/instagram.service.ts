@@ -3228,7 +3228,7 @@ export class InstagramAccountService {
       await this.instagramAccountRepositoryService.getAccount(accountId);
 
       await this.instagramAccountRepositoryService.updateAccountDetails({
-        ...accountDetails,
+        id: accountId,
         is_whatsapp_registered: true,
       });
       
