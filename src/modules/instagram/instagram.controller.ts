@@ -1173,6 +1173,19 @@ export class InstagramAccountController {
       try {
         return await this.instagramAccountService.createWhatsappTemplate(accountId, template);
       } catch (error) {
+        if ((error as any).code === 'WHATSAPP_NOT_CONNECTED') {
+          throw new HttpException('WhatsApp is not connected', HttpStatus.BAD_REQUEST);
+        }
+        if ((error as any).code === 'META_API_ERROR') {
+          throw new HttpException(
+            {
+              message: (error as any).details?.error_user_msg || (error as any).details?.message || 'Meta API error',
+              code: 'META_API_ERROR',
+              details: (error as any).details,
+            },
+            HttpStatus.UNPROCESSABLE_ENTITY, // 422 — client sent valid JSON but Meta rejected it
+          );
+        }
         const message = error instanceof Error ? error.message : 'Unknown error';
         console.log(`Failed to create whatsapp template for account ${accountId}:`, message);
         throw new HttpException('Failed to create whatsapp template', HttpStatus.INTERNAL_SERVER_ERROR);
