@@ -3029,83 +3029,188 @@ export class InstagramAccountService {
 
     async getWhatsappTemplates(accountId: string) {
       try {
-        const connection = await this.whatsappConnectionsRepositoryService.getWhatsappConnection(accountId);
+        const connection =
+          await this.whatsappConnectionsRepositoryService.getWhatsappConnection(
+            accountId,
+          );
+
         const accessToken = connection?.access_token;
         const wabaId = connection?.waba_id;
 
-        console.log("whatsapp connection details:", connection);
+        console.log("Whatsapp connection details:", {
+          hasAccessToken: !!accessToken,
+          wabaId,
+          accountId,
+        });
 
         if (!accessToken || !wabaId) {
-          throw Object.assign(new Error(`Whatsapp is not connected for account ${accountId}`), {
-            code: 'WHATSAPP_NOT_CONNECTED',
-          });
+          throw Object.assign(
+            new Error(`Whatsapp is not connected for account ${accountId}`),
+            {
+              code: "WHATSAPP_NOT_CONNECTED",
+            },
+          );
         }
 
-        const rawTemplates = await this.whatsappTemplateRepositoryService.getTemplates(accountId);
-        console.log(`Fetched ${rawTemplates.length} templates from DB for account ${accountId}`);
+        const rawTemplates =
+          await this.whatsappTemplateRepositoryService.getTemplates(accountId);
 
-        // refresh status from Meta for non-final templates
+        console.log(
+          `Fetched ${rawTemplates.length} templates from DB for account ${accountId}`,
+        );
+
         const refreshed = await Promise.all(
           rawTemplates.map(async (item) => {
             const currentStatus = item.template?.status;
-            if (currentStatus === 'APPROVED' || currentStatus === 'REJECTED') return item;
+
+            console.log("========================================");
+            console.log("Template Name:", item.template?.name);
+            console.log("Template DB ID:", item.id);
+            console.log(
+              "Meta Template ID:",
+              item.template?.meta_template_id,
+            );
+            console.log("Current DB Status:", currentStatus);
+
+            // Skip final states
+            if (
+              currentStatus === "APPROVED" ||
+              currentStatus === "REJECTED"
+            ) {
+              console.log(
+                `Skipping refresh because status is already final: ${currentStatus}`,
+              );
+              return item;
+            }
 
             try {
               const metaTemplateId = item.template?.meta_template_id;
-              const url = `https://graph.facebook.com/v21.0/${metaTemplateId}?fields=status,rejection_reason`;
+
+              if (!metaTemplateId) {
+                console.warn(
+                  `No meta_template_id found for template ${item.id}`,
+                );
+                return item;
+              }
+
+              const url = `https://graph.facebook.com/v23.0/${metaTemplateId}?fields=id,name,status`;
+
+              console.log("Calling Meta API:");
+              console.log(url);
+
               const res = await fetch(url, {
-                headers: { Authorization: `Bearer ${accessToken}` },
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                },
               });
+
               const metaData = await res.json();
 
-              if (res.ok && metaData.status) {
-                if (metaData.status !== currentStatus) {
-                  await this.whatsappTemplateRepositoryService.addTemplate(
-                    accountId,
-                    item.id,
-                    metaData.status,
-                    metaData.rejection_reason ?? null,
-                  );
-                }
-                return {
-                  ...item,
-                  template: {
-                    ...item.template,
-                    status: metaData.status,
-                    rejection_reason: metaData.rejection_reason ?? null,
-                  },
-                };
-              }
-            } catch (e) {
-              console.warn(`Failed to refresh status for template ${item.id}:`, e);
-            }
+              console.log("Meta Status Code:", res.status);
+              console.log(
+                "Meta Response:",
+                JSON.stringify(metaData, null, 2),
+              );
 
-            return item;
-          })
+              if (!res.ok) {
+                console.error(
+                  `Meta API error for template ${item.id}:`,
+                  metaData,
+                );
+                return item;
+              }
+
+              if (!metaData.status) {
+                console.warn(
+                  `Meta returned no status for template ${item.id}`,
+                );
+                return item;
+              }
+
+              console.log(
+                `Status comparison: DB=${currentStatus}, META=${metaData.status}`,
+              );
+
+              if (metaData.status !== currentStatus) {
+                console.log(
+                  `Updating template ${item.id} status: ${currentStatus} -> ${metaData.status}`,
+                );
+
+                await this.whatsappTemplateRepositoryService.addTemplate(
+                  accountId,
+                  item.id,
+                  metaData.status,
+                  null,
+                );
+
+                console.log(
+                  `Successfully updated template ${item.id}`,
+                );
+              } else {
+                console.log(
+                  `No update required. Status already ${currentStatus}`,
+                );
+              }
+
+              return {
+                ...item,
+                template: {
+                  ...item.template,
+                  status: metaData.status,
+                  rejection_reason: null,
+                },
+              };
+            } catch (e) {
+              console.error(
+                `Failed to refresh status for template ${item.id}:`,
+                e,
+              );
+              return item;
+            }
+          }),
         );
 
-        // map DB shape → UI shape
         const templates = refreshed.map((item) => ({
           id: item.id,
           name: item.template?.name,
           category: item.template?.category,
           language: item.template?.language,
           status: item.template?.status?.toLowerCase(),
-          rejection_reason: item.template?.rejection_reason ?? null,
+          rejection_reason:
+            item.template?.rejection_reason ?? null,
           components: item.template?.components ?? [],
-          created_at: item.template?.created_at ?? item.created_at ?? new Date().toISOString(),
-          updated_at: item.template?.updated_at ?? item.updated_at ?? new Date().toISOString(),
+          created_at:
+            item.template?.created_at ??
+            item.created_at ??
+            new Date().toISOString(),
+          updated_at:
+            item.template?.updated_at ??
+            item.updated_at ??
+            new Date().toISOString(),
         }));
+
+        console.log(
+          `Returning ${templates.length} templates`,
+        );
 
         return {
           data: templates,
           next_cursor: null,
           total: templates.length,
         };
-
       } catch (error) {
-        if (error instanceof Error && (error as any).code === 'WHATSAPP_NOT_CONNECTED') throw error;
-        console.error(`Failed to fetch whatsapp templates for account ${accountId}:`, error);
+        if (
+          error instanceof Error &&
+          (error as any).code === "WHATSAPP_NOT_CONNECTED"
+        ) {
+          throw error;
+        }
+
+        console.error(
+          `Failed to fetch whatsapp templates for account ${accountId}:`,
+          error,
+        );
+
         throw error;
       }
     }
