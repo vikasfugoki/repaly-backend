@@ -80,42 +80,75 @@ private async searchProductsBySku(
     headers: Record<string, string>,
     sku: string,
     limit: number
-    ): Promise<any[]> {
-    // Fetch variants matching the SKU
-    const variantsUrl = `https://${shopDomain}/admin/api/2026-01/variants.json`;
-    const variantsResponse = await axios.get(variantsUrl, {
-        headers,
-        params: { sku, limit },
-    });
+): Promise<any[]> {
+    try {
+        const query = `
+            query SearchProductsBySku($searchQuery: String!, $limit: Int!) {
+                productVariants(first: $limit, query: $searchQuery) {
+                    edges {
+                        node {
+                            id
+                            sku
+                            price
+                            inventoryQuantity
+                            product {
+                                id
+                                title
+                                status
+                                featuredImage {
+                                    url
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        `;
 
-    const variants: any[] = variantsResponse.data.variants || [];
-    if (!variants.length) return [];
+        const response = await axios.post(
+            `https://${shopDomain}/admin/api/2026-01/graphql.json`,
+            {
+                query,
+                variables: {
+                    searchQuery: `sku:${sku}`,
+                    limit,
+                },
+            },
+            { headers }
+        );
 
-    // Fetch the parent products for those variants
-    const productIds = [...new Set(variants.map((v: any) => v.product_id))].join(',');
-    const productsUrl = `https://${shopDomain}/admin/api/2026-01/products.json`;
-    const productsResponse = await axios.get(productsUrl, {
-        headers,
-        params: { ids: productIds, fields: 'id,title,variants,images,status' },
-    });
+        if (response.data.errors) {
+            throw new Error(
+                `Shopify GraphQL Error: ${JSON.stringify(response.data.errors)}`
+            );
+        }
 
-    const products: any[] = productsResponse.data.products || [];
+        const variants =
+            response.data?.data?.productVariants?.edges ?? [];
 
-    // Build a variant map for quick lookup
-    const variantMap = new Map(variants.map((v: any) => [v.product_id, v]));
-
-    return products.map((p: any) => {
-        const matchingVariant = variantMap.get(p.id);
-        return {
-            id: String(p.id),
-            title: p.title,
-            sku: matchingVariant?.sku || null,
-            price: matchingVariant?.price || null,
-            inventory: matchingVariant?.inventory_quantity || null,
-            image: p.images?.[0]?.src || null,
-            status: p.status,
-        };
-    });
+        return variants
+            .map(({ node }: any) => ({
+                id: String(node.product.id),
+                variantId: String(node.id),
+                title: node.product.title,
+                sku: node.sku,
+                price: node.price,
+                inventory: node.inventoryQuantity,
+                image: node.product.featuredImage?.url ?? null,
+                status: node.product.status,
+            }))
+            .filter(
+                (product: any) =>
+                    product.sku &&
+                    product.sku.toLowerCase() === sku.toLowerCase()
+            );
+    } catch (error: any) {
+        console.error(
+            `Failed to search Shopify products by SKU "${sku}":`,
+            error.response?.data || error.message
+        );
+        return [];
+    }
 }
 
 private async searchProductsByTitle(
