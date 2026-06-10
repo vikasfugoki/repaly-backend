@@ -1136,6 +1136,18 @@ export class InstagramAccountController {
       }
     }
 
+    @InstagramResourceType('account')
+    @Delete(':accountId/whatsapp/connection')
+    async disconnectWhatsapp(@Param('accountId') accountId: string) {
+      try {
+        return await this.instagramAccountService.disconnectWhatsapp(accountId);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        console.log(`Failed to disconnect whatsapp for account ${accountId}:`, message);
+        throw new HttpException('Failed to disconnect whatsapp', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+    }
+
     // whatsapp template related api
     @InstagramResourceType('account')
     @Get('whatsapp/:accountId/templates')
@@ -1204,6 +1216,38 @@ export class InstagramAccountController {
         const message = error instanceof Error ? error.message : 'Unknown error';
         console.log(`Failed to delete whatsapp template ${templateId} for account ${accountId}:`, message);
         throw new HttpException('Failed to delete whatsapp template', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+    }
+
+    @InstagramResourceType('account')
+    @Post('/whatsapp/:accountId/templates/:templateId/send')
+    async sendWhatsappTemplate(
+      @Param('accountId') accountId: string,
+      @Param('templateId') templateId: string,
+      @Body() body: { to: string; components?: any[]; language?: string },
+    ) {
+      try {
+        return await this.instagramAccountService.sendWhatsappTemplate(accountId, templateId, body);
+      } catch (error) {
+        if ((error as any).code === 'WHATSAPP_NOT_CONNECTED') {
+          throw new HttpException('WhatsApp is not connected', HttpStatus.BAD_REQUEST);
+        }
+        if ((error as any).code === 'BAD_REQUEST') {
+          throw new HttpException((error as Error).message, HttpStatus.BAD_REQUEST);
+        }
+        if ((error as any).code === 'META_API_ERROR') {
+          throw new HttpException(
+            {
+              message: (error as any).details?.error_user_msg || (error as any).details?.message || 'Meta API error',
+              code: 'META_API_ERROR',
+              details: (error as any).details,
+            },
+            HttpStatus.UNPROCESSABLE_ENTITY,
+          );
+        }
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        console.log(`Failed to send whatsapp template ${templateId} for account ${accountId}:`, message);
+        throw new HttpException('Failed to send whatsapp template', HttpStatus.INTERNAL_SERVER_ERROR);
       }
     }
 

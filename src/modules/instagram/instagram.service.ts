@@ -2979,6 +2979,54 @@ export class InstagramAccountService {
       }
     }
 
+    async disconnectWhatsapp(accountId: string) {
+      try {
+        const connection = await this.whatsappConnectionsRepositoryService.getWhatsappConnection(accountId);
+
+        // Idempotent: if there's nothing connected, just make sure the flag is off and succeed.
+        if (!connection?.access_token) {
+          await this.instagramAccountRepositoryService.updateAccountDetails({
+            id: accountId,
+            is_whatsapp_connected: false,
+          });
+          return { success: true, connected: false, message: 'WhatsApp is already disconnected' };
+        }
+
+        // Best-effort: unsubscribe our app from the WABA's webhooks. This reverses the
+        // subscribed_apps subscription created in WhatsappAuthService.initiateAuth (step 5).
+        // Non-fatal — a transient failure here must not block tearing down our own connection.
+        if (connection.waba_id) {
+          try {
+            const unsubRes = await fetch(
+              `https://graph.facebook.com/v23.0/${connection.waba_id}/subscribed_apps`,
+              { method: 'DELETE', headers: { Authorization: `Bearer ${connection.access_token}` } },
+            );
+            const unsubData = await unsubRes.json();
+            if (!unsubData?.success) {
+              console.warn('WABA subscribed_apps DELETE did not return success:', JSON.stringify(unsubData));
+            }
+          } catch (e) {
+            console.warn('Failed to unsubscribe app from WABA webhooks (non-fatal):', e);
+          }
+        }
+
+        // Drop our stored connection, then clear the account flag so the frontend hides the
+        // "WhatsApp Connected" badge and the Templates sidebar item. Saved template rows in
+        // whatsapp_template_repository are left intact (reconnecting restores access to them).
+        await this.whatsappConnectionsRepositoryService.deleteWhatsappConnection(accountId);
+        await this.instagramAccountRepositoryService.updateAccountDetails({
+          id: accountId,
+          is_whatsapp_connected: false,
+        });
+
+        console.log('WhatsApp disconnected for account:', accountId);
+        return { success: true, connected: false, message: 'WhatsApp disconnected successfully' };
+      } catch (error) {
+        console.error(`Failed to disconnect whatsapp for account ${accountId}:`, error);
+        throw error;
+      }
+    }
+
     async getWhatsappTemplates(accountId: string) {
       try {
         const connection = await this.whatsappConnectionsRepositoryService.getWhatsappConnection(accountId);
@@ -3192,6 +3240,90 @@ export class InstagramAccountService {
           throw error;
         }
       }
+
+    async sendWhatsappTemplate(
+      accountId: string,
+      templateId: string,
+      body: { to: string; components?: any[]; language?: string },
+    ) {
+      try {
+        const connection = await this.whatsappConnectionsRepositoryService.getWhatsappConnection(accountId);
+        const accessToken = connection?.access_token;
+        const phoneNumberId = connection?.phone_number_id;
+
+        if (!accessToken || !phoneNumberId) {
+          throw Object.assign(new Error(`Whatsapp is not connected for account ${accountId}`), {
+            code: 'WHATSAPP_NOT_CONNECTED',
+          });
+        }
+
+        const to = (body?.to ?? '').toString().trim();
+        if (!to) {
+          throw Object.assign(new Error('Recipient "to" phone number is required.'), {
+            code: 'BAD_REQUEST',
+          });
+        }
+
+        // Resolve the approved template's name + language from our DB so the frontend can't
+        // send an arbitrary template name. The language is stored as a Cloud API code string
+        // (e.g. "en_US") at create time; the send API wants it wrapped as { code }.
+        const record = await this.whatsappTemplateRepositoryService.getTemplateById(templateId);
+        if (!record) throw new Error(`Template ${templateId} not found`);
+
+        const templateName = record.template?.name;
+        const templateLanguage = body?.language || record.template?.language;
+        if (!templateName || !templateLanguage) {
+          throw new Error(`Template ${templateId} is missing a name or language`);
+        }
+
+        const templatePayload: Record<string, any> = {
+          name: templateName,
+          language: { code: templateLanguage },
+        };
+        // Variable substitutions / header media / button params, in WhatsApp Cloud API
+        // "components" array shape. Only attached when supplied — templates without variables
+        // omit it. The backend doesn't interpret it; Meta validates against the template.
+        if (Array.isArray(body?.components) && body.components.length > 0) {
+          templatePayload.components = body.components;
+        }
+
+        const url = `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            to,
+            type: 'template',
+            template: templatePayload,
+          }),
+        });
+        const result = await res.json();
+        console.log('Meta template send response:', JSON.stringify(result));
+
+        if (!res.ok) {
+          throw Object.assign(
+            new Error(result?.error?.message || 'Failed to send WhatsApp template'),
+            { code: 'META_API_ERROR', details: result?.error }
+          );
+        }
+
+        // Meta returns { messaging_product, contacts:[{ wa_id }], messages:[{ id }] }
+        return {
+          success: true,
+          message_id: result?.messages?.[0]?.id ?? null,
+          to: result?.contacts?.[0]?.wa_id ?? to,
+        };
+      } catch (error) {
+        const code = (error as any)?.code;
+        if (code === 'WHATSAPP_NOT_CONNECTED' || code === 'META_API_ERROR' || code === 'BAD_REQUEST') throw error;
+        console.error(`Failed to send whatsapp template ${templateId} for account ${accountId}:`, error);
+        throw error;
+      }
+    }
 
   async registerWhatsappPhoneNumber(accountId: string, pin: string) {
     try {
