@@ -56,6 +56,7 @@ import { InstagramTemplatesRepositoryService } from '@database/dynamodb/reposito
 import { WhatsappConnectionsRepositoryService } from '@database/dynamodb/repository-services/whatsapp.account.service';
 import { WhatsappAuthController } from './modules/whatsapp/whatsapp-auth.controller';
 import { WhatsappAuthService } from './modules/whatsapp/whatsapp-auth.service';
+import { WhatsappTemplateRepositoryService } from '@database/dynamodb/repository-services/whatsapp.template.service';
 
 @Module({
   imports: [
@@ -123,7 +124,8 @@ import { WhatsappAuthService } from './modules/whatsapp/whatsapp-auth.service';
     InstagramTemplatesRepositoryService,
     WhatsappConnectionsRepositoryService,
     WhatsappAuthController,
-    WhatsappAuthService
+    WhatsappAuthService,
+    WhatsappTemplateRepositoryService,
   ],
   exports: [DynamoDBService],
 })

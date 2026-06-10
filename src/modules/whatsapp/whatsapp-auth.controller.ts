@@ -20,9 +20,15 @@ export class WhatsappAuthController {
         throw new HttpException('User is not allowed to make this request', HttpStatus.FORBIDDEN);
       }
 
+      // The Embedded Signup popup forwards waba_id/phone_number_id when Meta supplies them;
+      // when absent, initiateAuth derives them from the code. Map the frontend's camelCase
+      // instagramAccountId to the snake_case the service expects (tolerant of either spelling).
       const updatedInput = {
-        ...input,
+        code: input.code,
+        instagram_account_id: input.instagram_account_id ?? input.instagramAccountId,
         userId: userItem.id ?? '',
+        waba_id: input.waba_id,
+        phone_number_id: input.phone_number_id,
       };
 
       return await this.whatsappAuthService.initiateAuth(updatedInput);

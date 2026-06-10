@@ -38,6 +38,7 @@ import { ShopifyConnectionsRepositoryService } from '@database/dynamodb/reposito
 import { ShopifyApiService } from '../utils/shopify/api.service';
 import { InstagramTemplatesRepositoryService } from '@database/dynamodb/repository-services/instagram.templates.service';
 import { WhatsappConnectionsRepositoryService } from '@database/dynamodb/repository-services/whatsapp.account.service';
+import { WhatsappTemplateRepositoryService } from '@database/dynamodb/repository-services/whatsapp.template.service';
 import { v4 as uuidv4 } from 'uuid';
 import { TriggerTypes } from '../utils/enums';
 import { connected } from 'process';
@@ -70,6 +71,7 @@ export class InstagramAccountService {
     private readonly shopifyApiService: ShopifyApiService,
     private readonly instagramTemplatesRepositoryService: InstagramTemplatesRepositoryService,
     private readonly whatsappConnectionsRepositoryService: WhatsappConnectionsRepositoryService,
+    private readonly whatsappTemplateRepositoryService: WhatsappTemplateRepositoryService,
   ) {}
 
   private buildInsights(
@@ -2958,14 +2960,14 @@ export class InstagramAccountService {
       try {
         const connection = await this.whatsappConnectionsRepositoryService.getWhatsappConnection(accountId);
 
-        if (!connection?.access_token || (!connection?.shop_name && !connection?.shopify_domain)) {
+        if (!connection?.access_token) {
           return {
             connected: false
           }
         }
 
         return {
-          phone_number: connection.phone_number,
+          phone_number: connection.display_phone_number ?? '',
           business_name: connection.business_name,
           connected_at: connection.connected_at,
           connected: true
@@ -2976,5 +2978,268 @@ export class InstagramAccountService {
         throw error;
       }
     }
+
+    async getWhatsappTemplates(accountId: string) {
+      try {
+        const connection = await this.whatsappConnectionsRepositoryService.getWhatsappConnection(accountId);
+        const accessToken = connection?.access_token;
+        const wabaId = connection?.waba_id;
+
+        console.log("whatsapp connection details:", connection);
+
+        if (!accessToken || !wabaId) {
+          throw Object.assign(new Error(`Whatsapp is not connected for account ${accountId}`), {
+            code: 'WHATSAPP_NOT_CONNECTED',
+          });
+        }
+
+        const rawTemplates = await this.whatsappTemplateRepositoryService.getTemplates(accountId);
+        console.log(`Fetched ${rawTemplates.length} templates from DB for account ${accountId}`);
+
+        // refresh status from Meta for non-final templates
+        const refreshed = await Promise.all(
+          rawTemplates.map(async (item) => {
+            const currentStatus = item.template?.status;
+            if (currentStatus === 'APPROVED' || currentStatus === 'REJECTED') return item;
+
+            try {
+              const metaTemplateId = item.template?.meta_template_id;
+              const url = `https://graph.facebook.com/v21.0/${metaTemplateId}?fields=status,rejection_reason`;
+              const res = await fetch(url, {
+                headers: { Authorization: `Bearer ${accessToken}` },
+              });
+              const metaData = await res.json();
+
+              if (res.ok && metaData.status) {
+                if (metaData.status !== currentStatus) {
+                  await this.whatsappTemplateRepositoryService.addTemplate(
+                    accountId,
+                    item.id,
+                    metaData.status,
+                    metaData.rejection_reason ?? null,
+                  );
+                }
+                return {
+                  ...item,
+                  template: {
+                    ...item.template,
+                    status: metaData.status,
+                    rejection_reason: metaData.rejection_reason ?? null,
+                  },
+                };
+              }
+            } catch (e) {
+              console.warn(`Failed to refresh status for template ${item.id}:`, e);
+            }
+
+            return item;
+          })
+        );
+
+        // map DB shape → UI shape
+        const templates = refreshed.map((item) => ({
+          id: item.id,
+          name: item.template?.name,
+          category: item.template?.category,
+          language: item.template?.language,
+          status: item.template?.status?.toLowerCase(),
+          rejection_reason: item.template?.rejection_reason ?? null,
+          components: item.template?.components ?? [],
+          created_at: item.template?.created_at ?? item.created_at ?? new Date().toISOString(),
+          updated_at: item.template?.updated_at ?? item.updated_at ?? new Date().toISOString(),
+        }));
+
+        return {
+          data: templates,
+          next_cursor: null,
+          total: templates.length,
+        };
+
+      } catch (error) {
+        if (error instanceof Error && (error as any).code === 'WHATSAPP_NOT_CONNECTED') throw error;
+        console.error(`Failed to fetch whatsapp templates for account ${accountId}:`, error);
+        throw error;
+      }
+    }
+
+    async getWhatsappSingleTemplate(accountId: string, templateId: string) {
+      try {
+        const item = await this.whatsappTemplateRepositoryService.getTemplateById(templateId);
+        if (!item) {
+          throw new Error(`Template with id ${templateId} not found for account ${accountId}`);
+        }
+
+        return {
+          id: item.id,
+          name: item.template?.name,
+          category: item.template?.category,
+          language: item.template?.language,
+          status: item.template?.status?.toLowerCase(),
+          rejection_reason: item.template?.rejection_reason ?? null,
+          components: item.template?.components ?? [],
+          created_at: item.template?.created_at ?? item.created_at ?? new Date().toISOString(),
+          updated_at: item.template?.updated_at ?? item.updated_at ?? new Date().toISOString(),
+        };
+
+      } catch (error) {
+        console.error(`Failed to fetch whatsapp template ${templateId} for account ${accountId}:`, error);
+        throw error;
+      }
+    }
+
+    async createWhatsappTemplate(accountId: string, templateData: any) {
+     
+      try{
+
+        // fetch the whatsapp connection details
+        const connection = await this.whatsappConnectionsRepositoryService.getWhatsappConnection(accountId);
+        console.log("whatsapp connection details:", connection);
+
+        const accessToken = connection?.access_token;
+        const waba_id = connection?.waba_id;
+
+        if (!accessToken || !waba_id) {
+          throw Object.assign(new Error(`Whatsapp is not connected for account ${accountId}`), {
+            code: 'WHATSAPP_NOT_CONNECTED',
+          });
+        }
+
+        // submit template to Meta for approval
+        const url = `https://graph.facebook.com/v21.0/${waba_id}/message_templates`;
+        const metaResponse = await fetch(url, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: templateData.name,
+            language: templateData.language,
+            category: templateData.category,
+            components: templateData.components,
+          }),
+        });
+
+        const metaResult = await metaResponse.json();
+        console.log("meta template creation response:", metaResult);
+
+        if (!metaResponse.ok) {
+          throw Object.assign(
+            new Error(metaResult?.error?.message || 'Failed to create template on WhatsApp'),
+            { code: 'META_API_ERROR', details: metaResult?.error }
+          );
+        }
+
+        // create the template on whatsapp using the access token and waba_id
+        templateData.status = metaResult?.status || 'pending';
+        templateData.meta_template_id = metaResult?.id;
+        templateData.rejection_reason = metaResult?.rejection_reason || null;
+        templateData.category = templateData.category;
+        const createdTemplate = await this.whatsappTemplateRepositoryService.addTemplate(accountId, waba_id, metaResult?.id, templateData);
+        console.log("created whatsapp template:", createdTemplate);
+
+      } catch (error) {
+        if (error instanceof Error && (error as any).code === 'WHATSAPP_NOT_CONNECTED') throw error;
+        console.error(`Failed to create whatsapp template for account ${accountId}:`, error);
+        throw error;
+      }
+    
+    }
+
+    async deleteWhatsappTemplate(accountId: string, templateId: string) {
+        try {
+          const connection = await this.whatsappConnectionsRepositoryService.getWhatsappConnection(accountId);
+          const accessToken = connection?.access_token;
+          const wabaId = connection?.waba_id;
+
+          if (!accessToken || !wabaId) {
+            throw Object.assign(new Error(`Whatsapp is not connected for account ${accountId}`), {
+              code: 'WHATSAPP_NOT_CONNECTED',
+            });
+          }
+
+          // fetch template from DB to get name + meta_template_id
+          const template = await this.whatsappTemplateRepositoryService.getTemplateById(templateId);
+          if (!template) throw new Error(`Template ${templateId} not found`);
+
+          const templateName = template.template?.name;
+          const metaTemplateId = template.template?.meta_template_id;
+
+          // delete from Meta (requires both name and hsm_id)
+          const url = `https://graph.facebook.com/v21.0/${wabaId}/message_templates?hsm_id=${metaTemplateId}&name=${templateName}`;
+          const res = await fetch(url, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          const metaResult = await res.json();
+          console.log('Meta template delete response:', metaResult);
+
+          if (!res.ok) {
+            throw Object.assign(
+              new Error(metaResult?.error?.message || 'Failed to delete template from WhatsApp'),
+              { code: 'META_API_ERROR', details: metaResult?.error }
+            );
+          }
+
+          // delete from DB only after Meta succeeds
+          await this.whatsappTemplateRepositoryService.deleteTemplate(templateId);
+          return { success: true, message: 'Template deleted successfully' };
+
+        } catch (error) {
+          if (error instanceof Error && (error as any).code === 'WHATSAPP_NOT_CONNECTED') throw error;
+          if (error instanceof Error && (error as any).code === 'META_API_ERROR') throw error;
+          console.error(`Failed to delete whatsapp template ${templateId}:`, error);
+          throw error;
+        }
+      }
+
+  async registerWhatsappPhoneNumber(accountId: string, pin: string) {
+    try {
+      const connection = await this.whatsappConnectionsRepositoryService.getWhatsappConnection(accountId);
+      const accessToken = connection?.access_token;
+      const phone_number_id = connection?.phone_number_id;
+
+      if (!accessToken || !phone_number_id) {
+        throw Object.assign(new Error(`Whatsapp is not connected for account ${accountId}`), {
+          code: 'WHATSAPP_NOT_CONNECTED',
+        });
+      }
+
+      const res = await fetch(`https://graph.facebook.com/v21.0/${phone_number_id}/register`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ messaging_product: 'whatsapp', pin }),
+      });
+
+      const data = await res.json();
+      console.log('Phone number registration response:', data);
+
+      if (!res.ok || !data?.success) {
+        throw Object.assign(
+          new Error(data?.error?.message || 'Failed to register phone number'),
+          { code: 'META_API_ERROR', details: data?.error }
+        );
+      }
+
+      const accountDetails =
+      await this.instagramAccountRepositoryService.getAccount(accountId);
+
+      await this.instagramAccountRepositoryService.updateAccountDetails({
+        id: accountId,
+        is_whatsapp_registered: true,
+      });
+      
+
+      return { success: true };
+
+    } catch (error) {
+      if (error instanceof Error && (error as any).code === 'WHATSAPP_NOT_CONNECTED') throw error;
+      console.error(`Failed to register phone number for account ${accountId}:`, error);
+      throw error;
+    }
+  }
 
 }

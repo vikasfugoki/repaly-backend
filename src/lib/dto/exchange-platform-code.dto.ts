@@ -18,15 +18,15 @@ export class ExchangePlatformCodeRequest {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
+  instagramAccountId?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
   waba_id?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
   phone_number_id?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  instagramAccountId?: string;
 }

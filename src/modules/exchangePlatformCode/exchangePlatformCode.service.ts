@@ -87,18 +87,19 @@ export class ExchangePlatformCodeService {
     }
     
     else if (platformName === 'whatsapp') {
-    if (!input.waba_id || !input.phone_number_id || !input.instagramAccountId) {
+    if (!input.instagramAccountId) {
         throw new HttpException(
-            'waba_id and phone_number_id are required for WhatsApp auth',
+            'instagramAccountId is required to connect WhatsApp.',
             HttpStatus.BAD_REQUEST
         );
     }
-    return await this.whatsappAuthService.initiateAuth({ 
-        code, 
+
+    return await this.whatsappAuthService.initiateAuth({
+        code,
         userId: userId,
+        instagram_account_id: input.instagramAccountId,
         waba_id: input.waba_id,
         phone_number_id: input.phone_number_id,
-        instagram_account_id: input.instagramAccountId
     });
   }
     else {
