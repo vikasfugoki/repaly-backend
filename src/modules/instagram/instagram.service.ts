@@ -3027,84 +3027,75 @@ export class InstagramAccountService {
       }
     }
 
+    // Fields read off Meta's WhatsApp message-template node. NOTE: the rejection field is
+    // `rejected_reason` (NOT `rejection_reason`), and `last_updated_time` is NOT a valid
+    // field — either mistake makes Meta reject the WHOLE request with error #100.
+    private readonly WHATSAPP_TEMPLATE_FIELDS =
+      'id,name,language,status,category,sub_category,components,quality_score,rejected_reason';
+
+    // Meta template object -> the UI shape the frontend consumes. `status` is lowercased
+    // (Meta returns APPROVED/REJECTED/PENDING) and Meta's `rejected_reason` is surfaced as
+    // `rejection_reason`.
+    private mapMetaTemplateToUi(t: any) {
+      return {
+        id: t?.id,
+        name: t?.name,
+        category: t?.category,
+        sub_category: t?.sub_category ?? null,
+        language: t?.language,
+        status: typeof t?.status === 'string' ? t.status.toLowerCase() : t?.status,
+        rejection_reason: t?.rejected_reason ?? null,
+        quality_score: t?.quality_score ?? null,
+        components: t?.components ?? [],
+        // Meta's template node has no created/updated timestamp, so these are not populated.
+        created_at: null,
+        updated_at: null,
+      };
+    }
+
     async getWhatsappTemplates(accountId: string) {
       try {
-        const connection =
-          await this.whatsappConnectionsRepositoryService.getWhatsappConnection(
-            accountId,
-          );
-
+        const connection = await this.whatsappConnectionsRepositoryService.getWhatsappConnection(accountId);
         const accessToken = connection?.access_token;
         const wabaId = connection?.waba_id;
 
-        console.log("Whatsapp connection details:", {
-          hasAccessToken: !!accessToken,
-          wabaId,
-          accountId,
-        });
-
         if (!accessToken || !wabaId) {
-          throw Object.assign(
-            new Error(`Whatsapp is not connected for account ${accountId}`),
-            { code: "WHATSAPP_NOT_CONNECTED" },
-          );
+          throw Object.assign(new Error(`Whatsapp is not connected for account ${accountId}`), {
+            code: 'WHATSAPP_NOT_CONNECTED',
+          });
         }
 
-        const url = `https://graph.facebook.com/v23.0/${wabaId}/message_templates?fields=id,name,category,language,status,rejection_reason,components&limit=100`;
+        // Fetch straight from Meta (source of truth) and follow the paging cursor so we
+        // return EVERY template, not just the first 100. `paging.next` is a full URL with
+        // the cursor baked in; we re-fetch it with the same auth header.
+        const templates: any[] = [];
+        let url =
+          `https://graph.facebook.com/v23.0/${wabaId}/message_templates` +
+          `?fields=${this.WHATSAPP_TEMPLATE_FIELDS}&limit=100`;
 
-        console.log("Fetching templates from Meta API:", url);
-
-        const res = await fetch(url, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        });
-
-        const metaData = await res.json();
-
-        console.log("Meta Status Code:", res.status);
-
-        if (!res.ok) {
-          console.error(`Meta API error for account ${accountId}:`, metaData);
-          throw new Error(metaData?.error?.message ?? "Failed to fetch templates from Meta");
+        let pageGuard = 0;
+        while (url && pageGuard++ < 50) {
+          const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+          const body = await res.json();
+          if (!res.ok) {
+            throw Object.assign(
+              new Error(body?.error?.message || 'Failed to fetch templates from WhatsApp'),
+              { code: 'META_API_ERROR', details: body?.error },
+            );
+          }
+          for (const t of body?.data ?? []) templates.push(this.mapMetaTemplateToUi(t));
+          url = body?.paging?.next ?? '';
         }
-
-        const rawTemplates: any[] = metaData.data ?? [];
-
-        console.log(`Fetched ${rawTemplates.length} templates from Meta for account ${accountId}`);
-
-        const templates = rawTemplates.map((t) => ({
-          id: t.id,
-          name: t.name,
-          category: t.category,
-          language: t.language,
-          status: t.status?.toLowerCase(),
-          rejection_reason: t.rejection_reason ?? null,
-          components: t.components ?? [],
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }));
-
-        console.log(`Returning ${templates.length} templates`);
 
         return {
           data: templates,
-          next_cursor: metaData.paging?.cursors?.after ?? null,
+          next_cursor: null,
           total: templates.length,
         };
       } catch (error) {
-        if (
-          error instanceof Error &&
-          (error as any).code === "WHATSAPP_NOT_CONNECTED"
-        ) {
-          throw error;
-        }
-
-        console.error(
-          `Failed to fetch whatsapp templates for account ${accountId}:`,
-          error,
-        );
-
+        const code = (error as any)?.code;
+        if (code === 'WHATSAPP_NOT_CONNECTED' || code === 'META_API_ERROR') throw error;
+        console.error(`Failed to fetch whatsapp templates for account ${accountId}:`, error);
         throw error;
       }
     }
@@ -3123,31 +3114,21 @@ export class InstagramAccountService {
           );
         }
 
-        const url = `https://graph.facebook.com/v23.0/${templateId}?fields=id,name,category,language,status,components`;
+        // `templateId` is the Meta template id, which is also a Graph node — read it directly.
+        const url = `https://graph.facebook.com/v23.0/${templateId}?fields=${this.WHATSAPP_TEMPLATE_FIELDS}`;
 
         const res = await fetch(url, {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
 
         const metaData = await res.json();
-        console.log("Meta API response for single template:", metaData);
 
         if (!res.ok) {
           console.error(`Meta API error for template ${templateId}:`, metaData);
           throw new Error(metaData?.error?.message ?? "Failed to fetch template from Meta");
         }
 
-        return {
-          id: metaData.id,
-          name: metaData.name,
-          category: metaData.category,
-          language: metaData.language,
-          status: metaData.status?.toLowerCase(),
-          rejection_reason: metaData.rejection_reason ?? null,
-          components: metaData.components ?? [],
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
+        return this.mapMetaTemplateToUi(metaData);
       } catch (error) {
         if ((error as any).code === "WHATSAPP_NOT_CONNECTED") throw error;
 
@@ -3251,8 +3232,9 @@ export class InstagramAccountService {
         const connection = await this.whatsappConnectionsRepositoryService.getWhatsappConnection(accountId);
         const accessToken = connection?.access_token;
         const phoneNumberId = connection?.phone_number_id;
+        const wabaId = connection?.waba_id;
 
-        if (!accessToken || !phoneNumberId) {
+        if (!accessToken || !phoneNumberId || !wabaId) {
           throw Object.assign(new Error(`Whatsapp is not connected for account ${accountId}`), {
             code: 'WHATSAPP_NOT_CONNECTED',
           });
@@ -3269,6 +3251,42 @@ export class InstagramAccountService {
           throw Object.assign(new Error('templateName and language are required.'), {
             code: 'BAD_REQUEST',
           });
+        }
+
+        // Guard: confirm with Meta that this template exists, matches the requested language,
+        // and is APPROVED before sending — so the frontend can't fire an arbitrary or
+        // unapproved template. (Replaces the old DB-backed name/language check now that
+        // templates are sourced statelessly from Meta.)
+        const verifyUrl =
+          `https://graph.facebook.com/v23.0/${wabaId}/message_templates` +
+          `?name=${encodeURIComponent(body.templateName)}&fields=name,language,status&limit=100`;
+        const verifyRes = await fetch(verifyUrl, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const verifyBody = await verifyRes.json();
+        if (!verifyRes.ok) {
+          throw Object.assign(
+            new Error(verifyBody?.error?.message || 'Failed to verify template on WhatsApp'),
+            { code: 'META_API_ERROR', details: verifyBody?.error },
+          );
+        }
+        // `name=` may match loosely, so confirm an exact name + language match in code.
+        const match = (verifyBody?.data ?? []).find(
+          (t: any) => t?.name === body.templateName && t?.language === body.language,
+        );
+        if (!match) {
+          throw Object.assign(
+            new Error(`Template "${body.templateName}" (${body.language}) was not found.`),
+            { code: 'BAD_REQUEST' },
+          );
+        }
+        if (String(match.status).toUpperCase() !== 'APPROVED') {
+          throw Object.assign(
+            new Error(
+              `Template "${body.templateName}" (${body.language}) is not approved (status: ${String(match.status).toLowerCase()}).`,
+            ),
+            { code: 'BAD_REQUEST' },
+          );
         }
 
         const templatePayload: Record<string, any> = {
