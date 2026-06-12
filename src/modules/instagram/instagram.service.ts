@@ -3130,6 +3130,7 @@ export class InstagramAccountService {
         });
 
         const metaData = await res.json();
+        console.log("Meta API response for single template:", metaData);
 
         if (!res.ok) {
           console.error(`Meta API error for template ${templateId}:`, metaData);
