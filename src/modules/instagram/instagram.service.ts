@@ -3157,12 +3157,8 @@ export class InstagramAccountService {
     }
 
     async createWhatsappTemplate(accountId: string, templateData: any) {
-     
-      try{
-
-        // fetch the whatsapp connection details
+      try {
         const connection = await this.whatsappConnectionsRepositoryService.getWhatsappConnection(accountId);
-        console.log("whatsapp connection details:", connection);
 
         const accessToken = connection?.access_token;
         const waba_id = connection?.waba_id;
@@ -3173,8 +3169,7 @@ export class InstagramAccountService {
           });
         }
 
-        // submit template to Meta for approval
-        const url = `https://graph.facebook.com/v21.0/${waba_id}/message_templates`;
+        const url = `https://graph.facebook.com/v23.0/${waba_id}/message_templates`;
         const metaResponse = await fetch(url, {
           method: 'POST',
           headers: {
@@ -3190,7 +3185,7 @@ export class InstagramAccountService {
         });
 
         const metaResult = await metaResponse.json();
-        console.log("meta template creation response:", metaResult);
+        console.log("Meta template creation response:", metaResult);
 
         if (!metaResponse.ok) {
           throw Object.assign(
@@ -3199,20 +3194,16 @@ export class InstagramAccountService {
           );
         }
 
-        // create the template on whatsapp using the access token and waba_id
-        templateData.status = metaResult?.status || 'pending';
-        templateData.meta_template_id = metaResult?.id;
-        templateData.rejection_reason = metaResult?.rejection_reason || null;
-        templateData.category = templateData.category;
-        const createdTemplate = await this.whatsappTemplateRepositoryService.addTemplate(accountId, waba_id, metaResult?.id, templateData);
-        console.log("created whatsapp template:", createdTemplate);
-
+        return {
+          id: metaResult.id,
+          status: metaResult.status?.toLowerCase() ?? 'pending',
+          category: metaResult.category ?? templateData.category,
+        };
       } catch (error) {
         if (error instanceof Error && (error as any).code === 'WHATSAPP_NOT_CONNECTED') throw error;
         console.error(`Failed to create whatsapp template for account ${accountId}:`, error);
         throw error;
       }
-    
     }
 
     async deleteWhatsappTemplate(accountId: string, templateId: string) {
