@@ -3206,57 +3206,46 @@ export class InstagramAccountService {
       }
     }
 
-    async deleteWhatsappTemplate(accountId: string, templateId: string) {
-        try {
-          const connection = await this.whatsappConnectionsRepositoryService.getWhatsappConnection(accountId);
-          const accessToken = connection?.access_token;
-          const wabaId = connection?.waba_id;
+    async deleteWhatsappTemplate(accountId: string, templateId: string, templateName: string) {
+      try {
+        const connection = await this.whatsappConnectionsRepositoryService.getWhatsappConnection(accountId);
+        const accessToken = connection?.access_token;
+        const wabaId = connection?.waba_id;
 
-          if (!accessToken || !wabaId) {
-            throw Object.assign(new Error(`Whatsapp is not connected for account ${accountId}`), {
-              code: 'WHATSAPP_NOT_CONNECTED',
-            });
-          }
-
-          // fetch template from DB to get name + meta_template_id
-          const template = await this.whatsappTemplateRepositoryService.getTemplateById(templateId);
-          if (!template) throw new Error(`Template ${templateId} not found`);
-
-          const templateName = template.template?.name;
-          const metaTemplateId = template.template?.meta_template_id;
-
-          // delete from Meta (requires both name and hsm_id)
-          const url = `https://graph.facebook.com/v21.0/${wabaId}/message_templates?hsm_id=${metaTemplateId}&name=${templateName}`;
-          const res = await fetch(url, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${accessToken}` },
+        if (!accessToken || !wabaId) {
+          throw Object.assign(new Error(`Whatsapp is not connected for account ${accountId}`), {
+            code: 'WHATSAPP_NOT_CONNECTED',
           });
-          const metaResult = await res.json();
-          console.log('Meta template delete response:', metaResult);
-
-          if (!res.ok) {
-            throw Object.assign(
-              new Error(metaResult?.error?.message || 'Failed to delete template from WhatsApp'),
-              { code: 'META_API_ERROR', details: metaResult?.error }
-            );
-          }
-
-          // delete from DB only after Meta succeeds
-          await this.whatsappTemplateRepositoryService.deleteTemplate(templateId);
-          return { success: true, message: 'Template deleted successfully' };
-
-        } catch (error) {
-          if (error instanceof Error && (error as any).code === 'WHATSAPP_NOT_CONNECTED') throw error;
-          if (error instanceof Error && (error as any).code === 'META_API_ERROR') throw error;
-          console.error(`Failed to delete whatsapp template ${templateId}:`, error);
-          throw error;
         }
+
+        const url = `https://graph.facebook.com/v23.0/${wabaId}/message_templates?hsm_id=${templateId}&name=${templateName}`;
+        const res = await fetch(url, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+
+        const metaResult = await res.json();
+        console.log('Meta template delete response:', metaResult);
+
+        if (!res.ok) {
+          throw Object.assign(
+            new Error(metaResult?.error?.message || 'Failed to delete template from WhatsApp'),
+            { code: 'META_API_ERROR', details: metaResult?.error }
+          );
+        }
+
+        return { success: true, message: 'Template deleted successfully' };
+      } catch (error) {
+        if (error instanceof Error && (error as any).code === 'WHATSAPP_NOT_CONNECTED') throw error;
+        if (error instanceof Error && (error as any).code === 'META_API_ERROR') throw error;
+        console.error(`Failed to delete whatsapp template ${templateId}:`, error);
+        throw error;
       }
+    }
 
     async sendWhatsappTemplate(
       accountId: string,
-      templateId: string,
-      body: { to: string; components?: any[]; language?: string },
+      body: { to: string; templateName: string; language: string; components?: any[] },
     ) {
       try {
         const connection = await this.whatsappConnectionsRepositoryService.getWhatsappConnection(accountId);
@@ -3276,30 +3265,22 @@ export class InstagramAccountService {
           });
         }
 
-        // Resolve the approved template's name + language from our DB so the frontend can't
-        // send an arbitrary template name. The language is stored as a Cloud API code string
-        // (e.g. "en_US") at create time; the send API wants it wrapped as { code }.
-        const record = await this.whatsappTemplateRepositoryService.getTemplateById(templateId);
-        if (!record) throw new Error(`Template ${templateId} not found`);
-
-        const templateName = record.template?.name;
-        const templateLanguage = body?.language || record.template?.language;
-        if (!templateName || !templateLanguage) {
-          throw new Error(`Template ${templateId} is missing a name or language`);
+        if (!body.templateName || !body.language) {
+          throw Object.assign(new Error('templateName and language are required.'), {
+            code: 'BAD_REQUEST',
+          });
         }
 
         const templatePayload: Record<string, any> = {
-          name: templateName,
-          language: { code: templateLanguage },
+          name: body.templateName,
+          language: { code: body.language },
         };
-        // Variable substitutions / header media / button params, in WhatsApp Cloud API
-        // "components" array shape. Only attached when supplied — templates without variables
-        // omit it. The backend doesn't interpret it; Meta validates against the template.
+
         if (Array.isArray(body?.components) && body.components.length > 0) {
           templatePayload.components = body.components;
         }
 
-        const url = `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`;
+        const url = `https://graph.facebook.com/v23.0/${phoneNumberId}/messages`;
         const res = await fetch(url, {
           method: 'POST',
           headers: {
@@ -3313,6 +3294,7 @@ export class InstagramAccountService {
             template: templatePayload,
           }),
         });
+
         const result = await res.json();
         console.log('Meta template send response:', JSON.stringify(result));
 
@@ -3323,7 +3305,6 @@ export class InstagramAccountService {
           );
         }
 
-        // Meta returns { messaging_product, contacts:[{ wa_id }], messages:[{ id }] }
         return {
           success: true,
           message_id: result?.messages?.[0]?.id ?? null,
@@ -3332,7 +3313,7 @@ export class InstagramAccountService {
       } catch (error) {
         const code = (error as any)?.code;
         if (code === 'WHATSAPP_NOT_CONNECTED' || code === 'META_API_ERROR' || code === 'BAD_REQUEST') throw error;
-        console.error(`Failed to send whatsapp template ${templateId} for account ${accountId}:`, error);
+        console.error(`Failed to send whatsapp template for account ${accountId}:`, error);
         throw error;
       }
     }

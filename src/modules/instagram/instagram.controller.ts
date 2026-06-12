@@ -1209,9 +1209,10 @@ export class InstagramAccountController {
     async deleteWhatsappTemplate(
       @Param('accountId') accountId: string,
       @Param('templateId') templateId: string,
+      @Query('templateName') templateName: string,
     ) {
       try {
-        return await this.instagramAccountService.deleteWhatsappTemplate(accountId, templateId);
+        return await this.instagramAccountService.deleteWhatsappTemplate(accountId, templateId, templateName);
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
         console.log(`Failed to delete whatsapp template ${templateId} for account ${accountId}:`, message);
@@ -1224,10 +1225,10 @@ export class InstagramAccountController {
     async sendWhatsappTemplate(
       @Param('accountId') accountId: string,
       @Param('templateId') templateId: string,
-      @Body() body: { to: string; components?: any[]; language?: string },
+      @Body() body: { to: string; templateName: string; language: string; components?: any[] },
     ) {
       try {
-        return await this.instagramAccountService.sendWhatsappTemplate(accountId, templateId, body);
+        return await this.instagramAccountService.sendWhatsappTemplate(accountId, body);
       } catch (error) {
         if ((error as any).code === 'WHATSAPP_NOT_CONNECTED') {
           throw new HttpException('WhatsApp is not connected', HttpStatus.BAD_REQUEST);
