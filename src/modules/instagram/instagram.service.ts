@@ -3123,7 +3123,7 @@ export class InstagramAccountService {
           );
         }
 
-        const url = `https://graph.facebook.com/v23.0/${templateId}?fields=id,name,category,language,status,rejection_reason,components`;
+        const url = `https://graph.facebook.com/v23.0/${templateId}?fields=id,name,category,language,status,components`;
 
         const res = await fetch(url, {
           headers: { Authorization: `Bearer ${accessToken}` },
