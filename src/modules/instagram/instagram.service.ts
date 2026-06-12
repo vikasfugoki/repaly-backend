@@ -3111,24 +3111,45 @@ export class InstagramAccountService {
 
     async getWhatsappSingleTemplate(accountId: string, templateId: string) {
       try {
-        const item = await this.whatsappTemplateRepositoryService.getTemplateById(templateId);
-        if (!item) {
-          throw new Error(`Template with id ${templateId} not found for account ${accountId}`);
+        const connection =
+          await this.whatsappConnectionsRepositoryService.getWhatsappConnection(accountId);
+
+        const accessToken = connection?.access_token;
+
+        if (!accessToken) {
+          throw Object.assign(
+            new Error(`Whatsapp is not connected for account ${accountId}`),
+            { code: "WHATSAPP_NOT_CONNECTED" },
+          );
+        }
+
+        const url = `https://graph.facebook.com/v23.0/${templateId}?fields=id,name,category,language,status,rejection_reason,components`;
+
+        const res = await fetch(url, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+
+        const metaData = await res.json();
+
+        if (!res.ok) {
+          console.error(`Meta API error for template ${templateId}:`, metaData);
+          throw new Error(metaData?.error?.message ?? "Failed to fetch template from Meta");
         }
 
         return {
-          id: item.id,
-          name: item.template?.name,
-          category: item.template?.category,
-          language: item.template?.language,
-          status: item.template?.status?.toLowerCase(),
-          rejection_reason: item.template?.rejection_reason ?? null,
-          components: item.template?.components ?? [],
-          created_at: item.template?.created_at ?? item.created_at ?? new Date().toISOString(),
-          updated_at: item.template?.updated_at ?? item.updated_at ?? new Date().toISOString(),
+          id: metaData.id,
+          name: metaData.name,
+          category: metaData.category,
+          language: metaData.language,
+          status: metaData.status?.toLowerCase(),
+          rejection_reason: metaData.rejection_reason ?? null,
+          components: metaData.components ?? [],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         };
-
       } catch (error) {
+        if ((error as any).code === "WHATSAPP_NOT_CONNECTED") throw error;
+
         console.error(`Failed to fetch whatsapp template ${templateId} for account ${accountId}:`, error);
         throw error;
       }
