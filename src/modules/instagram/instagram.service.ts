@@ -3046,156 +3046,50 @@ export class InstagramAccountService {
         if (!accessToken || !wabaId) {
           throw Object.assign(
             new Error(`Whatsapp is not connected for account ${accountId}`),
-            {
-              code: "WHATSAPP_NOT_CONNECTED",
-            },
+            { code: "WHATSAPP_NOT_CONNECTED" },
           );
         }
 
-        const rawTemplates =
-          await this.whatsappTemplateRepositoryService.getTemplates(accountId);
+        const url = `https://graph.facebook.com/v23.0/${wabaId}/message_templates?fields=id,name,category,language,status,rejection_reason,components&limit=100`;
 
-        console.log(
-          `Fetched ${rawTemplates.length} templates from DB for account ${accountId}`,
-        );
+        console.log("Fetching templates from Meta API:", url);
 
-        const refreshed = await Promise.all(
-          rawTemplates.map(async (item) => {
-            const currentStatus = item.template?.status;
+        const res = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
 
-            console.log("========================================");
-            console.log("Template Name:", item.template?.name);
-            console.log("Template DB ID:", item.id);
-            console.log(
-              "Meta Template ID:",
-              item.template?.meta_template_id,
-            );
-            console.log("Current DB Status:", currentStatus);
+        const metaData = await res.json();
 
-            // Skip final states
-            if (
-              currentStatus === "APPROVED" ||
-              currentStatus === "REJECTED"
-            ) {
-              console.log(
-                `Skipping refresh because status is already final: ${currentStatus}`,
-              );
-              return item;
-            }
+        console.log("Meta Status Code:", res.status);
 
-            try {
-              const metaTemplateId = item.template?.meta_template_id;
+        if (!res.ok) {
+          console.error(`Meta API error for account ${accountId}:`, metaData);
+          throw new Error(metaData?.error?.message ?? "Failed to fetch templates from Meta");
+        }
 
-              if (!metaTemplateId) {
-                console.warn(
-                  `No meta_template_id found for template ${item.id}`,
-                );
-                return item;
-              }
+        const rawTemplates: any[] = metaData.data ?? [];
 
-              const url = `https://graph.facebook.com/v23.0/${metaTemplateId}?fields=id,name,status`;
+        console.log(`Fetched ${rawTemplates.length} templates from Meta for account ${accountId}`);
 
-              console.log("Calling Meta API:");
-              console.log(url);
-
-              const res = await fetch(url, {
-                headers: {
-                  Authorization: `Bearer ${accessToken}`,
-                },
-              });
-
-              const metaData = await res.json();
-
-              console.log("Meta Status Code:", res.status);
-              console.log(
-                "Meta Response:",
-                JSON.stringify(metaData, null, 2),
-              );
-
-              if (!res.ok) {
-                console.error(
-                  `Meta API error for template ${item.id}:`,
-                  metaData,
-                );
-                return item;
-              }
-
-              if (!metaData.status) {
-                console.warn(
-                  `Meta returned no status for template ${item.id}`,
-                );
-                return item;
-              }
-
-              console.log(
-                `Status comparison: DB=${currentStatus}, META=${metaData.status}`,
-              );
-
-              if (metaData.status !== currentStatus) {
-                console.log(
-                  `Updating template ${item.id} status: ${currentStatus} -> ${metaData.status}`,
-                );
-
-                await this.whatsappTemplateRepositoryService.addTemplate(
-                  accountId,
-                  item.id,
-                  metaData.status,
-                  null,
-                );
-
-                console.log(
-                  `Successfully updated template ${item.id}`,
-                );
-              } else {
-                console.log(
-                  `No update required. Status already ${currentStatus}`,
-                );
-              }
-
-              return {
-                ...item,
-                template: {
-                  ...item.template,
-                  status: metaData.status,
-                  rejection_reason: null,
-                },
-              };
-            } catch (e) {
-              console.error(
-                `Failed to refresh status for template ${item.id}:`,
-                e,
-              );
-              return item;
-            }
-          }),
-        );
-
-        const templates = refreshed.map((item) => ({
-          id: item.id,
-          name: item.template?.name,
-          category: item.template?.category,
-          language: item.template?.language,
-          status: item.template?.status?.toLowerCase(),
-          rejection_reason:
-            item.template?.rejection_reason ?? null,
-          components: item.template?.components ?? [],
-          created_at:
-            item.template?.created_at ??
-            item.created_at ??
-            new Date().toISOString(),
-          updated_at:
-            item.template?.updated_at ??
-            item.updated_at ??
-            new Date().toISOString(),
+        const templates = rawTemplates.map((t) => ({
+          id: t.id,
+          name: t.name,
+          category: t.category,
+          language: t.language,
+          status: t.status?.toLowerCase(),
+          rejection_reason: t.rejection_reason ?? null,
+          components: t.components ?? [],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         }));
 
-        console.log(
-          `Returning ${templates.length} templates`,
-        );
+        console.log(`Returning ${templates.length} templates`);
 
         return {
           data: templates,
-          next_cursor: null,
+          next_cursor: metaData.paging?.cursors?.after ?? null,
           total: templates.length,
         };
       } catch (error) {
