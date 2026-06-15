@@ -50,6 +50,7 @@ async shopifyCallback(
 ) {
   try {
     await this.shopifyAuthService.handleCallback({ code, shop, state, hmac });
+    console.log("shopify parameters received: ", { code, shop, state, hmac });
     return res.redirect(`${process.env.FRONTEND_URL}/dashboard?shopify=connected`);
   } catch (error) {
     console.error(error);
