@@ -103,6 +103,16 @@ export class InstagramApiService {
       const response = await axios.get(url, { params });
       return response.data; // Returns { data: [...], paging: { next, previous } }
     } catch (error) {
+
+      if (axios.isAxiosError(error)) {
+        console.error('Instagram API error:', {
+          status: error.response?.status,
+          data: error.response?.data, // ← this has the real Instagram error
+          url,
+          userId,
+        });
+      }
+
       console.log('Failed to fetch media', (error as Error).message);
       throw new Error('Failed to fetch media');
     }
