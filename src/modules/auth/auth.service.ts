@@ -17,6 +17,8 @@ import { InstagramMediaRepositoryService } from '@database/dynamodb/repository-s
 import { InstagramStoryRepositoryService } from '@database/dynamodb/repository-services/instagram.story.service';
 import { InstagramDMService } from '@database/dynamodb/repository-services/instagram.dm.service';
 import { InstagramAdsService } from '@database/dynamodb/repository-services/instagram.ads.service';
+import { FacebookMediaRepositoryService } from '@database/dynamodb/repository-services/facebook.media.service';
+import { FacebookAccountRepositoryService } from '@database/dynamodb/repository-services/facebook.account.service';
 
 
 @Injectable()
@@ -34,6 +36,8 @@ export class AuthService {
     private readonly instagramStoryRepositoryService: InstagramStoryRepositoryService,
     private readonly instagramAdsService: InstagramAdsService,
     private readonly instagramDMService: InstagramDMService,
+    private readonly facebookMediaRepositoryService: FacebookMediaRepositoryService,
+    private readonly facebookAccountRepositoryService: FacebookAccountRepositoryService,
     private readonly jwtService: JwtService
   ) {
     this.jwtService = new JwtService({
@@ -350,6 +354,70 @@ export class AuthService {
     return instagram_account_ids;
 
 }
+
+  /**
+   * Ownership check for Facebook resources. Mirrors checkOwnership but resolves
+   * against connected Facebook Pages instead of Instagram accounts.
+   *  - `account`: resourceId is the Facebook Page id directly.
+   *  - `media`:   resourceId is the Facebook post id; we resolve its owning Page
+   *               id via the `accountId` attribute on the media record.
+   */
+  async checkFacebookOwnership(
+    userId: string, resourceId: string,
+    type: 'media' | 'account',
+    loginSource: 'google' | 'facebook'
+  ): Promise<boolean> {
+
+    const linkedFacebookPageIds = await this.getFacebookAccountIdsFromUserId(userId, loginSource);
+
+    let targetFacebookPageId: string | null = null;
+
+    console.log(`linked facebook pages: ${linkedFacebookPageIds}`);
+
+    switch (type) {
+      case 'account':
+        targetFacebookPageId = resourceId;
+        break;
+
+      case 'media':
+        const mediaResult = await this.facebookMediaRepositoryService.getMedia(resourceId);
+        targetFacebookPageId = mediaResult?.Item?.accountId;
+        break;
+
+      default:
+        throw new Error(`Unsupported resource type: ${type}`);
+    }
+
+    console.log(`target facebook page: ${targetFacebookPageId}`);
+
+    if (!targetFacebookPageId || !linkedFacebookPageIds.includes(targetFacebookPageId)) {
+      throw new ForbiddenException('You do not have access to this resource');
+    }
+
+    return true;
+  }
+
+  /** Resolve the Facebook Page ids connected to the authenticated user. */
+  async getFacebookAccountIdsFromUserId(
+    userId: string,
+    loginSource: 'google' | 'facebook',
+  ): Promise<string[]> {
+    let influex_user_id: string | undefined;
+
+    if (loginSource === 'google') {
+      influex_user_id = (await this.googleUserRepository.getGoogleUser(userId)).Item?.user_id;
+    } else if (loginSource === 'facebook') {
+      influex_user_id = (await this.facebookUserRepository.getFacebookUser(userId)).Item?.user_id;
+    }
+
+    console.log(`getting influex user id: ${influex_user_id}`);
+    if (!influex_user_id) return [];
+
+    const accounts = await this.facebookAccountRepositoryService.getAccountDetailsByUserId(influex_user_id);
+    const facebook_page_ids = accounts.map(account => account.id);
+    console.log(`facebook page ids: ${facebook_page_ids}`);
+    return facebook_page_ids;
+  }
 
 
   // facebook login
