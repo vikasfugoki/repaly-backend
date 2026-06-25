@@ -56,6 +56,11 @@ import { InstagramTemplatesRepositoryService } from '@database/dynamodb/reposito
 import { WhatsappConnectionsRepositoryService } from '@database/dynamodb/repository-services/whatsapp.account.service';
 import { WhatsappAuthService } from './modules/whatsapp/whatsapp-auth.service';
 import { WhatsappTemplateRepositoryService } from '@database/dynamodb/repository-services/whatsapp.template.service';
+import { FacebookController } from './modules/facebook/facebook.controller';
+import { FacebookAccountService } from './modules/facebook/facebook.service';
+import { FacebookMediaPaginationService } from './modules/facebook/facebook-media-pagination.service';
+import { FacebookMediaRepositoryService } from '@database/dynamodb/repository-services/facebook.media.service';
+import { FacebookAccountRepositoryService } from '@database/dynamodb/repository-services/facebook.account.service';
 
 @Module({
   imports: [
@@ -76,6 +81,7 @@ import { WhatsappTemplateRepositoryService } from '@database/dynamodb/repository
     AccountController,
     ExchangePlatformCodeController,
     InstagramAccountController,
+    FacebookController,
     AIController,
     ShopifyAuthController
   ],
@@ -99,6 +105,10 @@ import { WhatsappTemplateRepositoryService } from '@database/dynamodb/repository
     FacebookApiService,
     FacebookUrlService,
     FacebookUserRepositoryService,
+    FacebookAccountService,
+    FacebookMediaPaginationService,
+    FacebookMediaRepositoryService,
+    FacebookAccountRepositoryService,
     UserRepositoryService,
     InstagramMediaRepositoryService,
     InstagramStoryRepositoryService,
