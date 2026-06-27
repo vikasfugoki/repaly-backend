@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import axios from 'axios';
 import { FacebookAccessTokenResponse, FacebookUserInfoResponse } from '@lib/dto'; // You'll need to define these DTOs.
 import { FacebookUrlService } from './url.service'; // A service to manage Facebook URL related methods
@@ -294,6 +298,48 @@ export class FacebookApiService {
         }
       }
 
+      /**
+       * Exchange a short-lived USER token (the one the frontend gets from FB
+       * Login) for a long-lived one (~60 days). This is the critical step: Page
+       * access tokens derived FROM a long-lived user token never expire, whereas
+       * Page tokens derived from a short-lived user token die with the session
+       * (OAuthException code 190 / subcode 463). Always run this before
+       * `getUserPages` at connect time.
+       */
+      async exchangeForLongLivedUserToken(
+        shortLivedToken: string,
+      ): Promise<{ access_token: string; expires_in: number }> {
+        try {
+          const response = await axios.get<FacebookAccessTokenResponse>(
+            this.environmentService.getEnvVariable('FACEBOOK_OAUTH_URL'),
+            {
+              params: {
+                grant_type: 'fb_exchange_token',
+                client_id:
+                  this.environmentService.getEnvVariable('FACEBOOK_CLIENT_ID'),
+                client_secret: this.environmentService.getEnvVariable(
+                  'FACEBOOK_CLIENT_SECRET',
+                ),
+                fb_exchange_token: shortLivedToken,
+              },
+            },
+          );
+          return {
+            access_token: response.data.access_token,
+            // Long-lived user tokens last ~60 days; default if Graph omits it.
+            expires_in: response.data.expires_in ?? 60 * 24 * 3600,
+          };
+        } catch (error) {
+          console.error(
+            'Error exchanging for long-lived Facebook token:',
+            error?.response?.data || error.message,
+          );
+          throw new InternalServerErrorException(
+            'Failed to exchange Facebook token',
+          );
+        }
+      }
+
       async getAccessTokenAds(code: string): Promise<{ access_token: string }> {
         try {
           
@@ -414,8 +460,23 @@ export class FacebookApiService {
           };
         } catch (error) {
           console.error('Error fetching Facebook page posts:', error?.response?.data || error.message);
+          // An expired/invalid Page token (OAuthException code 190) is not a
+          // server fault — surface it as a 401 with a stable code so the frontend
+          // can prompt the user to reconnect instead of showing a generic error.
+          if (FacebookApiService.isTokenExpiredError(error)) {
+            throw new UnauthorizedException({
+              code: 'FB_TOKEN_EXPIRED',
+              message:
+                'Facebook page token expired. Please reconnect the page.',
+            });
+          }
           throw new InternalServerErrorException('Failed to retrieve Facebook page posts');
         }
+      }
+
+      /** True when a Graph error is an expired/invalid access token (code 190). */
+      static isTokenExpiredError(error: any): boolean {
+        return error?.response?.data?.error?.code === 190;
       }
 
       /**

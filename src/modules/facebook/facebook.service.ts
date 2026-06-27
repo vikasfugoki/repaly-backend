@@ -205,7 +205,31 @@ export class FacebookAccountService {
       throw new Error('User not found');
     }
 
-    const pages = await this.facebookApiService.getUserPages(userAccessToken);
+    // CRITICAL: exchange the short-lived user token for a long-lived one FIRST.
+    // Page tokens derived from a long-lived user token never expire; deriving
+    // them from a short-lived token is what caused the "session expired"
+    // (OAuthException 190) failures. Fall back to the raw token only if the
+    // exchange itself fails, so a transient error still connects (degraded).
+    let longLivedUserToken = userAccessToken;
+    let userTokenExpiresAt: string | null = null;
+    try {
+      const exchanged =
+        await this.facebookApiService.exchangeForLongLivedUserToken(
+          userAccessToken,
+        );
+      longLivedUserToken = exchanged.access_token;
+      userTokenExpiresAt = new Date(
+        Date.now() + exchanged.expires_in * 1000,
+      ).toISOString();
+    } catch (err) {
+      console.warn(
+        'Long-lived token exchange failed; using short-lived token (page tokens may expire):',
+        (err as Error).message,
+      );
+    }
+
+    const pages =
+      await this.facebookApiService.getUserPages(longLivedUserToken);
 
     const connected: Array<Record<string, any>> = [];
     for (const page of pages) {
@@ -213,6 +237,11 @@ export class FacebookAccountService {
         id: page.id,
         user_id: influexUserId,
         access_token: page.access_token,
+        // Kept for re-deriving page tokens later (refresh endpoint) and for
+        // surfacing token health to the frontend.
+        user_access_token: longLivedUserToken,
+        user_token_expires_at: userTokenExpiresAt,
+        token_status: 'active',
         name: page.name,
         category: page.category ?? null,
         picture: page?.picture?.data?.url ?? null,
@@ -273,7 +302,29 @@ export class FacebookAccountService {
       name: p.name,
       category: p.category ?? null,
       picture: p.picture ?? null,
+      // `expired` => the page token is dead; the frontend should prompt the
+      // user to reconnect (re-run pages/connect with a fresh login token).
+      token_status: p.token_status ?? 'active',
+      needs_reconnect: (p.token_status ?? 'active') === 'expired',
     }));
+  }
+
+  /**
+   * Flag a Page as having a dead token so the frontend can prompt a reconnect.
+   * Called when a Graph call returns OAuthException 190. Best-effort.
+   */
+  async markPageTokenExpired(accountId: string) {
+    try {
+      await this.facebookAccountRepositoryService.updateAccountDetails({
+        id: accountId,
+        token_status: 'expired',
+      });
+    } catch (err) {
+      console.warn(
+        `Failed to mark page ${accountId} token expired:`,
+        (err as Error).message,
+      );
+    }
   }
 
   /**
