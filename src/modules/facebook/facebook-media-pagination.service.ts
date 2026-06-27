@@ -45,6 +45,13 @@ export class FacebookMediaPaginationService {
       );
     } catch (error) {
       console.error(`Error in pagination for ${accountId}:`, error);
+      // If the page token is dead, persist that so the frontend can show a
+      // "reconnect" prompt instead of silently failing forever.
+      if ((error as any)?.response?.code === 'FB_TOKEN_EXPIRED') {
+        await this.facebookAccountRepositoryService
+          .updateAccountDetails({ id: accountId, token_status: 'expired' })
+          .catch(() => undefined);
+      }
       throw error;
     }
   }
