@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import axios from 'axios';
 import { FacebookAccessTokenResponse, FacebookUserInfoResponse } from '@lib/dto'; // You'll need to define these DTOs.
 import { FacebookUrlService } from './url.service'; // A service to manage Facebook URL related methods
@@ -294,6 +298,48 @@ export class FacebookApiService {
         }
       }
 
+      /**
+       * Exchange a short-lived USER token (the one the frontend gets from FB
+       * Login) for a long-lived one (~60 days). This is the critical step: Page
+       * access tokens derived FROM a long-lived user token never expire, whereas
+       * Page tokens derived from a short-lived user token die with the session
+       * (OAuthException code 190 / subcode 463). Always run this before
+       * `getUserPages` at connect time.
+       */
+      async exchangeForLongLivedUserToken(
+        shortLivedToken: string,
+      ): Promise<{ access_token: string; expires_in: number }> {
+        try {
+          const response = await axios.get<FacebookAccessTokenResponse>(
+            this.environmentService.getEnvVariable('FACEBOOK_OAUTH_URL'),
+            {
+              params: {
+                grant_type: 'fb_exchange_token',
+                client_id:
+                  this.environmentService.getEnvVariable('FACEBOOK_CLIENT_ID'),
+                client_secret: this.environmentService.getEnvVariable(
+                  'FACEBOOK_CLIENT_SECRET',
+                ),
+                fb_exchange_token: shortLivedToken,
+              },
+            },
+          );
+          return {
+            access_token: response.data.access_token,
+            // Long-lived user tokens last ~60 days; default if Graph omits it.
+            expires_in: response.data.expires_in ?? 60 * 24 * 3600,
+          };
+        } catch (error) {
+          console.error(
+            'Error exchanging for long-lived Facebook token:',
+            error?.response?.data || error.message,
+          );
+          throw new InternalServerErrorException(
+            'Failed to exchange Facebook token',
+          );
+        }
+      }
+
       async getAccessTokenAds(code: string): Promise<{ access_token: string }> {
         try {
           
@@ -308,10 +354,156 @@ export class FacebookApiService {
 
               console.log('facebook token response:', tokenResponse.data);
               return {"access_token": tokenResponse.data.access_token};
-          
+
         } catch (error) {
           console.error('Error getting Facebook access token:', error?.response?.data || error.message);
           throw new InternalServerErrorException('Failed to retrieve Facebook access token');
+        }
+      }
+
+      /**
+       * List the Facebook Pages the user manages, along with each Page's
+       * (long-lived) Page access token. Requires a USER access token with
+       * `pages_show_list` (+ `pages_manage_engagement`/`pages_messaging` for
+       * automation). Paginates through all results.
+       */
+      async getUserPages(userAccessToken: string): Promise<any[]> {
+        const allPages: any[] = [];
+        let nextUrl: string | null = `https://graph.facebook.com/v23.0/me/accounts?fields=id,name,access_token,category,picture{url}&access_token=${userAccessToken}`;
+
+        try {
+          while (nextUrl) {
+            const response = await axios.get<any>(nextUrl);
+            const { data, paging } = response.data;
+            allPages.push(...(data || []));
+            nextUrl = paging?.next || null;
+          }
+          return allPages;
+        } catch (error) {
+          console.error('Error fetching Facebook pages:', error?.response?.data || error.message);
+          throw new InternalServerErrorException('Failed to retrieve Facebook pages');
+        }
+      }
+
+      /**
+       * Subscribe a Page to THIS app's webhooks for the `feed` field, using the
+       * Page access token. App-level field subscription (set in the Meta dashboard)
+       * only declares interest; this per-Page call is what actually makes Meta
+       * deliver the Page's comment events to our ingress. Returns Graph's success
+       * flag; throws on a hard error so the caller can decide (we treat it as
+       * non-fatal at the connect site).
+       */
+      async subscribePageToApp(
+        pageId: string,
+        pageAccessToken: string,
+      ): Promise<boolean> {
+        const url = `https://graph.facebook.com/v23.0/${pageId}/subscribed_apps`;
+        try {
+          const response = await axios.post<any>(url, null, {
+            params: { subscribed_fields: 'feed', access_token: pageAccessToken },
+          });
+          return response.data?.success === true;
+        } catch (error) {
+          console.error(
+            `Error subscribing page ${pageId} to app webhooks:`,
+            error?.response?.data || error.message,
+          );
+          throw new InternalServerErrorException(
+            'Failed to subscribe Facebook page to webhooks',
+          );
+        }
+      }
+
+      /** Reverse of subscribePageToApp — stop webhook delivery for a Page. */
+      async unsubscribePageFromApp(
+        pageId: string,
+        pageAccessToken: string,
+      ): Promise<boolean> {
+        const url = `https://graph.facebook.com/v23.0/${pageId}/subscribed_apps`;
+        try {
+          const response = await axios.delete<any>(url, {
+            params: { access_token: pageAccessToken },
+          });
+          return response.data?.success === true;
+        } catch (error) {
+          console.error(
+            `Error unsubscribing page ${pageId} from app webhooks:`,
+            error?.response?.data || error.message,
+          );
+          throw new InternalServerErrorException(
+            'Failed to unsubscribe Facebook page from webhooks',
+          );
+        }
+      }
+
+      private readonly POST_FIELDS =
+        'id,message,story,created_time,permalink_url,full_picture,attachments{media_type,media,subattachments},shares,comments.summary(true),likes.summary(true)';
+
+      /**
+       * Fetch one page of a Facebook Page's published posts (cursor based).
+       * Requires a Page access token.
+       */
+      async getPagePostsPaginated(
+        pageId: string,
+        pageAccessToken: string,
+        limit = 15,
+        after?: string,
+      ): Promise<{ data: any[]; paging?: any }> {
+        let url = `https://graph.facebook.com/v23.0/${pageId}/posts?fields=${this.POST_FIELDS}&limit=${limit}&access_token=${pageAccessToken}`;
+        if (after) url += `&after=${after}`;
+
+        try {
+          const response = await axios.get<any>(url);
+          return {
+            data: response.data?.data || [],
+            paging: response.data?.paging,
+          };
+        } catch (error) {
+          console.error('Error fetching Facebook page posts:', error?.response?.data || error.message);
+          // An expired/invalid Page token (OAuthException code 190) is not a
+          // server fault — surface it as a 401 with a stable code so the frontend
+          // can prompt the user to reconnect instead of showing a generic error.
+          if (FacebookApiService.isTokenExpiredError(error)) {
+            throw new UnauthorizedException({
+              code: 'FB_TOKEN_EXPIRED',
+              message:
+                'Facebook page token expired. Please reconnect the page.',
+            });
+          }
+          throw new InternalServerErrorException('Failed to retrieve Facebook page posts');
+        }
+      }
+
+      /** True when a Graph error is an expired/invalid access token (code 190). */
+      static isTokenExpiredError(error: any): boolean {
+        return error?.response?.data?.error?.code === 190;
+      }
+
+      /**
+       * Fetch all of a Page's posts (capped to `maxPages` pages of 25) for a
+       * bulk ingestion / refresh.
+       */
+      async getAllPagePosts(
+        pageId: string,
+        pageAccessToken: string,
+        maxPages = 5,
+      ): Promise<any[]> {
+        const allPosts: any[] = [];
+        let nextUrl: string | null = `https://graph.facebook.com/v23.0/${pageId}/posts?fields=${this.POST_FIELDS}&limit=25&access_token=${pageAccessToken}`;
+        let pagesFetched = 0;
+
+        try {
+          while (nextUrl && pagesFetched < maxPages) {
+            const response = await axios.get<any>(nextUrl);
+            const { data, paging } = response.data;
+            allPosts.push(...(data || []));
+            nextUrl = paging?.next || null;
+            pagesFetched++;
+          }
+          return allPosts;
+        } catch (error) {
+          console.error('Error fetching all Facebook page posts:', error?.response?.data || error.message);
+          throw new InternalServerErrorException('Failed to retrieve Facebook page posts');
         }
       }
 
