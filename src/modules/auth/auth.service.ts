@@ -176,48 +176,118 @@ export class AuthService {
     }
   }
 
-  async loginWithGoogleCode(code: string) {
-    const {
-      userId,
-      isBusinessDetailsFilled,
-      token
-    } = await this.getGoogleAccessToken(code); // This is your existing function
+//  async loginWithGoogleCode(code: string) {
+//     const {
+//       userId,
+//       isBusinessDetailsFilled,
+//       token
+//     } = await this.getGoogleAccessToken(code); // This is your existing function
   
-    return {
-      token,
-      isBusinessDetailsFilled,
-    };
-  }
+//     return {
+//       token,
+//       isBusinessDetailsFilled,
+//     } ;
+//   }
+
+async loginWithGoogleCode(code: string, origin: string) {
+  const {
+    userId,
+    isBusinessDetailsFilled,
+    token
+  } = await this.getGoogleAccessToken(code, origin); // pass origin through
+
+  return {
+    token,
+    isBusinessDetailsFilled,
+  };
+}
+
+  // private async getGoogleAccessToken(
+  //   code: string,
+  // ): Promise<GetAccessTokenResponse> {
+  //   const { access_token, id_token } =
+  //     await this.googleApiService.getAccessToken(code);
+
+  //    // Validate the ID token
+  //   // const payload = await this.googleApiService.verifyIdToken(id_token);
+  //   const payload = await this.getGooglePayload(id_token);
+
+  //   // Now you can safely trust the payload
+  //   // const { id, email, name, picture } = payload;
+  //   const {id, name, email, picture, provider} = payload.user;
+    
+  //   // const { sub, email, name, picture } =
+  //   //   await this.googleApiService.getUserDetails(access_token);
+  //   // const user = await this.googleUserRepository.getGoogleUser(sub);
+  //   const user = await this.googleUserRepository.getGoogleUser(id);
+  //   if (!user.Item) {
+  //     const user_id = uuidv4();
+  //     const userRepositoryObject = {
+  //       id: user_id,
+  //       platform_name: 'google',
+  //       // platform_id: sub,
+  //       platform_id: id
+  //     };
+  //     await this.userRepository.createUser(userRepositoryObject);
+  //     const userDetails = {
+  //       // id: sub,
+  //       id: id,
+  //       user_id: user_id,
+  //       email: email ?? '',
+  //       name: name ?? '',
+  //       picture: picture ?? '',
+  //     };
+
+  //     // create the jwt out of google payload
+  //     const jwt_token = this.generateJwt(userDetails, 'google');
+      
+
+  //     await this.googleUserRepository.createGoogleUser(userDetails);
+  //     return {
+  //       userId: user_id,
+  //       token: jwt_token,
+  //       isBusinessDetailsFilled: false,
+  //     };
+  //   }
+  //   const businessDetails =
+  //     await this.businessDetailsRepositoryService.getBusinessDetailsByUserId(
+  //       user?.Item?.user_id as string,
+  //     );
+
+  //   // create the jwt out of google payload
+  //   const jwt_token = this.generateJwt(user?.Item, 'google');
+
+  //   return {
+  //     userId: user?.Item?.user_id as string,
+  //     token: jwt_token,
+  //     isBusinessDetailsFilled: businessDetails.Item ? true : false,
+  //   };
+  // }
 
   private async getGoogleAccessToken(
     code: string,
+    origin: string,
   ): Promise<GetAccessTokenResponse> {
     const { access_token, id_token } =
-      await this.googleApiService.getAccessToken(code);
+      await this.googleApiService.getAccessToken(code, origin);
 
      // Validate the ID token
     // const payload = await this.googleApiService.verifyIdToken(id_token);
     const payload = await this.getGooglePayload(id_token);
 
     // Now you can safely trust the payload
-    // const { id, email, name, picture } = payload;
     const {id, name, email, picture, provider} = payload.user;
     
-    // const { sub, email, name, picture } =
-    //   await this.googleApiService.getUserDetails(access_token);
-    // const user = await this.googleUserRepository.getGoogleUser(sub);
     const user = await this.googleUserRepository.getGoogleUser(id);
     if (!user.Item) {
       const user_id = uuidv4();
       const userRepositoryObject = {
         id: user_id,
         platform_name: 'google',
-        // platform_id: sub,
         platform_id: id
       };
       await this.userRepository.createUser(userRepositoryObject);
       const userDetails = {
-        // id: sub,
         id: id,
         user_id: user_id,
         email: email ?? '',
@@ -225,9 +295,7 @@ export class AuthService {
         picture: picture ?? '',
       };
 
-      // create the jwt out of google payload
       const jwt_token = this.generateJwt(userDetails, 'google');
-      
 
       await this.googleUserRepository.createGoogleUser(userDetails);
       return {
@@ -241,7 +309,6 @@ export class AuthService {
         user?.Item?.user_id as string,
       );
 
-    // create the jwt out of google payload
     const jwt_token = this.generateJwt(user?.Item, 'google');
 
     return {

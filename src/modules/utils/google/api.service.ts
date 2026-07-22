@@ -33,14 +33,52 @@ export class GoogleApiService {
     }
   }
   
-  async getAccessToken(code: string): Promise<GoogleAccessTokenResponse> {
+  // async getAccessToken(code: string): Promise<GoogleAccessTokenResponse> {
+  //   const oAuthUrl = this.urlService.getGoogleOauthURL();
+  //   const client_id =
+  //     this.environmentService.getEnvVariable('GOOGLE_CLIENT_ID');
+  //   const client_secret = this.environmentService.getEnvVariable(
+  //     'GOOGLE_CLIENT_SECRET',
+  //   );
+  //   const redirect_uri = this.urlService.getGoogleRedirectURL();
+  //   const grant_type = 'authorization_code';
+
+  //   const data = new URLSearchParams({
+  //     client_id: client_id,
+  //     client_secret: client_secret,
+  //     grant_type: grant_type,
+  //     redirect_uri: redirect_uri,
+  //     code: code,
+  //   });
+
+  //   try {
+  //     const response = await axios.post<GoogleAccessTokenResponse>(
+  //       oAuthUrl,
+  //       data,
+  //       {
+  //         headers: {
+  //           'Content-Type': 'application/x-www-form-urlencoded',
+  //         },
+  //       },
+  //     );
+  //     return response.data;
+  //   } catch (error) {
+  //     console.log(
+  //       'Failed to exchange Google token via code',
+  //       (error as Error).message,
+  //     );
+  //     throw new Error('Failed to exchange Google token via code');
+  //   }
+  // }
+
+  async getAccessToken(code: string, origin: string): Promise<GoogleAccessTokenResponse> {
     const oAuthUrl = this.urlService.getGoogleOauthURL();
     const client_id =
       this.environmentService.getEnvVariable('GOOGLE_CLIENT_ID');
     const client_secret = this.environmentService.getEnvVariable(
       'GOOGLE_CLIENT_SECRET',
     );
-    const redirect_uri = this.urlService.getGoogleRedirectURL();
+    const redirect_uri = this.resolveRedirectUri(origin);
     const grant_type = 'authorization_code';
 
     const data = new URLSearchParams({
@@ -69,6 +107,20 @@ export class GoogleApiService {
       );
       throw new Error('Failed to exchange Google token via code');
     }
+  }
+
+  private resolveRedirectUri(origin: string): string {
+    const allowed = this.environmentService
+      .getEnvVariable('GOOGLE_REDIRECT_URLS')
+      .split(',')
+      .map((s) => s.trim());
+
+    const match = allowed.find((url) => origin && url.startsWith(origin));
+    if (!match) {
+      console.log('Unrecognized origin for OAuth redirect:', origin);
+      throw new Error('Unrecognized origin for OAuth redirect');
+    }
+    return match;
   }
 
   // async verifyIdToken(idToken: string): Promise<TokenPayload> {

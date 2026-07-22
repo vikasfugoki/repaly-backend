@@ -3,6 +3,8 @@ import { AuthService } from './auth.service';
 import { Public } from './public.decorator';
 import { GetAccessTokenRequest } from '@lib/dto';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { Req } from '@nestjs/common';
+import { Request } from 'express';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -71,13 +73,28 @@ async validateToken(@Headers('authorization') authHeader: string) {
 //   return result;
 // }
 
+// @Public()
+// @Post('get-access-token')
+// async loginSocial(@Body() input: GetAccessTokenRequest) {
+//   const { code, platformName } = input;
+
+//   if (platformName === 'google') {
+//     return this.authService.loginWithGoogleCode(code);
+//   } else if (platformName === 'facebook') {
+//     return this.authService.loginWithFacebookCode(code);
+//   } else {
+//     throw new BadRequestException('Unsupported provider');
+//   }
+// }
+
 @Public()
 @Post('get-access-token')
-async loginSocial(@Body() input: GetAccessTokenRequest) {
+async loginSocial(@Req() req: Request, @Body() input: GetAccessTokenRequest) {
   const { code, platformName } = input;
+  const origin = (req.headers.origin || req.headers.referer || '') as string;
 
   if (platformName === 'google') {
-    return this.authService.loginWithGoogleCode(code);
+    return this.authService.loginWithGoogleCode(code, origin);
   } else if (platformName === 'facebook') {
     return this.authService.loginWithFacebookCode(code);
   } else {
