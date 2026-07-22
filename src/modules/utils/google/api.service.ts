@@ -111,7 +111,7 @@ export class GoogleApiService {
 
   private resolveRedirectUri(origin: string): string {
     const allowed = this.environmentService
-      .getEnvVariable('GOOGLE_REDIRECT_URLS')
+      .getEnvVariable('GOOGLE_REDIRECT_URL')
       .split(',')
       .map((s) => s.trim());
 
