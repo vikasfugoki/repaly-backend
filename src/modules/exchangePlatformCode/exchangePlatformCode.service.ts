@@ -1,6 +1,7 @@
 import { Injectable, ConflictException, HttpException, HttpStatus, ConsoleLogger } from '@nestjs/common';
 import { InstagramApiService } from '../utils/instagram/api.service';
 import { InstagramAccountRepositoryService } from '@database/dynamodb/repository-services/instagram.account.service';
+import { InstagramAccountLinkingRepositoryService } from '@database/dynamodb/repository-services/instagram.account.linking.service';
 import { ExchangePlatformCodeRequest } from '@lib/dto';
 import { WhatsappAuthService } from '../whatsapp/whatsapp-auth.service';
 
@@ -9,6 +10,7 @@ export class ExchangePlatformCodeService {
   constructor(
     private readonly api: InstagramApiService,
     private readonly instagramRepository: InstagramAccountRepositoryService,
+    private readonly instagramAccountLinkingRepository: InstagramAccountLinkingRepositoryService,
     private readonly whatsappAuthService: WhatsappAuthService,
   ) {}
   async exchangeInstagramCode(input: ExchangePlatformCodeRequest) {
@@ -46,30 +48,27 @@ export class ExchangePlatformCodeService {
 
         
 
-        let returnMessage = { msg: 'Successfully Created Account and Webhook subscribed' };
+        const existingAccount = await this.instagramRepository.getAccount(accountDetails.id);
 
-        const result = await this.instagramRepository.getAccount(accountDetails.id);
-        if (result && result.id === accountDetails.id) {
-          accountDetails.user_id = result.user_id;
-          returnMessage = { msg: 'Account already attached to another user.' };
+        if (existingAccount && existingAccount.id === accountDetails.id) {
+          // Instagram account already exists — link this user to it instead of rejecting
+          await this.instagramAccountLinkingRepository.addLink(userId, accountDetails.id);
+          // Refresh the access token on the canonical record so it stays up to date
+          await this.instagramRepository.updateAccountDetails({
+            id: accountDetails.id,
+            access_token: accountDetails.access_token,
+          });
+          await this.api.subscribeWebhookOfInstagram(accountDetails.id, accountDetails.access_token);
+          console.log(`Linked user ${userId} to existing Instagram account ${accountDetails.id}`);
+          return { msg: 'Successfully linked to existing Instagram account' };
         }
 
         console.log("account details from longlived token:", accountDetails);
         await this.instagramRepository.createAccount(accountDetails);
         // subscribe to webhook
-        
         await this.api.subscribeWebhookOfInstagram(accountDetails.id, accountDetails.access_token);
-        console.log(returnMessage);
 
-        // return error-code 409, when account already being existed
-        if (result && result.id == accountDetails.id) {
-          throw new HttpException(
-            'Account already attached to another user.',
-            HttpStatus.CONFLICT
-          );
-        }
-
-        return returnMessage;
+        return { msg: 'Successfully Created Account and Webhook subscribed' };
       } catch (error) {
 
       console.error('Error:', error);

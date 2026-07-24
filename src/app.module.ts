@@ -61,6 +61,7 @@ import { FacebookAccountService } from './modules/facebook/facebook.service';
 import { FacebookMediaPaginationService } from './modules/facebook/facebook-media-pagination.service';
 import { FacebookMediaRepositoryService } from '@database/dynamodb/repository-services/facebook.media.service';
 import { FacebookAccountRepositoryService } from '@database/dynamodb/repository-services/facebook.account.service';
+import { InstagramAccountLinkingRepositoryService } from '@database/dynamodb/repository-services/instagram.account.linking.service';
 
 @Module({
   imports: [
@@ -134,6 +135,7 @@ import { FacebookAccountRepositoryService } from '@database/dynamodb/repository-
     WhatsappConnectionsRepositoryService,
     WhatsappAuthService,
     WhatsappTemplateRepositoryService,
+    InstagramAccountLinkingRepositoryService,
   ],
   exports: [DynamoDBService],
 })

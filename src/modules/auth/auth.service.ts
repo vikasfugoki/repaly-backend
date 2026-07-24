@@ -7,6 +7,7 @@ import { FacebookApiService } from '../utils/facebook/api.service';
 import { GoogleUserRepositoryService } from '@database/dynamodb/repository-services/google.user.service';
 import { FacebookUserRepositoryService } from '@database/dynamodb/repository-services/facebook.user.service';
 import { InstagramAccountRepositoryService } from '@database/dynamodb/repository-services/instagram.account.service';
+import { InstagramAccountLinkingRepositoryService } from '@database/dynamodb/repository-services/instagram.account.linking.service';
 import { UserRepositoryService } from '@database/dynamodb/repository-services/user.service';
 import { v4 as uuidv4 } from 'uuid';
 import { BusinessDetailsRepositoryService } from '@database/dynamodb/repository-services/businessDetails.service';
@@ -32,6 +33,7 @@ export class AuthService {
     private readonly businessDetailsRepositoryService: BusinessDetailsRepositoryService,
     private readonly userService:  UserService,
     private readonly instagramAccountRepositoryService: InstagramAccountRepositoryService,
+    private readonly instagramAccountLinkingRepository: InstagramAccountLinkingRepositoryService,
     private readonly instagramMediaRepositoryService: InstagramMediaRepositoryService,
     private readonly instagramStoryRepositoryService: InstagramStoryRepositoryService,
     private readonly instagramAdsService: InstagramAdsService,
@@ -398,27 +400,37 @@ async loginWithGoogleCode(code: string, origin: string) {
 
   async getInstagramAccountIdFromGoogleUserId(userId: string): Promise<string[]> {
     
-      // get attached instagram account_id with the GoogleUserId
       const influex_user_id = (await this.googleUserRepository.getGoogleUser(userId)).Item?.user_id;
       console.log(`getting influex user id: ${influex_user_id}`);
       if (!influex_user_id) return [];
-      const accounts = await this.instagramAccountRepositoryService.getAccountDetailsByUserId(influex_user_id);
-      const instagram_account_ids = accounts.map(account => account.id);
-      console.log(`accounts ids: ${instagram_account_ids}`);
-      return instagram_account_ids;
+
+      const directAccounts = await this.instagramAccountRepositoryService.getAccountDetailsByUserId(influex_user_id);
+      const directIds = directAccounts.map(account => account.id);
+
+      // Also include accounts linked via secondary connections
+      const linkedIds = await this.instagramAccountLinkingRepository.getLinkedAccountIds(influex_user_id);
+
+      const allIds = [...new Set([...directIds, ...linkedIds])];
+      console.log(`accounts ids: ${allIds}`);
+      return allIds;
 
   }
 
   async getInstagramAccountIdFromFacebookUserId(userId: string): Promise<string[]> {
     
-    // get attached instagram account_id with the GoogleUserId
     const influex_user_id = (await this.facebookUserRepository.getFacebookUser(userId)).Item?.user_id;
     console.log(`getting influex user id: ${influex_user_id}`);
     if (!influex_user_id) return [];
-    const accounts = await this.instagramAccountRepositoryService.getAccountDetailsByUserId(influex_user_id);
-    const instagram_account_ids = accounts.map(account => account.id);
-    console.log(`accounts ids: ${instagram_account_ids}`);
-    return instagram_account_ids;
+
+    const directAccounts = await this.instagramAccountRepositoryService.getAccountDetailsByUserId(influex_user_id);
+    const directIds = directAccounts.map(account => account.id);
+
+    // Also include accounts linked via secondary connections
+    const linkedIds = await this.instagramAccountLinkingRepository.getLinkedAccountIds(influex_user_id);
+
+    const allIds = [...new Set([...directIds, ...linkedIds])];
+    console.log(`accounts ids: ${allIds}`);
+    return allIds;
 
 }
 
