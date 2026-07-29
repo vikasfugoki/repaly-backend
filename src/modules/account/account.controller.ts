@@ -1,8 +1,8 @@
 import { Controller, Get, Query, Req, HttpException, HttpStatus } from '@nestjs/common';
 import { AccountService } from './account.service';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
-// import { GetAccountResponse } from '@lib/dto';
 import { InstagramAccountRepositoryDTO, OmitInstagramAccountRepositoryDTO } from '../../lib/database/dto/instagram.account.repository.dto';
+import { LinkedUsersResponseDTO } from '@lib/dto';
 import {UserRepositoryService} from '@database/dynamodb/repository-services/user.service';
 
 @ApiTags('Account')
@@ -15,12 +15,10 @@ export class AccountController {
   @Get()
   @ApiOkResponse({
     description: 'Returns a list of user accounts for different platforms.',
-    // type: GetAccountResponse,
     type: [OmitInstagramAccountRepositoryDTO]
   })
   async getAccount(@Req() req): Promise<OmitInstagramAccountRepositoryDTO[]> {
     try {
-      // const platformId = req.user.user.sub; // googel user id
       const platformId = req.user.id;
       const userItem = await this.userDetailsService.getUserByPlatformId(platformId);
             if (!userItem) {
@@ -35,5 +33,17 @@ export class AccountController {
       console.error('Error fetching media:', error);
       throw new Error('Failed to fetch accounts.');
     }
+  }
+
+  @Get('linked-users')
+  @ApiOkResponse({
+    description: 'Returns the admin and linked user emails for a given Instagram account.',
+    type: LinkedUsersResponseDTO,
+  })
+  async getLinkedUsers(@Query('accountId') accountId: string): Promise<LinkedUsersResponseDTO> {
+    if (!accountId) {
+      throw new HttpException('accountId query parameter is required', HttpStatus.BAD_REQUEST);
+    }
+    return this.accountService.getLinkedUsersForAccount(accountId);
   }
 }

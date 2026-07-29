@@ -56,6 +56,29 @@ export class InstagramAccountLinkingRepositoryService {
     }
   }
 
+  /**
+   * Get all influex user_ids linked to a given Instagram account.
+   * Requires a GSI named `instagram_account_id-index` on the table with
+   * instagram_account_id as the partition key.
+   */
+  async getUserIdsForAccount(instagramAccountId: string): Promise<string[]> {
+    const params = new QueryCommand({
+      TableName: this.tableName,
+      IndexName: 'instagram_account_id-index',
+      KeyConditionExpression: 'instagram_account_id = :account_id',
+      ExpressionAttributeValues: { ':account_id': instagramAccountId },
+    });
+
+    try {
+      const response = await this.dynamoDbService.dynamoDBDocumentClient.send(params);
+      const items = (response.Items as InstagramAccountLinkingRepositoryDTO[]) ?? [];
+      return items.map((item) => item.user_id);
+    } catch (error) {
+      console.error(`Error fetching users for Instagram account ${instagramAccountId}:`, error);
+      return [];
+    }
+  }
+
   /** Remove a link between a user and an Instagram account. */
   removeLink(userId: string, instagramAccountId: string): Promise<any> {
     const params = new DeleteCommand({
