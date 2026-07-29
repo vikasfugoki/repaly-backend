@@ -14,6 +14,6 @@ export class LinkedUserDTO {
 }
 
 export class LinkedUsersResponseDTO {
-  admin: LinkedUserDTO;
+  admin: LinkedUserDTO | null;
   users: LinkedUserDTO[];
 }
