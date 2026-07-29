@@ -6,3 +6,14 @@ export class AccountByUserId {
 }
 
 export class GetAccountResponse extends Array<AccountByUserId> {}
+
+export class LinkedUserDTO {
+  user_id: string;
+  email: string;
+  name: string;
+}
+
+export class LinkedUsersResponseDTO {
+  admin: LinkedUserDTO | null;
+  users: LinkedUserDTO[];
+}
