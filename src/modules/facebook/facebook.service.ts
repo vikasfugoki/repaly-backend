@@ -258,6 +258,8 @@ export class FacebookAccountService {
         picture: page?.picture?.data?.url ?? null,
       });
 
+      console.log(`[connectPages] upserted page id=${page.id} ✓`);
+
       // Subscribe the Page to our app's `feed` webhooks so Meta delivers its
       // comment events to the ingress Lambda. Non-fatal: a transient failure
       // here must not break an otherwise-good connection or skip later pages.
@@ -268,12 +270,14 @@ export class FacebookAccountService {
         );
         if (!subscribed) {
           console.warn(
-            `Page ${page.id} subscribed_apps did not return success`,
+            `[connectPages] Page ${page.id} subscribed_apps did not return success`,
           );
+        } else {
+          console.log(`[connectPages] webhook subscription for page ${page.id} ✓`);
         }
       } catch (err) {
         console.warn(
-          `Failed to subscribe page ${page.id} to webhooks (non-fatal):`,
+          `[connectPages] Failed to subscribe page ${page.id} to webhooks (non-fatal):`,
           (err as Error).message,
         );
       }
@@ -286,6 +290,7 @@ export class FacebookAccountService {
       });
     }
 
+    console.log(`[connectPages] DONE — connected ${connected.length} page(s):`, connected.map(p => p.id));
     return { success: true, count: connected.length, pages: connected };
   }
 
