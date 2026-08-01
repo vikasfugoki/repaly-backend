@@ -387,8 +387,9 @@ export class FacebookApiService {
         // ----------------------------------------------------------------
 
         const allPages: any[] = [];
-        let nextUrl: string | null = `https://graph.facebook.com/v23.0/me/accounts?fields=id,name,access_token,category,picture{url}&access_token=${userAccessToken}`;
 
+        // 1. Personal pages — direct admin role on the personal profile.
+        let nextUrl: string | null = `https://graph.facebook.com/v23.0/me/accounts?fields=id,name,access_token,category,picture{url}&access_token=${userAccessToken}`;
         try {
           while (nextUrl) {
             const response = await axios.get<any>(nextUrl);
@@ -397,11 +398,49 @@ export class FacebookApiService {
             allPages.push(...(data || []));
             nextUrl = paging?.next || null;
           }
-          return allPages;
         } catch (error) {
-          console.error('Error fetching Facebook pages:', error?.response?.data || error.message);
+          console.error('Error fetching personal Facebook pages:', error?.response?.data || (error as Error).message);
           throw new InternalServerErrorException('Failed to retrieve Facebook pages');
         }
+        console.log(`[getUserPages] personal pages found: ${allPages.length}`);
+
+        // 2. Business Manager pages — pages owned by businesses the user belongs
+        //    to. /me/accounts returns nothing for these; we must go via
+        //    /me/businesses -> /{biz_id}/owned_pages. Requires business_management
+        //    scope. Non-fatal: if the scope is absent we still return personal pages.
+        try {
+          let bizUrl: string | null = `https://graph.facebook.com/v23.0/me/businesses?fields=id,name&access_token=${userAccessToken}`;
+          const businesses: any[] = [];
+          while (bizUrl) {
+            const bizResp = await axios.get<any>(bizUrl);
+            businesses.push(...(bizResp.data?.data || []));
+            bizUrl = bizResp.data?.paging?.next || null;
+          }
+          console.log(`[getUserPages] Business Manager accounts found: ${businesses.length}`, businesses.map((b: any) => b.name));
+
+          for (const biz of businesses) {
+            let pageUrl: string | null = `https://graph.facebook.com/v23.0/${biz.id}/owned_pages?fields=id,name,access_token,category,picture{url}&access_token=${userAccessToken}`;
+            while (pageUrl) {
+              const pageResp = await axios.get<any>(pageUrl);
+              console.log(`[getUserPages] BM "${biz.name}" owned_pages:`, JSON.stringify(pageResp.data));
+              allPages.push(...(pageResp.data?.data || []));
+              pageUrl = pageResp.data?.paging?.next || null;
+            }
+          }
+        } catch (err) {
+          console.warn(`[getUserPages] Business Manager page fetch failed (non-fatal — token may lack business_management scope):`, (err as Error).message);
+        }
+
+        // Deduplicate by page id (a page can appear in both lists).
+        const seen = new Set<string>();
+        const unique = allPages.filter((p) => {
+          if (seen.has(p.id)) return false;
+          seen.add(p.id);
+          return true;
+        });
+
+        console.log(`[getUserPages] total unique pages after BM merge: ${unique.length}`, unique.map((p) => ({ id: p.id, name: p.name })));
+        return unique;
       }
 
       /**
