@@ -368,12 +368,31 @@ export class FacebookApiService {
        * automation). Paginates through all results.
        */
       async getUserPages(userAccessToken: string): Promise<any[]> {
+        // --- DEBUG: log which permissions this token actually carries ---
+        try {
+          const permResponse = await axios.get<any>(
+            `https://graph.facebook.com/v23.0/me/permissions?access_token=${userAccessToken}`,
+          );
+          const granted = (permResponse.data?.data ?? [])
+            .filter((p: any) => p.status === 'granted')
+            .map((p: any) => p.permission);
+          const declined = (permResponse.data?.data ?? [])
+            .filter((p: any) => p.status === 'declined')
+            .map((p: any) => p.permission);
+          console.log(`[getUserPages] token GRANTED permissions:`, granted);
+          console.log(`[getUserPages] token DECLINED permissions:`, declined);
+        } catch (err) {
+          console.warn(`[getUserPages] could not fetch token permissions:`, (err as Error).message);
+        }
+        // ----------------------------------------------------------------
+
         const allPages: any[] = [];
         let nextUrl: string | null = `https://graph.facebook.com/v23.0/me/accounts?fields=id,name,access_token,category,picture{url}&access_token=${userAccessToken}`;
 
         try {
           while (nextUrl) {
             const response = await axios.get<any>(nextUrl);
+            console.log(`[getUserPages] /me/accounts raw response:`, JSON.stringify(response.data));
             const { data, paging } = response.data;
             allPages.push(...(data || []));
             nextUrl = paging?.next || null;
