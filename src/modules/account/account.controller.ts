@@ -14,10 +14,12 @@ export class AccountController {
 
   @Get()
   @ApiOkResponse({
-    description: 'Returns a list of user accounts for different platforms.',
+    description:
+      'Returns every connected account for the user across platforms (Instagram + WhatsApp). ' +
+      'Entries are discriminated by `platformName`.',
     type: [OmitInstagramAccountRepositoryDTO]
   })
-  async getAccount(@Req() req): Promise<OmitInstagramAccountRepositoryDTO[]> {
+  async getAccount(@Req() req): Promise<Record<string, any>[]> {
     try {
       const platformId = req.user.id;
       const userItem = await this.userDetailsService.getUserByPlatformId(platformId);
