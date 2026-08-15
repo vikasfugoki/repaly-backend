@@ -317,10 +317,31 @@ export class FacebookAccountService {
     );
     if (!influexUserId) return [];
 
-    const pages =
+    // Pages this user owns directly (they ran the original connect flow).
+    const directPages =
       await this.facebookAccountRepositoryService.getAccountDetailsByUserId(
         influexUserId,
       );
+
+    // Pages this user was linked to as a secondary user (the Page was already
+    // owned by a different influex user when they connected).
+    const linkedIds =
+      await this.facebookAccountLinkingRepository.getLinkedAccountIds(
+        influexUserId,
+      );
+    const linkedPages = await Promise.all(
+      linkedIds.map((id) => this.facebookAccountRepositoryService.getAccount(id)),
+    );
+
+    const seen = new Set<string>();
+    const pages = [...directPages, ...linkedPages].filter(
+      (p): p is Record<string, any> => {
+        if (!p) return false;
+        if (seen.has(p.id)) return false;
+        seen.add(p.id);
+        return true;
+      },
+    );
 
     return pages.map((p) => ({
       id: p.id,
