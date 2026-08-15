@@ -20,6 +20,7 @@ import { InstagramDMService } from '@database/dynamodb/repository-services/insta
 import { InstagramAdsService } from '@database/dynamodb/repository-services/instagram.ads.service';
 import { FacebookMediaRepositoryService } from '@database/dynamodb/repository-services/facebook.media.service';
 import { FacebookAccountRepositoryService } from '@database/dynamodb/repository-services/facebook.account.service';
+import { FacebookAccountLinkingRepositoryService } from '@database/dynamodb/repository-services/facebook.account.linking.service';
 
 
 @Injectable()
@@ -40,6 +41,7 @@ export class AuthService {
     private readonly instagramDMService: InstagramDMService,
     private readonly facebookMediaRepositoryService: FacebookMediaRepositoryService,
     private readonly facebookAccountRepositoryService: FacebookAccountRepositoryService,
+    private readonly facebookAccountLinkingRepository: FacebookAccountLinkingRepositoryService,
     private readonly jwtService: JwtService
   ) {
     this.jwtService = new JwtService({
@@ -493,7 +495,12 @@ async loginWithGoogleCode(code: string, origin: string) {
     if (!influex_user_id) return [];
 
     const accounts = await this.facebookAccountRepositoryService.getAccountDetailsByUserId(influex_user_id);
-    const facebook_page_ids = accounts.map(account => account.id);
+    const directIds = accounts.map(account => account.id);
+
+    // Also include Pages linked via secondary connections (e.g. another gmail login)
+    const linkedIds = await this.facebookAccountLinkingRepository.getLinkedAccountIds(influex_user_id);
+
+    const facebook_page_ids = [...new Set([...directIds, ...linkedIds])];
     console.log(`facebook page ids: ${facebook_page_ids}`);
     return facebook_page_ids;
   }

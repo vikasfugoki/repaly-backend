@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { FacebookMediaRepositoryService } from '@database/dynamodb/repository-services/facebook.media.service';
 import { FacebookAccountRepositoryService } from '@database/dynamodb/repository-services/facebook.account.service';
+import { FacebookAccountLinkingRepositoryService } from '@database/dynamodb/repository-services/facebook.account.linking.service';
 import { FacebookApiService } from '../utils/facebook/api.service';
 import { GoogleUserRepositoryService } from '@database/dynamodb/repository-services/google.user.service';
 import { FacebookUserRepositoryService } from '@database/dynamodb/repository-services/facebook.user.service';
@@ -19,6 +20,7 @@ export class FacebookAccountService {
   constructor(
     private readonly facebookMediaRepositoryService: FacebookMediaRepositoryService,
     private readonly facebookAccountRepositoryService: FacebookAccountRepositoryService,
+    private readonly facebookAccountLinkingRepository: FacebookAccountLinkingRepositoryService,
     private readonly facebookApiService: FacebookApiService,
     private readonly googleUserRepository: GoogleUserRepositoryService,
     private readonly facebookUserRepository: FacebookUserRepositoryService,
@@ -233,19 +235,42 @@ export class FacebookAccountService {
 
     const connected: Array<Record<string, any>> = [];
     for (const page of pages) {
-      await this.facebookAccountRepositoryService.updateAccountDetails({
-        id: page.id,
-        user_id: influexUserId,
-        access_token: page.access_token,
-        // Kept for re-deriving page tokens later (refresh endpoint) and for
-        // surfacing token health to the frontend.
-        user_access_token: longLivedUserToken,
-        user_token_expires_at: userTokenExpiresAt,
-        token_status: 'active',
-        name: page.name,
-        category: page.category ?? null,
-        picture: page?.picture?.data?.url ?? null,
-      });
+      // Check whether this Page is already connected under a different influex
+      // user (e.g. a different gmail login). If so, don't steal ownership by
+      // overwriting `user_id` — just link this user as a secondary user,
+      // mirroring how Instagram accounts are shared across multiple users.
+      const existingAccount =
+        await this.facebookAccountRepositoryService.getAccount(page.id);
+
+      if (existingAccount?.user_id && existingAccount.user_id !== influexUserId) {
+        await this.facebookAccountLinkingRepository.addLink(
+          influexUserId,
+          page.id,
+        );
+        // Still refresh the page token / user token bookkeeping so the page
+        // stays healthy, but leave the original owner's `user_id` intact.
+        await this.facebookAccountRepositoryService.updateAccountDetails({
+          id: page.id,
+          access_token: page.access_token,
+          user_access_token: longLivedUserToken,
+          user_token_expires_at: userTokenExpiresAt,
+          token_status: 'active',
+        });
+      } else {
+        await this.facebookAccountRepositoryService.updateAccountDetails({
+          id: page.id,
+          user_id: influexUserId,
+          access_token: page.access_token,
+          // Kept for re-deriving page tokens later (refresh endpoint) and for
+          // surfacing token health to the frontend.
+          user_access_token: longLivedUserToken,
+          user_token_expires_at: userTokenExpiresAt,
+          token_status: 'active',
+          name: page.name,
+          category: page.category ?? null,
+          picture: page?.picture?.data?.url ?? null,
+        });
+      }
 
       // Subscribe the Page to our app's `feed` webhooks so Meta delivers its
       // comment events to the ingress Lambda. Non-fatal: a transient failure

@@ -2,6 +2,8 @@ import { AccountByUserId, GetAccountResponse, LinkedUserDTO, LinkedUsersResponse
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InstagramAccountRepositoryService } from '@database/dynamodb/repository-services/instagram.account.service';
 import { InstagramAccountLinkingRepositoryService } from '@database/dynamodb/repository-services/instagram.account.linking.service';
+import { FacebookAccountRepositoryService } from '@database/dynamodb/repository-services/facebook.account.service';
+import { FacebookAccountLinkingRepositoryService } from '@database/dynamodb/repository-services/facebook.account.linking.service';
 import { InstagramAccountRepositoryDTO, OmitInstagramAccountRepositoryDTO } from '@database/dto/instagram.account.repository.dto';
 import { UserRepositoryService } from '@database/dynamodb/repository-services/user.service';
 import { GoogleUserRepositoryService } from '@database/dynamodb/repository-services/google.user.service';
@@ -12,6 +14,8 @@ export class AccountService {
   constructor(
     private readonly instagramAccountRepositoryService: InstagramAccountRepositoryService,
     private readonly instagramAccountLinkingRepository: InstagramAccountLinkingRepositoryService,
+    private readonly facebookAccountRepositoryService: FacebookAccountRepositoryService,
+    private readonly facebookAccountLinkingRepository: FacebookAccountLinkingRepositoryService,
     private readonly userRepositoryService: UserRepositoryService,
     private readonly googleUserRepository: GoogleUserRepositoryService,
     private readonly facebookUserRepository: FacebookUserRepositoryService,
@@ -102,6 +106,34 @@ async getAccount(userId: string): Promise<OmitInstagramAccountRepositoryDTO[]> {
 
     const adminUserId = account.user_id;
     const linkedUserIds = await this.instagramAccountLinkingRepository.getUserIdsForAccount(instagramAccountId);
+
+    const [admin, ...resolvedUsers] = await Promise.all([
+      this.resolveEmailByInfluexUserId(adminUserId),
+      ...linkedUserIds
+        .filter((uid) => uid !== adminUserId)
+        .map((uid) => this.resolveEmailByInfluexUserId(uid)),
+    ]);
+
+    return {
+      admin,
+      users: resolvedUsers.filter(Boolean) as LinkedUserDTO[],
+    };
+  }
+
+  /**
+   * Facebook equivalent of getLinkedUsersForAccount — given a Facebook Page
+   * id, returns the admin email (the user who owns the Page in
+   * facebook_account_repository) and the emails of all linked secondary
+   * users (from facebook_account_user_mapping).
+   */
+  async getLinkedUsersForFacebookAccount(facebookAccountId: string): Promise<LinkedUsersResponseDTO> {
+    const account = await this.facebookAccountRepositoryService.getAccount(facebookAccountId);
+    if (!account) {
+      throw new NotFoundException(`Facebook page ${facebookAccountId} not found`);
+    }
+
+    const adminUserId = account.user_id;
+    const linkedUserIds = await this.facebookAccountLinkingRepository.getUserIdsForAccount(facebookAccountId);
 
     const [admin, ...resolvedUsers] = await Promise.all([
       this.resolveEmailByInfluexUserId(adminUserId),

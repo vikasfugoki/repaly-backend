@@ -46,4 +46,16 @@ export class AccountController {
     }
     return this.accountService.getLinkedUsersForAccount(accountId);
   }
+
+  @Get('facebook/linked-users')
+  @ApiOkResponse({
+    description: 'Returns the admin and linked user emails for a given Facebook Page.',
+    type: LinkedUsersResponseDTO,
+  })
+  async getFacebookLinkedUsers(@Query('accountId') accountId: string): Promise<LinkedUsersResponseDTO> {
+    if (!accountId) {
+      throw new HttpException('accountId query parameter is required', HttpStatus.BAD_REQUEST);
+    }
+    return this.accountService.getLinkedUsersForFacebookAccount(accountId);
+  }
 }
