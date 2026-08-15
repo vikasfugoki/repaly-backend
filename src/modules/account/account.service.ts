@@ -94,6 +94,26 @@ async getAccount(userId: string): Promise<OmitInstagramAccountRepositoryDTO[]> {
   }
 
   /**
+   * Given an account id, returns the admin email (the owning user) and the
+   * emails of all linked secondary users. Auto-detects whether the id is an
+   * Instagram account or a Facebook Page so callers don't need to specify
+   * the platform.
+   */
+  async getLinkedUsersForAnyAccount(accountId: string): Promise<LinkedUsersResponseDTO> {
+    const instagramAccount = await this.instagramAccountRepositoryService.getAccount(accountId);
+    if (instagramAccount) {
+      return this.getLinkedUsersForAccount(accountId);
+    }
+
+    const facebookAccount = await this.facebookAccountRepositoryService.getAccount(accountId);
+    if (facebookAccount) {
+      return this.getLinkedUsersForFacebookAccount(accountId);
+    }
+
+    throw new NotFoundException(`Account ${accountId} not found`);
+  }
+
+  /**
    * Given an Instagram account ID, returns the admin email (the user who owns
    * the account in instagram_account_repository) and the emails of all linked
    * secondary users (from instagram_account_user_mapping).

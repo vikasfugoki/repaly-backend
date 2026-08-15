@@ -37,14 +37,14 @@ export class AccountController {
 
   @Get('linked-users')
   @ApiOkResponse({
-    description: 'Returns the admin and linked user emails for a given Instagram account.',
+    description: 'Returns the admin and linked user emails for a given Instagram account or Facebook Page.',
     type: LinkedUsersResponseDTO,
   })
   async getLinkedUsers(@Query('accountId') accountId: string): Promise<LinkedUsersResponseDTO> {
     if (!accountId) {
       throw new HttpException('accountId query parameter is required', HttpStatus.BAD_REQUEST);
     }
-    return this.accountService.getLinkedUsersForAccount(accountId);
+    return this.accountService.getLinkedUsersForAnyAccount(accountId);
   }
 
   @Get('facebook/linked-users')
