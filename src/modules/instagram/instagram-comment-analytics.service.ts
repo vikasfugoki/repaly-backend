@@ -17,6 +17,21 @@ const GRANULARITY_SECONDS: Record<'hour' | 'day', number> = {
   day: 86400,
 };
 
+// Fixed list of comment categories. Every bucket in the analytics series
+// always reports all of these keys (defaulting to 0), rather than only the
+// categories that happened to have comments in a given request.
+const COMMENT_CATEGORIES = [
+  'negative',
+  'general',
+  'product',
+  'compliment',
+  'uncategorized',
+  'tagged',
+] as const;
+
+type CommentCategory = (typeof COMMENT_CATEGORIES)[number];
+
+
 @Injectable()
 export class InstagramCommentAnalyticsService {
   constructor(
@@ -201,10 +216,25 @@ export class InstagramCommentAnalyticsService {
     endTs?: number,
   ) {
     const bucketSize = GRANULARITY_SECONDS[granularity];
+
     const buckets: Record<
       number,
-      { total: number; by_category: Record<string, number> }
+      { total: number; by_category: Record<CommentCategory, number> }
     > = {};
+
+    // Determine the effective range to zero-fill. If start/end weren't
+    // supplied, fall back to the min/max timestamps actually present so we
+    // still fill in any zero-comment gaps between them.
+    const timestamps = items
+      .map((item) => Number(item.timestamp))
+      .filter((ts) => !Number.isNaN(ts));
+
+    const rangeStart = startTs ?? (timestamps.length ? Math.min(...timestamps) : undefined);
+    const rangeEnd = endTs ?? (timestamps.length ? Math.max(...timestamps) : undefined);
+
+    if (rangeStart !== undefined && rangeEnd !== undefined) {
+      this.zeroFillBuckets(buckets, bucketSize, rangeStart, rangeEnd);
+    }
 
     for (const item of items) {
       const ts = Number(item.timestamp);
@@ -212,15 +242,14 @@ export class InstagramCommentAnalyticsService {
       if (startTs !== undefined && ts < startTs) continue;
       if (endTs !== undefined && ts > endTs) continue;
 
-      const bucketTs = ts - (ts % bucketSize);
+      const bucketTs = this.alignToBucketStart(ts, bucketSize);
       if (!buckets[bucketTs]) {
-        buckets[bucketTs] = { total: 0, by_category: {} };
+        buckets[bucketTs] = { total: 0, by_category: this.emptyCategoryCounts() };
       }
 
       buckets[bucketTs].total += 1;
-      const category = item.category ?? 'uncategorized';
-      buckets[bucketTs].by_category[category] =
-        (buckets[bucketTs].by_category[category] ?? 0) + 1;
+      const category = this.normalizeCategory(item.category);
+      buckets[bucketTs].by_category[category] += 1;
     }
 
     const series = Object.keys(buckets)
@@ -239,6 +268,54 @@ export class InstagramCommentAnalyticsService {
       total_comments: items.length,
       series,
     };
+  }
+
+  /** Rounds a timestamp (epoch seconds) down to the start of its bucket (hour/day, UTC-aligned). */
+  private alignToBucketStart(ts: number, bucketSize: number): number {
+    return ts - (ts % bucketSize);
+  }
+
+  /**
+   * Pre-populates `buckets` with one zero-count entry per interval between
+   * `rangeStart` and `rangeEnd` (inclusive), so gaps with no comments still
+   * show up in the series instead of being skipped (e.g. buckets no longer
+   * jump straight from 20:00 to 05:00).
+   */
+  private zeroFillBuckets(
+    buckets: Record<
+      number,
+      { total: number; by_category: Record<CommentCategory, number> }
+    >,
+    bucketSize: number,
+    rangeStart: number,
+    rangeEnd: number,
+  ): void {
+    const firstBucket = this.alignToBucketStart(rangeStart, bucketSize);
+    const lastBucket = this.alignToBucketStart(rangeEnd, bucketSize);
+
+    for (let bucketTs = firstBucket; bucketTs <= lastBucket; bucketTs += bucketSize) {
+      if (!buckets[bucketTs]) {
+        buckets[bucketTs] = { total: 0, by_category: this.emptyCategoryCounts() };
+      }
+    }
+  }
+
+  private emptyCategoryCounts(): Record<CommentCategory, number> {
+    return COMMENT_CATEGORIES.reduce(
+      (acc, category) => {
+        acc[category] = 0;
+        return acc;
+      },
+      {} as Record<CommentCategory, number>,
+    );
+  }
+
+  /** Maps a raw comment category value to one of the fixed COMMENT_CATEGORIES, defaulting to 'uncategorized'. */
+  private normalizeCategory(rawCategory: unknown): CommentCategory {
+    const category = typeof rawCategory === 'string' ? rawCategory : undefined;
+    return (COMMENT_CATEGORIES as readonly string[]).includes(category ?? '')
+      ? (category as CommentCategory)
+      : 'uncategorized';
   }
 
   private encodeCursor(key: Record<string, any>): string {
