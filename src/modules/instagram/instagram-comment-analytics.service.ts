@@ -222,6 +222,9 @@ export class InstagramCommentAnalyticsService {
       { total: number; by_category: Record<CommentCategory, number> }
     > = {};
 
+    const totalByCategory = this.emptyCategoryCounts();
+    let totalComments = 0;
+
     // Determine the effective range to zero-fill. If start/end weren't
     // supplied, fall back to the min/max timestamps actually present so we
     // still fill in any zero-comment gaps between them.
@@ -250,6 +253,9 @@ export class InstagramCommentAnalyticsService {
       buckets[bucketTs].total += 1;
       const category = this.normalizeCategory(item.category);
       buckets[bucketTs].by_category[category] += 1;
+
+      totalComments += 1;
+      totalByCategory[category] += 1;
     }
 
     const series = Object.keys(buckets)
@@ -265,7 +271,8 @@ export class InstagramCommentAnalyticsService {
       granularity,
       start: startTs,
       end: endTs,
-      total_comments: items.length,
+      total_comments: totalComments,
+      total_by_category: totalByCategory,
       series,
     };
   }
