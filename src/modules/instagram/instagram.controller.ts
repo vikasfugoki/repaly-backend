@@ -18,6 +18,11 @@ import { InstagramResourceType } from '../auth/instagram-resource-type.decorator
 import { PaginatedResponse, PaginationQueryDto } from '@database/dto/pagination.dto';
 import { InstagramMediaPaginationService } from './instagram-media-pagination.service';
 import { InstagramStoryPaginationService } from './instagram-story-pagination.service';
+import { InstagramCommentAnalyticsService } from './instagram-comment-analytics.service';
+import {
+  CommentAnalyticsQueryDto,
+  CommentsListQueryDto,
+} from '@database/dto/comment-analytics.dto';
 
 @ApiTags('Instagram Account')
 @Controller('instagram')
@@ -26,7 +31,8 @@ export class InstagramAccountController {
   constructor(
     private readonly instagramAccountService: InstagramAccountService,
     private readonly instagramMediaPaginationService: InstagramMediaPaginationService,
-    private readonly instagramStoryPaginationService: InstagramStoryPaginationService
+    private readonly instagramStoryPaginationService: InstagramStoryPaginationService,
+    private readonly instagramCommentAnalyticsService: InstagramCommentAnalyticsService,
   ) {}
 
   @InstagramResourceType('account')
@@ -658,6 +664,69 @@ export class InstagramAccountController {
   //////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////// COMMENT LEVEL ANALYTICS ///////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // Account-level comment analytics: bucketed counts (total + per category) between start & end
+  @InstagramResourceType('account')
+  @Get(':accountId/comment-analytics')
+  async getAccountCommentAnalytics(
+    @Param('accountId') accountId: string,
+    @Query() query: CommentAnalyticsQueryDto,
+  ) {
+    try {
+      return await this.instagramCommentAnalyticsService.getAccountAnalytics(
+        accountId,
+        query,
+      );
+    } catch (error) {
+      console.log(
+        `Failed to get comment analytics for account ${accountId}:`,
+        (error as Error).message,
+      );
+      throw error;
+    }
+  }
+
+  // Media-level comment analytics: bucketed counts (total + per category) between start & end
+  @InstagramResourceType('media')
+  @Get(':mediaId/comment-analytics')
+  async getMediaCommentAnalytics(
+    @Param('mediaId') mediaId: string,
+    @Query() query: CommentAnalyticsQueryDto,
+  ) {
+    try {
+      return await this.instagramCommentAnalyticsService.getMediaAnalytics(
+        mediaId,
+        query,
+      );
+    } catch (error) {
+      console.log(
+        `Failed to get comment analytics for media ${mediaId}:`,
+        (error as Error).message,
+      );
+      throw error;
+    }
+  }
+
+  // Paginated comments for a media, optionally filtered by category
+  @InstagramResourceType('media')
+  @Get(':mediaId/comments-list')
+  async getMediaCommentsList(
+    @Param('mediaId') mediaId: string,
+    @Query() query: CommentsListQueryDto,
+  ) {
+    try {
+      return await this.instagramCommentAnalyticsService.getComments(
+        mediaId,
+        query,
+      );
+    } catch (error) {
+      console.log(
+        `Failed to get comments list for media ${mediaId}:`,
+        (error as Error).message,
+      );
+      throw error;
+    }
+  }
 
   ///////////////////////////////////// MEDIA ///////////////////////////////////////////////////////////
 

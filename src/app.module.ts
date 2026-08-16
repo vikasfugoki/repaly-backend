@@ -63,6 +63,8 @@ import { FacebookMediaRepositoryService } from '@database/dynamodb/repository-se
 import { FacebookAccountRepositoryService } from '@database/dynamodb/repository-services/facebook.account.service';
 import { InstagramAccountLinkingRepositoryService } from '@database/dynamodb/repository-services/instagram.account.linking.service';
 import { FacebookAccountLinkingRepositoryService } from '@database/dynamodb/repository-services/facebook.account.linking.service';
+import { InstagramCommentAnalyticsRepositoryService } from '@database/dynamodb/repository-services/instagram.commentAnalytics.service';
+import { InstagramCommentAnalyticsService } from './modules/instagram/instagram-comment-analytics.service';
 
 @Module({
   imports: [
@@ -138,6 +140,8 @@ import { FacebookAccountLinkingRepositoryService } from '@database/dynamodb/repo
     WhatsappTemplateRepositoryService,
     InstagramAccountLinkingRepositoryService,
     FacebookAccountLinkingRepositoryService,
+    InstagramCommentAnalyticsRepositoryService,
+    InstagramCommentAnalyticsService,
   ],
   exports: [DynamoDBService],
 })
