@@ -1,5 +1,12 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InstagramCommentAnalyticsRepositoryService } from '@database/dynamodb/repository-services/instagram.commentAnalytics.service';
+import { InstagramMediaRepositoryService } from '@database/dynamodb/repository-services/instagram.media.service';
+import { InstagramAccountRepositoryService } from '@database/dynamodb/repository-services/instagram.account.service';
 import {
   CommentAnalyticsQueryDto,
   CommentsListQueryDto,
@@ -14,16 +21,25 @@ const GRANULARITY_SECONDS: Record<'hour' | 'day', number> = {
 export class InstagramCommentAnalyticsService {
   constructor(
     private readonly commentAnalyticsRepositoryService: InstagramCommentAnalyticsRepositoryService,
+    private readonly instagramMediaRepositoryService: InstagramMediaRepositoryService,
+    private readonly instagramAccountRepositoryService: InstagramAccountRepositoryService,
   ) {}
 
   /**
    * Account-level comment analytics: bucketed counts (total + per category)
    * between `start` and `end`, grouped by `granularity` (hour|day).
+   *
+   * `accountId` (the API param) is the internal `id` from
+   * instagram_account_repository. instagram_comment_analytics is keyed by
+   * `business_account_id`, which corresponds to that account's
+   * `pro_user_id` — so we resolve it first.
    */
   async getAccountAnalytics(
-    businessAccountId: string,
+    accountId: string,
     query: CommentAnalyticsQueryDto,
   ) {
+    const businessAccountId = await this.resolveBusinessAccountId(accountId);
+
     const { startTs, endTs } = this.parseRange(query.start, query.end);
     const granularity = query.granularity ?? 'day';
 
@@ -36,11 +52,19 @@ export class InstagramCommentAnalyticsService {
     return this.buildBuckets(items, granularity, startTs, endTs);
   }
 
+
   /**
    * Media-level comment analytics: same bucketing as account-level, scoped
-   * to a single media_id via the media_id-index GSI.
+   * to a single media_id via the media_id-index GSI. `accountId` is
+   * validated against the media's owning account before querying.
    */
-  async getMediaAnalytics(mediaId: string, query: CommentAnalyticsQueryDto) {
+  async getMediaAnalytics(
+    accountId: string,
+    mediaId: string,
+    query: CommentAnalyticsQueryDto,
+  ) {
+    await this.assertMediaBelongsToAccount(accountId, mediaId);
+
     const { startTs, endTs } = this.parseRange(query.start, query.end);
     const granularity = query.granularity ?? 'day';
 
@@ -55,9 +79,16 @@ export class InstagramCommentAnalyticsService {
 
   /**
    * Cursor-paginated list of comments for a media, optionally filtered by
-   * category.
+   * category. `accountId` is validated against the media's owning account
+   * before querying.
    */
-  async getComments(mediaId: string, query: CommentsListQueryDto) {
+  async getComments(
+    accountId: string,
+    mediaId: string,
+    query: CommentsListQueryDto,
+  ) {
+    await this.assertMediaBelongsToAccount(accountId, mediaId);
+
     const limit = query.limit ?? 20;
     const exclusiveStartKey = query.cursor
       ? this.decodeCursor(query.cursor)
@@ -82,6 +113,47 @@ export class InstagramCommentAnalyticsService {
         limit,
       },
     };
+  }
+
+  /**
+   * Resolves the internal accountId (instagram_account_repository.id) to
+   * its pro_user_id, which is what instagram_comment_analytics stores as
+   * `business_account_id`.
+   */
+  private async resolveBusinessAccountId(accountId: string): Promise<string> {
+    const account =
+      await this.instagramAccountRepositoryService.getAccount(accountId);
+
+    if (!account) {
+      throw new NotFoundException(`Account ${accountId} not found`);
+    }
+    if (!account.pro_user_id) {
+      throw new BadRequestException(
+        `pro_user_id is not present for account ${accountId}`,
+      );
+    }
+
+    return account.pro_user_id;
+  }
+
+  /** Ensures the media exists and belongs to the given accountId. */
+  private async assertMediaBelongsToAccount(
+    accountId: string,
+    mediaId: string,
+  ): Promise<void> {
+    const result = await this.instagramMediaRepositoryService.getMedia(
+      mediaId,
+    );
+    const media = result?.Item;
+
+    if (!media) {
+      throw new NotFoundException(`Media ${mediaId} not found`);
+    }
+    if (media.accountId !== accountId) {
+      throw new ForbiddenException(
+        `Media ${mediaId} does not belong to account ${accountId}`,
+      );
+    }
   }
 
   private parseRange(

@@ -687,20 +687,22 @@ export class InstagramAccountController {
   }
 
   // Media-level comment analytics: bucketed counts (total + per category) between start & end
-  @InstagramResourceType('media')
-  @Get(':mediaId/comment-analytics')
+  @InstagramResourceType('account')
+  @Get(':accountId/media/:mediaId/comment-analytics')
   async getMediaCommentAnalytics(
+    @Param('accountId') accountId: string,
     @Param('mediaId') mediaId: string,
     @Query() query: CommentAnalyticsQueryDto,
   ) {
     try {
       return await this.instagramCommentAnalyticsService.getMediaAnalytics(
+        accountId,
         mediaId,
         query,
       );
     } catch (error) {
       console.log(
-        `Failed to get comment analytics for media ${mediaId}:`,
+        `Failed to get comment analytics for media ${mediaId} in account ${accountId}:`,
         (error as Error).message,
       );
       throw error;
@@ -708,20 +710,22 @@ export class InstagramAccountController {
   }
 
   // Paginated comments for a media, optionally filtered by category
-  @InstagramResourceType('media')
-  @Get(':mediaId/comments-list')
+  @InstagramResourceType('account')
+  @Get(':accountId/media/:mediaId/comments-list')
   async getMediaCommentsList(
+    @Param('accountId') accountId: string,
     @Param('mediaId') mediaId: string,
     @Query() query: CommentsListQueryDto,
   ) {
     try {
       return await this.instagramCommentAnalyticsService.getComments(
+        accountId,
         mediaId,
         query,
       );
     } catch (error) {
       console.log(
-        `Failed to get comments list for media ${mediaId}:`,
+        `Failed to get comments list for media ${mediaId} in account ${accountId}:`,
         (error as Error).message,
       );
       throw error;
