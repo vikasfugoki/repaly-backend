@@ -6,7 +6,10 @@ import {
   PaginatedResponse,
   PaginationQueryDto,
 } from '@database/dto/pagination.dto';
-import { normalizeFacebookPost } from './facebook-post.mapper';
+import {
+  normalizeFacebookPost,
+  presentFacebookMedia,
+} from './facebook-post.mapper';
 
 /**
  * Paginated listing of a Facebook Page's posts. Mirrors
@@ -135,7 +138,7 @@ export class FacebookMediaPaginationService {
       const enrichedMedia = mediaItems
         .filter((item) => item.accountId === accountId)
         .map((item) => ({
-          ...item,
+          ...presentFacebookMedia(item),
           is_automated: this.isAutomatedPost(item),
         }));
 

@@ -5,7 +5,10 @@ import { FacebookAccountLinkingRepositoryService } from '@database/dynamodb/repo
 import { FacebookApiService } from '../utils/facebook/api.service';
 import { GoogleUserRepositoryService } from '@database/dynamodb/repository-services/google.user.service';
 import { FacebookUserRepositoryService } from '@database/dynamodb/repository-services/facebook.user.service';
-import { normalizeFacebookPost } from './facebook-post.mapper';
+import {
+  normalizeFacebookPost,
+  presentFacebookMedia,
+} from './facebook-post.mapper';
 
 /**
  * Business logic for Facebook post automation settings (get / store) plus the
@@ -76,9 +79,13 @@ export class FacebookAccountService {
     try {
       const response =
         await this.facebookMediaRepositoryService.getMedia(mediaId);
-      const item = response?.Item ?? {};
-      item.is_automated = this.isAutomatedPost(item);
-      return item;
+      const item = response?.Item;
+      // Not ingested yet — the caller only needs to know there is no automation.
+      if (!item) return { is_automated: false };
+      return {
+        ...presentFacebookMedia(item),
+        is_automated: this.isAutomatedPost(item),
+      };
     } catch (error) {
       console.error(`Error getting media details for media ${mediaId}:`, error);
       throw error;
@@ -129,7 +136,7 @@ export class FacebookAccountService {
               new Date(a.timestamp || 0).getTime(),
           )
           .map((item) => ({
-            ...item,
+            ...presentFacebookMedia(item),
             is_automated: this.isAutomatedPost(item),
           }));
       }
