@@ -18,6 +18,7 @@ import {
   InstagramMediaInsight,
 } from '@lib/dto';
 import { InstagramMediaAnalyticsRepositoryService } from '@database/dynamodb/repository-services/instagram.mediaAnalytics.service';
+import { presentInstagramMedia } from './instagram-post.mapper';
 import { InstagramStoryRepositoryService } from '@database/dynamodb/repository-services/instagram.story.service';
 import { InstagramStoryAnalyticsRepositoryService } from '@database/dynamodb/repository-services/instagram.storyAnalytics.service';
 import { InstagramDMService } from '@database/dynamodb/repository-services/instagram.dm.service';
@@ -192,9 +193,13 @@ export class InstagramAccountService {
       //   tag_and_value_pair: tagAndValuePair,
       //   ai_enabled: ai_enabled
       // };
-      const item = response?.Item ?? {};
-      item.is_automated = this.isAutomatedPost(item);
-      return item;
+      const item = response?.Item;
+      // Not ingested yet — the caller only needs to know there is no automation.
+      if (!item) return { is_automated: false };
+      return {
+        ...presentInstagramMedia(item),
+        is_automated: this.isAutomatedPost(item),
+      };
     } catch (error) {
       console.error(`Error getting media details for media ${mediaId}:`, error);
       throw error;
@@ -382,7 +387,7 @@ export class InstagramAccountService {
           )
           .slice(0, 15)
           .map((item) => ({
-            ...item,
+            ...presentInstagramMedia(item),
             is_automated: this.isAutomatedPost(item),
           }));
       } else {

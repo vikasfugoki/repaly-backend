@@ -8,6 +8,10 @@ import {
   PaginationQueryDto,
 } from '@database/dto/pagination.dto';
 import { InstagramMedia, InstagramMediaInsight } from '@lib/dto';
+import {
+  normalizeInstagramMedia,
+  presentInstagramMedia,
+} from './instagram-post.mapper';
 
 @Injectable()
 export class InstagramMediaPaginationService {
@@ -90,13 +94,13 @@ export class InstagramMediaPaginationService {
                 ? this.buildInsights(media, insights)
                 : media;
 
-            return { ...mediaWithInsight, accountId };
+            return normalizeInstagramMedia(mediaWithInsight, accountId);
           } catch (error) {
             console.error(
               `Failed to fetch insights for media ID ${media.id}:`,
               error,
             );
-            return { ...media, accountId };
+            return normalizeInstagramMedia(media, accountId);
           }
         }),
       );
@@ -160,7 +164,7 @@ export class InstagramMediaPaginationService {
       const enrichedMedia = mediaItems
         .filter((item) => item.accountId === accountId)
         .map((item) => ({
-          ...item,
+          ...presentInstagramMedia(item),
           is_automated: this.isAutomatedPost(item),
         }));
 
