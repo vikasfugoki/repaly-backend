@@ -202,9 +202,6 @@ export class FacebookAccountService {
     loginSource: 'google' | 'facebook',
     userAccessToken: string,
   ) {
-    console.log(`[connectPages] START — providerUserId=${providerUserId} loginSource=${loginSource}`);
-    console.log(`[connectPages] access_token received (first 20 chars): ${userAccessToken?.substring(0, 20)}...`);
-
     if (!userAccessToken) {
       throw new Error('access_token is required to connect Facebook pages');
     }
@@ -213,7 +210,6 @@ export class FacebookAccountService {
       providerUserId,
       loginSource,
     );
-    console.log(`[connectPages] resolved influexUserId: ${influexUserId}`);
     if (!influexUserId) {
       throw new Error('User not found');
     }
@@ -234,7 +230,6 @@ export class FacebookAccountService {
       userTokenExpiresAt = new Date(
         Date.now() + exchanged.expires_in * 1000,
       ).toISOString();
-      console.log(`[connectPages] long-lived token exchange SUCCESS — expires_at: ${userTokenExpiresAt}`);
     } catch (err) {
       console.warn(
         'Long-lived token exchange failed; using short-lived token (page tokens may expire):',
@@ -244,11 +239,6 @@ export class FacebookAccountService {
 
     const pages =
       await this.facebookApiService.getUserPages(longLivedUserToken);
-
-    console.log(`[connectPages] getUserPages returned ${pages.length} page(s)`);
-    pages.forEach((p, i) =>
-      console.log(`[connectPages]   page[${i}]: id=${p.id} name="${p.name}" category="${p.category}" has_access_token=${!!p.access_token}`),
-    );
 
     const connected: Array<Record<string, any>> = [];
     for (const page of pages) {
@@ -289,8 +279,6 @@ export class FacebookAccountService {
         });
       }
 
-      console.log(`[connectPages] upserted page id=${page.id} ✓`);
-
       // Subscribe the Page to our app's `feed` webhooks so Meta delivers its
       // comment events to the ingress Lambda. Non-fatal: a transient failure
       // here must not break an otherwise-good connection or skip later pages.
@@ -301,14 +289,12 @@ export class FacebookAccountService {
         );
         if (!subscribed) {
           console.warn(
-            `[connectPages] Page ${page.id} subscribed_apps did not return success`,
+            `Page ${page.id} subscribed_apps did not return success`,
           );
-        } else {
-          console.log(`[connectPages] webhook subscription for page ${page.id} ✓`);
         }
       } catch (err) {
         console.warn(
-          `[connectPages] Failed to subscribe page ${page.id} to webhooks (non-fatal):`,
+          `Failed to subscribe page ${page.id} to webhooks (non-fatal):`,
           (err as Error).message,
         );
       }
@@ -321,7 +307,6 @@ export class FacebookAccountService {
       });
     }
 
-    console.log(`[connectPages] DONE — connected ${connected.length} page(s):`, connected.map(p => p.id));
     return { success: true, count: connected.length, pages: connected };
   }
 

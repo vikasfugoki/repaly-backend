@@ -1194,4 +1194,161 @@ export class InstagramAccountController {
       }
     }
 
+    @InstagramResourceType('account')
+    @Get(':accountId/whatsapp/connection')
+    async getWhatsappConnection(@Param('accountId') accountId: string) {
+      try {
+        return await this.instagramAccountService.getWhatsappConnection(accountId);
+      } catch (error) {
+        if (error instanceof Error && (error as any).code === 'WHATSAPP_NOT_CONNECTED') {
+          throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+        }
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        console.log(`Failed to get whatsapp connection status for account ${accountId}:`, message);
+        throw new HttpException('Failed to get whatsapp connection status', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+    }
+
+    @InstagramResourceType('account')
+    @Delete(':accountId/whatsapp/connection')
+    async disconnectWhatsapp(@Param('accountId') accountId: string) {
+      try {
+        return await this.instagramAccountService.disconnectWhatsapp(accountId);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        console.log(`Failed to disconnect whatsapp for account ${accountId}:`, message);
+        throw new HttpException('Failed to disconnect whatsapp', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+    }
+
+    // whatsapp template related api
+    @InstagramResourceType('account')
+    @Get('whatsapp/:accountId/templates')
+    async getWhatsappTemplates(@Param('accountId') accountId: string, @Query('limit') limit?: number) {
+      try {
+        return await this.instagramAccountService.getWhatsappTemplates(accountId);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        console.log(`Failed to get whatsapp templates for account ${accountId}:`, message);
+        throw new HttpException('Failed to get whatsapp templates', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+    }
+
+    @InstagramResourceType('account')
+    @Get('whatsapp/:accountId/templates/:templateId')
+    async getWhatsappSingleTemplate(
+      @Param('accountId') accountId: string,
+      @Param('templateId') templateId: string
+    ) {
+      try {
+        return await this.instagramAccountService.getWhatsappSingleTemplate(accountId, templateId);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        console.log(`Failed to get whatsapp template ${templateId} for account ${accountId}:`, message);
+        throw new HttpException('Failed to get whatsapp template', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+    }
+
+    @InstagramResourceType('account')
+    @Post('/whatsapp/:accountId/templates')
+    async createWhatsappTemplate(
+      @Param('accountId') accountId: string,
+      @Body() template: Record<string, any>,
+    ) {
+      try {
+        return await this.instagramAccountService.createWhatsappTemplate(accountId, template);
+      } catch (error) {
+        if ((error as any).code === 'WHATSAPP_NOT_CONNECTED') {
+          throw new HttpException('WhatsApp is not connected', HttpStatus.BAD_REQUEST);
+        }
+        if ((error as any).code === 'META_API_ERROR') {
+          throw new HttpException(
+            {
+              message: (error as any).details?.error_user_msg || (error as any).details?.message || 'Meta API error',
+              code: 'META_API_ERROR',
+              details: (error as any).details,
+            },
+            HttpStatus.UNPROCESSABLE_ENTITY, // 422 — client sent valid JSON but Meta rejected it
+          );
+        }
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        console.log(`Failed to create whatsapp template for account ${accountId}:`, message);
+        throw new HttpException('Failed to create whatsapp template', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+    }
+
+    @InstagramResourceType('account')
+    @Delete('/whatsapp/:accountId/templates/:templateId')
+    async deleteWhatsappTemplate(
+      @Param('accountId') accountId: string,
+      @Param('templateId') templateId: string,
+      @Query('templateName') templateName: string,
+    ) {
+      try {
+        return await this.instagramAccountService.deleteWhatsappTemplate(accountId, templateId, templateName);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        console.log(`Failed to delete whatsapp template ${templateId} for account ${accountId}:`, message);
+        throw new HttpException('Failed to delete whatsapp template', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+    }
+
+    @InstagramResourceType('account')
+    @Post('/whatsapp/:accountId/templates/:templateId/send')
+    async sendWhatsappTemplate(
+      @Param('accountId') accountId: string,
+      @Param('templateId') templateId: string,
+      @Body() body: { to: string; templateName: string; language: string; components?: any[] },
+    ) {
+      try {
+        return await this.instagramAccountService.sendWhatsappTemplate(accountId, body);
+      } catch (error) {
+        if ((error as any).code === 'WHATSAPP_NOT_CONNECTED') {
+          throw new HttpException('WhatsApp is not connected', HttpStatus.BAD_REQUEST);
+        }
+        if ((error as any).code === 'BAD_REQUEST') {
+          throw new HttpException((error as Error).message, HttpStatus.BAD_REQUEST);
+        }
+        if ((error as any).code === 'META_API_ERROR') {
+          throw new HttpException(
+            {
+              message: (error as any).details?.error_user_msg || (error as any).details?.message || 'Meta API error',
+              code: 'META_API_ERROR',
+              details: (error as any).details,
+            },
+            HttpStatus.UNPROCESSABLE_ENTITY,
+          );
+        }
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        console.log(`Failed to send whatsapp template ${templateId} for account ${accountId}:`, message);
+        throw new HttpException('Failed to send whatsapp template', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+    }
+
+    @InstagramResourceType('account')
+    @Post('/whatsapp/:accountId/register')
+    async registerWhatsappPhoneNumber(
+      @Param('accountId') accountId: string,
+      @Body() body: { pin: string },
+    ) {
+      try {
+        return await this.instagramAccountService.registerWhatsappPhoneNumber(accountId, body.pin);
+      } catch (error) {
+        if ((error as any).code === 'WHATSAPP_NOT_CONNECTED') {
+          throw new HttpException('WhatsApp is not connected', HttpStatus.BAD_REQUEST);
+        }
+        if ((error as any).code === 'META_API_ERROR') {
+          throw new HttpException(
+            {
+              message: (error as any).details?.message || 'Meta API error',
+              code: 'META_API_ERROR',
+              details: (error as any).details,
+            },
+            HttpStatus.UNPROCESSABLE_ENTITY,
+          );
+        }
+        throw new HttpException('Failed to register phone number', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+    }
+
 }

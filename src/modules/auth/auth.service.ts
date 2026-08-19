@@ -21,7 +21,6 @@ import { InstagramAdsService } from '@database/dynamodb/repository-services/inst
 import { FacebookMediaRepositoryService } from '@database/dynamodb/repository-services/facebook.media.service';
 import { FacebookAccountRepositoryService } from '@database/dynamodb/repository-services/facebook.account.service';
 import { FacebookAccountLinkingRepositoryService } from '@database/dynamodb/repository-services/facebook.account.linking.service';
-import { WhatsappBusinessAccountRepositoryService } from '@database/dynamodb/repository-services/whatsapp.business.account.service';
 
 
 @Injectable()
@@ -43,7 +42,6 @@ export class AuthService {
     private readonly facebookMediaRepositoryService: FacebookMediaRepositoryService,
     private readonly facebookAccountRepositoryService: FacebookAccountRepositoryService,
     private readonly facebookAccountLinkingRepository: FacebookAccountLinkingRepositoryService,
-    private readonly whatsappBusinessAccountRepositoryService: WhatsappBusinessAccountRepositoryService,
     private readonly jwtService: JwtService
   ) {
     this.jwtService = new JwtService({
@@ -505,44 +503,6 @@ async loginWithGoogleCode(code: string, origin: string) {
     const facebook_page_ids = [...new Set([...directIds, ...linkedIds])];
     console.log(`facebook page ids: ${facebook_page_ids}`);
     return facebook_page_ids;
-  }
-
-  /**
-   * Ownership check for WhatsApp accounts. `resourceId` is a WhatsApp
-   * phone_number_id — the primary key of `whatsapp_business_account_repository`.
-   */
-  async checkWhatsappOwnership(
-    userId: string,
-    resourceId: string,
-    loginSource: 'google' | 'facebook',
-  ): Promise<boolean> {
-    const ownedPhoneNumberIds = await this.getWhatsappAccountIdsFromUserId(userId, loginSource);
-
-    if (!resourceId || !ownedPhoneNumberIds.includes(resourceId)) {
-      throw new ForbiddenException('You do not have access to this resource');
-    }
-
-    return true;
-  }
-
-  /** Resolve the WhatsApp phone_number_ids connected to the authenticated user. */
-  async getWhatsappAccountIdsFromUserId(
-    userId: string,
-    loginSource: 'google' | 'facebook',
-  ): Promise<string[]> {
-    let influex_user_id: string | undefined;
-
-    if (loginSource === 'google') {
-      influex_user_id = (await this.googleUserRepository.getGoogleUser(userId)).Item?.user_id;
-    } else if (loginSource === 'facebook') {
-      influex_user_id = (await this.facebookUserRepository.getFacebookUser(userId)).Item?.user_id;
-    }
-
-    if (!influex_user_id) return [];
-
-    const accounts =
-      await this.whatsappBusinessAccountRepositoryService.getAccountDetailsByUserId(influex_user_id);
-    return accounts.map((account) => account.id);
   }
 
 

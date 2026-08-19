@@ -53,9 +53,9 @@ import { ShopifyAuthService } from './modules/shopify/shopify-auth.service';
 import { ShopifyConnectionsRepositoryService } from '@database/dynamodb/repository-services/shopify.connection.service';
 import { ShopifyApiService } from './modules/utils/shopify/api.service';
 import { InstagramTemplatesRepositoryService } from '@database/dynamodb/repository-services/instagram.templates.service';
-import { WhatsappBusinessAccountRepositoryService } from '@database/dynamodb/repository-services/whatsapp.business.account.service';
-import { WhatsappController } from './modules/whatsapp/whatsapp.controller';
-import { WhatsappAccountService } from './modules/whatsapp/whatsapp.service';
+import { WhatsappConnectionsRepositoryService } from '@database/dynamodb/repository-services/whatsapp.account.service';
+import { WhatsappAuthService } from './modules/whatsapp/whatsapp-auth.service';
+import { WhatsappTemplateRepositoryService } from '@database/dynamodb/repository-services/whatsapp.template.service';
 import { FacebookController } from './modules/facebook/facebook.controller';
 import { FacebookAccountService } from './modules/facebook/facebook.service';
 import { FacebookMediaPaginationService } from './modules/facebook/facebook-media-pagination.service';
@@ -86,7 +86,6 @@ import { InstagramCommentAnalyticsService } from './modules/instagram/instagram-
     ExchangePlatformCodeController,
     InstagramAccountController,
     FacebookController,
-    WhatsappController,
     AIController,
     ShopifyAuthController
   ],
@@ -136,8 +135,9 @@ import { InstagramCommentAnalyticsService } from './modules/instagram/instagram-
     ShopifyConnectionsRepositoryService,
     ShopifyApiService,
     InstagramTemplatesRepositoryService,
-    WhatsappBusinessAccountRepositoryService,
-    WhatsappAccountService,
+    WhatsappConnectionsRepositoryService,
+    WhatsappAuthService,
+    WhatsappTemplateRepositoryService,
     InstagramAccountLinkingRepositoryService,
     FacebookAccountLinkingRepositoryService,
     InstagramCommentAnalyticsRepositoryService,

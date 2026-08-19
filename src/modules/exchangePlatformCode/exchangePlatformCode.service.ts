@@ -3,6 +3,7 @@ import { InstagramApiService } from '../utils/instagram/api.service';
 import { InstagramAccountRepositoryService } from '@database/dynamodb/repository-services/instagram.account.service';
 import { InstagramAccountLinkingRepositoryService } from '@database/dynamodb/repository-services/instagram.account.linking.service';
 import { ExchangePlatformCodeRequest } from '@lib/dto';
+import { WhatsappAuthService } from '../whatsapp/whatsapp-auth.service';
 
 @Injectable()
 export class ExchangePlatformCodeService {
@@ -10,6 +11,7 @@ export class ExchangePlatformCodeService {
     private readonly api: InstagramApiService,
     private readonly instagramRepository: InstagramAccountRepositoryService,
     private readonly instagramAccountLinkingRepository: InstagramAccountLinkingRepositoryService,
+    private readonly whatsappAuthService: WhatsappAuthService,
   ) {}
   async exchangeInstagramCode(input: ExchangePlatformCodeRequest) {
     const { userId, platformName, code } = input;
@@ -83,6 +85,22 @@ export class ExchangePlatformCodeService {
       }
     }
     
+    else if (platformName === 'whatsapp') {
+    if (!input.instagramAccountId) {
+        throw new HttpException(
+            'instagramAccountId is required to connect WhatsApp.',
+            HttpStatus.BAD_REQUEST
+        );
+    }
+
+    return await this.whatsappAuthService.initiateAuth({
+        code,
+        userId: userId,
+        instagram_account_id: input.instagramAccountId,
+        waba_id: input.waba_id,
+        phone_number_id: input.phone_number_id,
+    });
+  }
     else {
       throw new Error(`No services for platform: ${platformName}`);
     }
