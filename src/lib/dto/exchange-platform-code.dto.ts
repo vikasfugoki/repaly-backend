@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsString } from 'class-validator';
 
 export class ExchangePlatformCodeRequest {
   @ApiProperty()
@@ -14,19 +14,4 @@ export class ExchangePlatformCodeRequest {
   @IsNotEmpty()
   @IsString()
   code!: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  instagramAccountId?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  waba_id?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  phone_number_id?: string;
 }

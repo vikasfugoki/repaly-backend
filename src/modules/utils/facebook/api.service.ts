@@ -30,7 +30,7 @@ export class FacebookApiService {
           console.log('Facebook user details:', response.data);
           return response.data; // Returns the user details
         } catch (error) {
-          console.error('Error getting Facebook user details:', error?.response?.data || error.message);
+          console.error('Error getting Facebook user details:', (error as any)?.response?.data || (error as Error).message);
           throw new InternalServerErrorException('Failed to retrieve Facebook user details');
         }
       }
@@ -51,7 +51,7 @@ export class FacebookApiService {
           console.log('All Facebook ad accounts:', allAccounts);
           return allAccounts;
         } catch (error) {
-          console.error('Error fetching ad accounts:', error?.response?.data || error.message);
+          console.error('Error fetching ad accounts:', (error as any)?.response?.data || (error as Error).message);
           throw new InternalServerErrorException('Failed to retrieve Facebook ad accounts');
         }
       }
@@ -71,7 +71,7 @@ export class FacebookApiService {
       
           return allCreatives;
         } catch (error) {
-          console.error('Error fetching ad creatives:', error?.response?.data || error.message);
+          console.error('Error fetching ad creatives:', (error as any)?.response?.data || (error as Error).message);
           throw new InternalServerErrorException('Failed to retrieve ad creatives');
         }
       }
@@ -91,7 +91,7 @@ export class FacebookApiService {
       
           return allAds;
         } catch (error) {
-          console.error('Error fetching ads with creatives:', error?.response?.data || error.message);
+          console.error('Error fetching ads with creatives:', (error as any)?.response?.data || (error as Error).message);
           throw new InternalServerErrorException('Failed to retrieve ads with creatives');
         }
       }
@@ -137,7 +137,7 @@ export class FacebookApiService {
       
           return allCreatives;
         } catch (error: any) {
-          console.error('Error fetching creatives from /ads:', error?.response?.data || error.message);
+          console.error('Error fetching creatives from /ads:', (error as any)?.response?.data || (error as Error).message);
           throw new InternalServerErrorException('Failed to retrieve creatives via ads API');
         }
       }
@@ -173,7 +173,7 @@ export class FacebookApiService {
       
       //     return allAds;
       //   } catch (error) {
-      //     console.error('Error fetching ads or creatives:', error?.response?.data || error.message);
+      //     console.error('Error fetching ads or creatives:', (error as any)?.response?.data || (error as Error).message);
       //     throw new InternalServerErrorException('Failed to retrieve ads with creatives and insights');
       //   }
       // }
@@ -225,7 +225,7 @@ export class FacebookApiService {
                     // Prefer video source if available, otherwise fallback to thumbnail (picture)
                     mediaUrl = videoResponse.data?.source || videoResponse.data?.picture || null;
                   } catch (err) {
-                    console.warn(`Failed to fetch video details for video_id=${videoId}`, err.message);
+                    console.warn(`Failed to fetch video details for video_id=${videoId}`, (err as Error).message);
                     // fallback to thumbnail if fetch fails
                     mediaUrl = ad.creative?.thumbnail_url || null;
                   }
@@ -254,7 +254,7 @@ export class FacebookApiService {
       
           return allAds;
         } catch (error) {
-          console.error('Error fetching ads or creatives:', error?.response?.data || error.message);
+          console.error('Error fetching ads or creatives:', (error as any)?.response?.data || (error as Error).message);
           throw new InternalServerErrorException('Failed to retrieve ads with creatives and insights');
         }
       }
@@ -271,7 +271,7 @@ export class FacebookApiService {
           console.log('Insights response:', insights);
           return insights;
         } catch (error) {
-          console.warn(`Failed to fetch insights for ad ${adId}:`, error?.response?.data || error.message);
+          console.warn(`Failed to fetch insights for ad ${adId}:`, (error as any)?.response?.data || (error as Error).message);
           return {};
         }
       }
@@ -293,7 +293,7 @@ export class FacebookApiService {
               return {"access_token": tokenResponse.data.access_token};
           
         } catch (error) {
-          console.error('Error getting Facebook access token:', error?.response?.data || error.message);
+          console.error('Error getting Facebook access token:', (error as any)?.response?.data || (error as Error).message);
           throw new InternalServerErrorException('Failed to retrieve Facebook access token');
         }
       }
@@ -332,7 +332,7 @@ export class FacebookApiService {
         } catch (error) {
           console.error(
             'Error exchanging for long-lived Facebook token:',
-            error?.response?.data || error.message,
+            (error as any)?.response?.data || (error as Error).message,
           );
           throw new InternalServerErrorException(
             'Failed to exchange Facebook token',
@@ -356,7 +356,7 @@ export class FacebookApiService {
               return {"access_token": tokenResponse.data.access_token};
 
         } catch (error) {
-          console.error('Error getting Facebook access token:', error?.response?.data || error.message);
+          console.error('Error getting Facebook access token:', (error as any)?.response?.data || (error as Error).message);
           throw new InternalServerErrorException('Failed to retrieve Facebook access token');
         }
       }
@@ -368,21 +368,79 @@ export class FacebookApiService {
        * automation). Paginates through all results.
        */
       async getUserPages(userAccessToken: string): Promise<any[]> {
-        const allPages: any[] = [];
-        let nextUrl: string | null = `https://graph.facebook.com/v23.0/me/accounts?fields=id,name,access_token,category,picture{url}&access_token=${userAccessToken}`;
+        // --- DEBUG: log which permissions this token actually carries ---
+        try {
+          const permResponse = await axios.get<any>(
+            `https://graph.facebook.com/v23.0/me/permissions?access_token=${userAccessToken}`,
+          );
+          const granted = (permResponse.data?.data ?? [])
+            .filter((p: any) => p.status === 'granted')
+            .map((p: any) => p.permission);
+          const declined = (permResponse.data?.data ?? [])
+            .filter((p: any) => p.status === 'declined')
+            .map((p: any) => p.permission);
+          console.log(`[getUserPages] token GRANTED permissions:`, granted);
+          console.log(`[getUserPages] token DECLINED permissions:`, declined);
+        } catch (err) {
+          console.warn(`[getUserPages] could not fetch token permissions:`, (err as Error).message);
+        }
+        // ----------------------------------------------------------------
 
+        const allPages: any[] = [];
+
+        // 1. Personal pages — direct admin role on the personal profile.
+        let nextUrl: string | null = `https://graph.facebook.com/v23.0/me/accounts?fields=id,name,access_token,category,picture{url}&access_token=${userAccessToken}`;
         try {
           while (nextUrl) {
             const response = await axios.get<any>(nextUrl);
+            console.log(`[getUserPages] /me/accounts raw response:`, JSON.stringify(response.data));
             const { data, paging } = response.data;
             allPages.push(...(data || []));
             nextUrl = paging?.next || null;
           }
-          return allPages;
         } catch (error) {
-          console.error('Error fetching Facebook pages:', error?.response?.data || error.message);
+          console.error('Error fetching personal Facebook pages:', (error as any)?.response?.data || (error as Error).message);
           throw new InternalServerErrorException('Failed to retrieve Facebook pages');
         }
+        console.log(`[getUserPages] personal pages found: ${allPages.length}`);
+
+        // 2. Business Manager pages — pages owned by businesses the user belongs
+        //    to. /me/accounts returns nothing for these; we must go via
+        //    /me/businesses -> /{biz_id}/owned_pages. Requires business_management
+        //    scope. Non-fatal: if the scope is absent we still return personal pages.
+        try {
+          let bizUrl: string | null = `https://graph.facebook.com/v23.0/me/businesses?fields=id,name&access_token=${userAccessToken}`;
+          const businesses: any[] = [];
+          while (bizUrl) {
+            const bizResp = await axios.get<any>(bizUrl);
+            businesses.push(...(bizResp.data?.data || []));
+            bizUrl = bizResp.data?.paging?.next || null;
+          }
+          console.log(`[getUserPages] Business Manager accounts found: ${businesses.length}`, businesses.map((b: any) => b.name));
+
+          for (const biz of businesses) {
+            let pageUrl: string | null = `https://graph.facebook.com/v23.0/${biz.id}/owned_pages?fields=id,name,access_token,category,picture{url}&access_token=${userAccessToken}`;
+            while (pageUrl) {
+              const pageResp = await axios.get<any>(pageUrl);
+              console.log(`[getUserPages] BM "${biz.name}" owned_pages:`, JSON.stringify(pageResp.data));
+              allPages.push(...(pageResp.data?.data || []));
+              pageUrl = pageResp.data?.paging?.next || null;
+            }
+          }
+        } catch (err) {
+          console.warn(`[getUserPages] Business Manager page fetch failed (non-fatal — token may lack business_management scope):`, (err as Error).message);
+        }
+
+        // Deduplicate by page id (a page can appear in both lists).
+        const seen = new Set<string>();
+        const unique = allPages.filter((p) => {
+          if (seen.has(p.id)) return false;
+          seen.add(p.id);
+          return true;
+        });
+
+        console.log(`[getUserPages] total unique pages after BM merge: ${unique.length}`, unique.map((p) => ({ id: p.id, name: p.name })));
+        return unique;
       }
 
       /**
@@ -406,7 +464,7 @@ export class FacebookApiService {
         } catch (error) {
           console.error(
             `Error subscribing page ${pageId} to app webhooks:`,
-            error?.response?.data || error.message,
+            (error as any)?.response?.data || (error as Error).message,
           );
           throw new InternalServerErrorException(
             'Failed to subscribe Facebook page to webhooks',
@@ -428,7 +486,7 @@ export class FacebookApiService {
         } catch (error) {
           console.error(
             `Error unsubscribing page ${pageId} from app webhooks:`,
-            error?.response?.data || error.message,
+            (error as any)?.response?.data || (error as Error).message,
           );
           throw new InternalServerErrorException(
             'Failed to unsubscribe Facebook page from webhooks',
@@ -459,7 +517,7 @@ export class FacebookApiService {
             paging: response.data?.paging,
           };
         } catch (error) {
-          console.error('Error fetching Facebook page posts:', error?.response?.data || error.message);
+          console.error('Error fetching Facebook page posts:', (error as any)?.response?.data || (error as Error).message);
           // An expired/invalid Page token (OAuthException code 190) is not a
           // server fault — surface it as a 401 with a stable code so the frontend
           // can prompt the user to reconnect instead of showing a generic error.
@@ -502,7 +560,7 @@ export class FacebookApiService {
           }
           return allPosts;
         } catch (error) {
-          console.error('Error fetching all Facebook page posts:', error?.response?.data || error.message);
+          console.error('Error fetching all Facebook page posts:', (error as any)?.response?.data || (error as Error).message);
           throw new InternalServerErrorException('Failed to retrieve Facebook page posts');
         }
       }
