@@ -110,6 +110,19 @@ export class FacebookAccountRepositoryService {
       delete updateFields.id;
       delete updateFields.created_time;
 
+      // Drop undefined values before building the expression. Request
+      // serialization silently omits `undefined` entries from
+      // ExpressionAttributeValues while UpdateExpression still references
+      // them, which DynamoDB rejects with ValidationException ("expression
+      // attribute value ... is not defined"). Callers routinely pass an
+      // object with optional fields left as `undefined` (e.g. a PUT body
+      // that only sets one of several account-automation fields).
+      for (const key of Object.keys(updateFields)) {
+        if (updateFields[key] === undefined) {
+          delete updateFields[key];
+        }
+      }
+
       const updateExpression: string[] = [];
       const expressionAttributeValues: Record<string, any> = {};
       const expressionAttributeNames: Record<string, string> = {};
