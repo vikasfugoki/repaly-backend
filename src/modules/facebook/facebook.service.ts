@@ -452,6 +452,8 @@ export class FacebookAccountService {
       const result = {
         tag_and_value_pair: items.tag_and_value_pair,
         ai_enabled: items.ai_enabled,
+        reply_to_all: items.reply_to_all === true,
+        hide_negative: items.hide_negative === true,
       };
       return result;
     } catch (error) {
@@ -463,6 +465,19 @@ export class FacebookAccountService {
     }
   }
 
+  /**
+   * Normalize the `tag_and_value_pair` payload for the account-level
+   * automation endpoint: `tag` defaults to `[]`, `value`/`dm` default to
+   * `''` whenever missing or the wrong type.
+   */
+  private normalizeTagAndValuePair(input: any) {
+    return {
+      tag: Array.isArray(input?.tag) ? input.tag : [],
+      value: typeof input?.value === 'string' ? input.value : '',
+      dm: typeof input?.dm === 'string' ? input.dm : '',
+    };
+  }
+
   /** Store the account-level automation defaults for a Facebook Page. */
   async putAccountPostAutomation(
     accountId: string,
@@ -472,7 +487,11 @@ export class FacebookAccountService {
       return await this.facebookAccountRepositoryService.updateAccountDetails({
         id: accountId,
         ai_enabled: input.ai_enabled,
-        tag_and_value_pair: input.tag_and_value_pair,
+        tag_and_value_pair: this.normalizeTagAndValuePair(
+          input.tag_and_value_pair,
+        ),
+        reply_to_all: input.reply_to_all === true,
+        hide_negative: input.hide_negative === true,
       });
     } catch (error) {
       console.log(
