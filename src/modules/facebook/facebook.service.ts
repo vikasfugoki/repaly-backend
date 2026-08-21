@@ -467,15 +467,17 @@ export class FacebookAccountService {
 
   /**
    * Normalize the `tag_and_value_pair` payload for the account-level
-   * automation endpoint: `tag` defaults to `[]`, `value`/`dm` default to
-   * `''` whenever missing or the wrong type.
+   * automation endpoint. The payload is an array of trigger pairs; each
+   * pair's `tag` defaults to `[]`, `value`/`dm` default to `''` whenever
+   * missing or the wrong type.
    */
   private normalizeTagAndValuePair(input: any) {
-    return {
-      tag: Array.isArray(input?.tag) ? input.tag : [],
-      value: typeof input?.value === 'string' ? input.value : '',
-      dm: typeof input?.dm === 'string' ? input.dm : '',
-    };
+    const pairs = Array.isArray(input) ? input : [];
+    return pairs.map((pair) => ({
+      tag: Array.isArray(pair?.tag) ? pair.tag : [],
+      value: typeof pair?.value === 'string' ? pair.value : '',
+      dm: typeof pair?.dm === 'string' ? pair.dm : '',
+    }));
   }
 
   /** Store the account-level automation defaults for a Facebook Page. */
