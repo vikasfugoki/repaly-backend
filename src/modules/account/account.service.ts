@@ -8,6 +8,7 @@ import { InstagramAccountRepositoryDTO, OmitInstagramAccountRepositoryDTO } from
 import { UserRepositoryService } from '@database/dynamodb/repository-services/user.service';
 import { GoogleUserRepositoryService } from '@database/dynamodb/repository-services/google.user.service';
 import { FacebookUserRepositoryService } from '@database/dynamodb/repository-services/facebook.user.service';
+import { WhatsappAccountService } from '../whatsapp/whatsapp.service';
 
 @Injectable()
 export class AccountService {
@@ -19,6 +20,7 @@ export class AccountService {
     private readonly userRepositoryService: UserRepositoryService,
     private readonly googleUserRepository: GoogleUserRepositoryService,
     private readonly facebookUserRepository: FacebookUserRepositoryService,
+    private readonly whatsappAccountService: WhatsappAccountService,
   ) {}
 
   private readonly account: GetAccountResponse;
@@ -89,8 +91,32 @@ async getInstagramAccount(userId: string): Promise<OmitInstagramAccountRepositor
   }
   
 
-async getAccount(userId: string): Promise<OmitInstagramAccountRepositoryDTO[]> {
-    return await this.getInstagramAccount(userId); 
+  /**
+   * WhatsApp accounts owned by this user, in the same envelope as the Instagram
+   * entries (`platformName` discriminates them). WhatsApp is a standalone
+   * account here — it is not attached to any Instagram account.
+   */
+  async getWhatsappAccount(userId: string): Promise<Record<string, any>[]> {
+    try {
+      return await this.whatsappAccountService.getAccountsByInfluexUserId(userId);
+    } catch (error) {
+      // A WhatsApp lookup failure must not take down the whole account list.
+      console.error(`Failed to fetch WhatsApp accounts for user ${userId}:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * The unified connected-account list. Every entry carries `platformName`;
+   * the frontend switches on it to decide how to render the row.
+   */
+  async getAccount(userId: string): Promise<Record<string, any>[]> {
+    const [instagram, whatsapp] = await Promise.all([
+      this.getInstagramAccount(userId),
+      this.getWhatsappAccount(userId),
+    ]);
+
+    return [...instagram, ...whatsapp];
   }
 
   /**
