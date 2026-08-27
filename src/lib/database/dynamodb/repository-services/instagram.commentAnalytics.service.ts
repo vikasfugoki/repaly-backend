@@ -6,7 +6,7 @@ import { DynamoDBService } from '../dynamodb.service';
 export class InstagramCommentAnalyticsRepositoryService {
   private readonly tableName = 'instagram_comment_analytics';
 
-  constructor(private readonly dynamoDbService: DynamoDBService) {}
+  constructor(private readonly dynamoDbService: DynamoDBService) { }
 
   /**
    * Fetch ALL comment items for a business account within an optional
@@ -63,11 +63,14 @@ export class InstagramCommentAnalyticsRepositoryService {
 
   /**
    * Paginated comments for a media, optionally filtered by category.
-   * - No category: Query media_id-index by media_id (Limit + cursor).
-   * - With category: Query category-index by category, filtered by media_id
-   *   (Limit + cursor). FilterExpression is applied post-fetch by DynamoDB
-   *   so the returned page size may be <= limit; callers should rely on
-   *   `lastEvaluatedKey` (not item count) to decide whether more pages exist.
+   *
+   * Always queries `media_id-index` by media_id, then optionally applies a
+   * FilterExpression for category. This is correct because:
+   *   - A single media has a bounded number of comments (efficient).
+   *   - Querying `category-index` would scan ALL comments for that category
+   *     across every media, and DynamoDB's `Limit` applies before the
+   *     `media_id` FilterExpression — producing empty pages with a nextCursor
+   *     that never resolves to the target media's comments.
    */
   async getCommentsPage(
     mediaId: string,
@@ -75,27 +78,21 @@ export class InstagramCommentAnalyticsRepositoryService {
     limit = 20,
     exclusiveStartKey?: Record<string, any>,
   ) {
-    const params: QueryCommandInput = category
-      ? {
-          TableName: this.tableName,
-          IndexName: 'category-index',
-          KeyConditionExpression: 'category = :category',
-          FilterExpression: 'media_id = :mediaId',
-          ExpressionAttributeValues: {
-            ':category': category,
-            ':mediaId': mediaId,
-          },
-          Limit: limit,
-          ExclusiveStartKey: exclusiveStartKey,
-        }
-      : {
-          TableName: this.tableName,
-          IndexName: 'media_id-index',
-          KeyConditionExpression: 'media_id = :mediaId',
-          ExpressionAttributeValues: { ':mediaId': mediaId },
-          Limit: limit,
-          ExclusiveStartKey: exclusiveStartKey,
-        };
+    console.log('[getCommentsPage] querying media_id-index', { mediaId, category, limit });
+    const params: QueryCommandInput = {
+      TableName: this.tableName,
+      IndexName: 'media_id-index',
+      KeyConditionExpression: 'media_id = :mediaId',
+      ExpressionAttributeValues: {
+        ':mediaId': mediaId,
+        ...(category ? { ':category': category } : {}),
+      },
+      ...(category
+        ? { FilterExpression: 'category = :category' }
+        : {}),
+      Limit: limit,
+      ExclusiveStartKey: exclusiveStartKey,
+    };
 
     const response = await this.dynamoDbService.dynamoDBDocumentClient.send(
       new QueryCommand(params),
