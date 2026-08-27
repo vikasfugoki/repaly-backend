@@ -27,7 +27,7 @@ export class FacebookAccountService {
     private readonly facebookApiService: FacebookApiService,
     private readonly googleUserRepository: GoogleUserRepositoryService,
     private readonly facebookUserRepository: FacebookUserRepositoryService,
-  ) {}
+  ) { }
 
   // ---------------------------------------------------------------------------
   // Per-post (media) automation
@@ -359,6 +359,10 @@ export class FacebookAccountService {
       // user to reconnect (re-run pages/connect with a fresh login token).
       token_status: p.token_status ?? 'active',
       needs_reconnect: (p.token_status ?? 'active') === 'expired',
+      // Shopify integration is not yet supported for Facebook Pages.
+      // The field is included so the frontend can read it consistently;
+      // it will be false until the feature is built.
+      is_shopify_connected: p.is_shopify_connected ?? false,
     }));
   }
 
