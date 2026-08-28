@@ -14,7 +14,7 @@ env:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # pin instead of ubuntu-latest
 
     steps:
       - name: Checkout code
@@ -75,7 +75,12 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build --platform linux/amd64 -t $REPOSITORY_NAME .
+          docker buildx build \
+            --platform linux/amd64 \
+            --provenance=false \
+            --sbom=false \
+            --output type=docker \
+            -t $REPOSITORY_NAME .
 
       - name: Login to Amazon ECR
         run: |
