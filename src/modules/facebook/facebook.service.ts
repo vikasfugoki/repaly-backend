@@ -38,10 +38,11 @@ export class FacebookAccountService {
   // ---------------------------------------------------------------------------
 
   /**
-   * Store automation settings for a single Facebook post.
-   * Mirrors `putAccountPostAutomation`: only
+   * Store automation settings for a single Facebook post. Only
    * `{ tag_and_value_pair, reply_to_all, hide_negative }` are persisted, with
-   * `tag_and_value_pair` normalized and the two flags coerced to strict booleans.
+   * `tag_and_value_pair` normalized (post-level: each pair also carries
+   * `is_shopify_enabled` + `shopify_data`) and the two flags coerced to strict
+   * booleans.
    */
   async addFacebookMediaAutomation(
     mediaId: string,
@@ -54,7 +55,7 @@ export class FacebookAccountService {
       }
       return await this.facebookMediaRepositoryService.updateMediaDetails({
         id: mediaId,
-        tag_and_value_pair: this.normalizeTagAndValuePair(
+        tag_and_value_pair: this.normalizeMediaTagAndValuePair(
           input.tag_and_value_pair,
         ),
         reply_to_all: input.reply_to_all === true,
@@ -91,9 +92,10 @@ export class FacebookAccountService {
 
   /**
    * Fetch the post-level automation settings for a single Facebook post.
-   * Same shape as `getAccountPostAutomation`, scoped to the media record,
-   * plus a derived `is_automated` flag:
+   * Scoped to the media record, plus a derived `is_automated` flag:
    * `{ tag_and_value_pair, reply_to_all, hide_negative, is_automated }`.
+   * Each `tag_and_value_pair` entry carries the post-level Shopify selection
+   * (`is_shopify_enabled` + `shopify_data`).
    */
   async getMediaResponseTypeFromTable(mediaId: string) {
     try {
@@ -101,7 +103,7 @@ export class FacebookAccountService {
         await this.facebookMediaRepositoryService.getMedia(mediaId);
       const item = response?.Item;
       const settings = {
-        tag_and_value_pair: this.normalizeTagAndValuePair(
+        tag_and_value_pair: this.normalizeMediaTagAndValuePair(
           item?.tag_and_value_pair,
         ),
         reply_to_all: item?.reply_to_all === true,
@@ -504,6 +506,47 @@ export class FacebookAccountService {
       value: typeof pair?.value === 'string' ? pair.value : '',
       dm: typeof pair?.dm === 'string' ? pair.dm : '',
     }));
+  }
+
+  /**
+   * Post-level variant of `normalizeTagAndValuePair`. Same trigger-pair shape,
+   * plus the per-pair Shopify product selection that only exists on individual
+   * posts (not on the Page-level automation defaults):
+   *   - `is_shopify_enabled` is coerced to a strict boolean.
+   *   - `shopify_data` is normalized to `{ products: [{ id, title, image }] }`
+   *     (see `normalizeShopifyData`).
+   */
+  private normalizeMediaTagAndValuePair(input: any) {
+    const pairs = Array.isArray(input) ? input : [];
+    return this.normalizeTagAndValuePair(input).map((pair, index) => ({
+      ...pair,
+      is_shopify_enabled: pairs[index]?.is_shopify_enabled === true,
+      shopify_data: this.normalizeShopifyData(pairs[index]?.shopify_data),
+    }));
+  }
+
+  /**
+   * Normalize a per-pair `shopify_data` payload to `{ products: [...] }`, where
+   * each product keeps only `{ id, title, image }`. `id` is coerced to a string
+   * (Shopify sends both bare numeric ids and `gid://shopify/Product/...` gids);
+   * products without an id are dropped.
+   */
+  private normalizeShopifyData(input: any) {
+    const products = Array.isArray(input?.products) ? input.products : [];
+    return {
+      products: products
+        .map((product: any) => ({
+          id:
+            typeof product?.id === 'string'
+              ? product.id
+              : product?.id != null
+                ? String(product.id)
+                : '',
+          title: typeof product?.title === 'string' ? product.title : '',
+          image: typeof product?.image === 'string' ? product.image : '',
+        }))
+        .filter((product: { id: string }) => product.id !== ''),
+    };
   }
 
   /** Store the account-level automation defaults for a Facebook Page. */
