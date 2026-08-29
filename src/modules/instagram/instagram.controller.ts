@@ -732,6 +732,27 @@ export class InstagramAccountController {
     }
   }
 
+  // Paginated comments across the whole account, optionally filtered by category
+  @InstagramResourceType('account')
+  @Get(':accountId/comments-list')
+  async getAccountCommentsList(
+    @Param('accountId') accountId: string,
+    @Query() query: CommentsListQueryDto,
+  ) {
+    try {
+      return await this.instagramCommentAnalyticsService.getAccountComments(
+        accountId,
+        query,
+      );
+    } catch (error) {
+      console.log(
+        `Failed to get comments list for account ${accountId}:`,
+        (error as Error).message,
+      );
+      throw error;
+    }
+  }
+
   ///////////////////////////////////// MEDIA ///////////////////////////////////////////////////////////
 
   @InstagramResourceType('account')

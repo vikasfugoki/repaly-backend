@@ -131,6 +131,79 @@ export class InstagramCommentAnalyticsService {
   }
 
   /**
+   * Cursor-paginated list of comments across the whole account, optionally
+   * filtered by category. Each comment is decorated with `media_permalink`
+   * (the owning post's permanent Instagram URL) so the UI can link out to the
+   * post without relying on the expiring media/thumbnail CDN URLs.
+   */
+  async getAccountComments(accountId: string, query: CommentsListQueryDto) {
+    const businessAccountId = await this.resolveBusinessAccountId(accountId);
+
+    const limit = query.limit ?? 20;
+    const exclusiveStartKey = query.cursor
+      ? this.decodeCursor(query.cursor)
+      : undefined;
+
+    const { items, lastEvaluatedKey } =
+      await this.commentAnalyticsRepositoryService.getAccountCommentsPage(
+        businessAccountId,
+        query.category,
+        limit,
+        exclusiveStartKey,
+      );
+
+    const data = await this.attachMediaPermalink(items);
+
+    return {
+      data,
+      pagination: {
+        nextCursor: lastEvaluatedKey
+          ? this.encodeCursor(lastEvaluatedKey)
+          : undefined,
+        hasMore: !!lastEvaluatedKey,
+        count: data.length,
+        limit,
+      },
+    };
+  }
+
+  /**
+   * Attaches `media_permalink` to each comment by batch-resolving the distinct
+   * `media_id`s against instagram_media_repository. Comments whose media was
+   * never ingested (deleted post / ingestion gap) get `media_permalink: null`.
+   */
+  private async attachMediaPermalink(
+    comments: Record<string, any>[],
+  ): Promise<Record<string, any>[]> {
+    const mediaIds: string[] = [
+      ...new Set(
+        comments
+          .map((comment) => comment.media_id as string | undefined)
+          .filter((id): id is string => !!id),
+      ),
+    ];
+
+    if (mediaIds.length === 0) {
+      return comments.map((comment) => ({ ...comment, media_permalink: null }));
+    }
+
+    const records = (await this.instagramMediaRepositoryService.batchGetMediaByIds(
+      mediaIds,
+    )) as Record<string, any>[];
+    const permalinkById = new Map<string, string | null>(
+      records.map((record) => [
+        record.id as string,
+        (record.permalink as string | undefined) ?? null,
+      ]),
+    );
+
+    return comments.map((comment) => ({
+      ...comment,
+      media_permalink: permalinkById.get(comment.media_id as string) ?? null,
+    }));
+  }
+
+  /**
    * Resolves the internal accountId (instagram_account_repository.id) to
    * its pro_user_id, which is what instagram_comment_analytics stores as
    * `business_account_id`.

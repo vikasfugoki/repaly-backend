@@ -105,6 +105,51 @@ export class InstagramCommentAnalyticsRepositoryService {
   }
 
   /**
+   * Paginated comments for a whole business account, optionally filtered by
+   * category. Queries the base table partition (business_account_id) directly;
+   * the sort key `comment_id_timestamp` gives a roughly newest-first order when
+   * read with `ScanIndexForward: false`.
+   *
+   * As with `getCommentsPage`, a category `FilterExpression` is applied by
+   * DynamoDB after `Limit`, so a page may return fewer than `limit` items while
+   * still having a `lastEvaluatedKey` — callers must paginate on the cursor,
+   * not the item count.
+   */
+  async getAccountCommentsPage(
+    businessAccountId: string,
+    category?: string,
+    limit = 20,
+    exclusiveStartKey?: Record<string, any>,
+  ) {
+    console.log('[getAccountCommentsPage] querying base table', {
+      businessAccountId,
+      category,
+      limit,
+    });
+    const params: QueryCommandInput = {
+      TableName: this.tableName,
+      KeyConditionExpression: 'business_account_id = :businessAccountId',
+      ExpressionAttributeValues: {
+        ':businessAccountId': businessAccountId,
+        ...(category ? { ':category': category } : {}),
+      },
+      ...(category ? { FilterExpression: 'category = :category' } : {}),
+      Limit: limit,
+      ExclusiveStartKey: exclusiveStartKey,
+      ScanIndexForward: false,
+    };
+
+    const response = await this.dynamoDbService.dynamoDBDocumentClient.send(
+      new QueryCommand(params),
+    );
+
+    return {
+      items: response.Items ?? [],
+      lastEvaluatedKey: response.LastEvaluatedKey,
+    };
+  }
+
+  /**
    * Runs a Query repeatedly, following LastEvaluatedKey, and returns the
    * full concatenated set of Items.
    */

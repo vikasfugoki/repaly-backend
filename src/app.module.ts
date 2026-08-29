@@ -51,6 +51,7 @@ import { InstagramStoryPaginationService } from './modules/instagram/instagram-s
 import { ShopifyAuthController } from './modules/shopify/shopify-auth.controller';
 import { ShopifyAuthService } from './modules/shopify/shopify-auth.service';
 import { ShopifyConnectionsRepositoryService } from '@database/dynamodb/repository-services/shopify.connection.service';
+import { FacebookShopifyConnectionsRepositoryService } from '@database/dynamodb/repository-services/facebook.shopify.connection.service';
 import { ShopifyApiService } from './modules/utils/shopify/api.service';
 import { InstagramTemplatesRepositoryService } from '@database/dynamodb/repository-services/instagram.templates.service';
 import { WhatsappConnectionsRepositoryService } from '@database/dynamodb/repository-services/whatsapp.account.service';
@@ -137,6 +138,7 @@ import { InstagramCommentAnalyticsService } from './modules/instagram/instagram-
     InstagramStoryPaginationService,
     ShopifyAuthService,
     ShopifyConnectionsRepositoryService,
+    FacebookShopifyConnectionsRepositoryService,
     ShopifyApiService,
     InstagramTemplatesRepositoryService,
     WhatsappConnectionsRepositoryService,
