@@ -478,7 +478,9 @@ export class FacebookAccountService {
         throw new Error(`Account not found: ${accountId}`);
       }
       const result = {
-        tag_and_value_pair: items.tag_and_value_pair,
+        tag_and_value_pair: this.normalizeTagAndValuePair(
+          items.tag_and_value_pair,
+        ),
         ai_enabled: items.ai_enabled,
         reply_to_all: items.reply_to_all === true,
         hide_negative: items.hide_negative === true,
@@ -494,12 +496,11 @@ export class FacebookAccountService {
   }
 
   /**
-   * Normalize the `tag_and_value_pair` payload for the account-level
-   * automation endpoint. The payload is an array of trigger pairs; each
-   * pair's `tag` defaults to `[]`, `value`/`dm` default to `''` whenever
-   * missing or the wrong type.
+   * Core trigger-pair shape shared by both automation levels. The payload is an
+   * array of trigger pairs; each pair's `tag` defaults to `[]`, `value`/`dm`
+   * default to `''` whenever missing or the wrong type.
    */
-  private normalizeTagAndValuePair(input: any) {
+  private normalizeBaseTagAndValuePair(input: any) {
     const pairs = Array.isArray(input) ? input : [];
     return pairs.map((pair) => ({
       tag: Array.isArray(pair?.tag) ? pair.tag : [],
@@ -509,16 +510,29 @@ export class FacebookAccountService {
   }
 
   /**
-   * Post-level variant of `normalizeTagAndValuePair`. Same trigger-pair shape,
-   * plus the per-pair Shopify product selection that only exists on individual
-   * posts (not on the Page-level automation defaults):
+   * Account-level (Page) variant of the trigger-pair payload. Core shape plus
+   * the per-pair `product_from_caption` flag (coerced to a strict boolean) that
+   * only exists on the Page-level automation defaults — not on individual posts.
+   */
+  private normalizeTagAndValuePair(input: any) {
+    const pairs = Array.isArray(input) ? input : [];
+    return this.normalizeBaseTagAndValuePair(input).map((pair, index) => ({
+      ...pair,
+      product_from_caption: pairs[index]?.product_from_caption === true,
+    }));
+  }
+
+  /**
+   * Post-level (media) variant of the trigger-pair payload. Core shape plus the
+   * per-pair Shopify product selection that only exists on individual posts
+   * (not on the Page-level automation defaults):
    *   - `is_shopify_enabled` is coerced to a strict boolean.
    *   - `shopify_data` is normalized to `{ products: [{ id, title, image }] }`
    *     (see `normalizeShopifyData`).
    */
   private normalizeMediaTagAndValuePair(input: any) {
     const pairs = Array.isArray(input) ? input : [];
-    return this.normalizeTagAndValuePair(input).map((pair, index) => ({
+    return this.normalizeBaseTagAndValuePair(input).map((pair, index) => ({
       ...pair,
       is_shopify_enabled: pairs[index]?.is_shopify_enabled === true,
       shopify_data: this.normalizeShopifyData(pairs[index]?.shopify_data),
