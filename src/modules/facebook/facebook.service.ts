@@ -513,6 +513,7 @@ export class FacebookAccountService {
    * Account-level (Page) variant of the trigger-pair payload. Core shape plus
    * the per-pair `product_from_caption` flag (coerced to a strict boolean) that
    * only exists on the Page-level automation defaults — not on individual posts.
+   * When no product is captured from the caption, the pair's own `dm` is used.
    */
   private normalizeTagAndValuePair(input: any) {
     const pairs = Array.isArray(input) ? input : [];
