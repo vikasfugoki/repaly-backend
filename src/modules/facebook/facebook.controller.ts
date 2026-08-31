@@ -3,6 +3,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpException,
+  HttpStatus,
   Param,
   Post,
   Put,
@@ -214,6 +216,55 @@ export class FacebookController {
       );
       throw new Error(
         'Failed to get the ai_enabled information for given media.',
+      );
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Shopify (product search) — mirror of the Instagram routes
+  // ---------------------------------------------------------------------------
+
+  @FacebookResourceType('account')
+  @Get(':accountId/shopify/connection')
+  async getShopifyConnection(@Param('accountId') accountId: string) {
+    try {
+      return await this.facebookAccountService.getShopifyConnection(accountId);
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error as any).code === 'SHOPIFY_NOT_CONNECTED'
+      ) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      }
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.log(
+        `Failed to get shopify connection status for account ${accountId}:`,
+        message,
+      );
+      throw new HttpException(
+        'Failed to get shopify connection status',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @FacebookResourceType('account')
+  @Post(':accountId/shopify_search')
+  async getShopifySearch(
+    @Param('accountId') accountId: string,
+    @Body() query: Record<string, any>,
+  ) {
+    try {
+      return await this.facebookAccountService.getShopifySearch(accountId, query);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.log(
+        `Failed to search shopify products for account ${accountId}:`,
+        message,
+      );
+      throw new HttpException(
+        'Failed to search shopify products',
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }

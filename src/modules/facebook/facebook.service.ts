@@ -5,6 +5,8 @@ import { FacebookAccountLinkingRepositoryService } from '@database/dynamodb/repo
 import { FacebookApiService } from '../utils/facebook/api.service';
 import { GoogleUserRepositoryService } from '@database/dynamodb/repository-services/google.user.service';
 import { FacebookUserRepositoryService } from '@database/dynamodb/repository-services/facebook.user.service';
+import { FacebookShopifyConnectionsRepositoryService } from '@database/dynamodb/repository-services/facebook.shopify.connection.service';
+import { ShopifyApiService } from '../utils/shopify/api.service';
 import {
   normalizeFacebookPost,
   presentFacebookMedia,
@@ -27,13 +29,21 @@ export class FacebookAccountService {
     private readonly facebookApiService: FacebookApiService,
     private readonly googleUserRepository: GoogleUserRepositoryService,
     private readonly facebookUserRepository: FacebookUserRepositoryService,
+    private readonly facebookShopifyConnectionsRepositoryService: FacebookShopifyConnectionsRepositoryService,
+    private readonly shopifyApiService: ShopifyApiService,
   ) { }
 
   // ---------------------------------------------------------------------------
   // Per-post (media) automation
   // ---------------------------------------------------------------------------
 
-  /** Store automation settings for a single Facebook post. */
+  /**
+   * Store automation settings for a single Facebook post. Only
+   * `{ tag_and_value_pair, reply_to_all, hide_negative }` are persisted, with
+   * `tag_and_value_pair` normalized (post-level: each pair also carries
+   * `is_shopify_enabled` + `shopify_data`) and the two flags coerced to strict
+   * booleans.
+   */
   async addFacebookMediaAutomation(
     mediaId: string,
     input: Record<string, any>,
@@ -43,8 +53,14 @@ export class FacebookAccountService {
       if (input === undefined || input === null) {
         throw new Error('Input is undefined or null');
       }
-      input['id'] = mediaId;
-      return await this.facebookMediaRepositoryService.updateMediaDetails(input);
+      return await this.facebookMediaRepositoryService.updateMediaDetails({
+        id: mediaId,
+        tag_and_value_pair: this.normalizeMediaTagAndValuePair(
+          input.tag_and_value_pair,
+        ),
+        reply_to_all: input.reply_to_all === true,
+        hide_negative: input.hide_negative === true,
+      });
     } catch (error) {
       console.error(
         `Error inserting automation details for ${mediaId}:`,
@@ -74,18 +90,26 @@ export class FacebookAccountService {
     }
   }
 
-  /** Fetch the full media record + a derived `is_automated` flag. */
+  /**
+   * Fetch the post-level automation settings for a single Facebook post.
+   * Scoped to the media record, plus a derived `is_automated` flag:
+   * `{ tag_and_value_pair, reply_to_all, hide_negative, is_automated }`.
+   * Each `tag_and_value_pair` entry carries the post-level Shopify selection
+   * (`is_shopify_enabled` + `shopify_data`).
+   */
   async getMediaResponseTypeFromTable(mediaId: string) {
     try {
       const response =
         await this.facebookMediaRepositoryService.getMedia(mediaId);
       const item = response?.Item;
-      // Not ingested yet — the caller only needs to know there is no automation.
-      if (!item) return { is_automated: false };
-      return {
-        ...presentFacebookMedia(item),
-        is_automated: this.isAutomatedPost(item),
+      const settings = {
+        tag_and_value_pair: this.normalizeMediaTagAndValuePair(
+          item?.tag_and_value_pair,
+        ),
+        reply_to_all: item?.reply_to_all === true,
+        hide_negative: item?.hide_negative === true,
       };
+      return { ...settings, is_automated: this.isAutomatedPost(settings) };
     } catch (error) {
       console.error(`Error getting media details for media ${mediaId}:`, error);
       throw error;
@@ -454,7 +478,9 @@ export class FacebookAccountService {
         throw new Error(`Account not found: ${accountId}`);
       }
       const result = {
-        tag_and_value_pair: items.tag_and_value_pair,
+        tag_and_value_pair: this.normalizeTagAndValuePair(
+          items.tag_and_value_pair,
+        ),
         ai_enabled: items.ai_enabled,
         reply_to_all: items.reply_to_all === true,
         hide_negative: items.hide_negative === true,
@@ -470,18 +496,72 @@ export class FacebookAccountService {
   }
 
   /**
-   * Normalize the `tag_and_value_pair` payload for the account-level
-   * automation endpoint. The payload is an array of trigger pairs; each
-   * pair's `tag` defaults to `[]`, `value`/`dm` default to `''` whenever
-   * missing or the wrong type.
+   * Core trigger-pair shape shared by both automation levels. The payload is an
+   * array of trigger pairs; each pair's `tag` defaults to `[]`, `value`/`dm`
+   * default to `''` whenever missing or the wrong type.
    */
-  private normalizeTagAndValuePair(input: any) {
+  private normalizeBaseTagAndValuePair(input: any) {
     const pairs = Array.isArray(input) ? input : [];
     return pairs.map((pair) => ({
       tag: Array.isArray(pair?.tag) ? pair.tag : [],
       value: typeof pair?.value === 'string' ? pair.value : '',
       dm: typeof pair?.dm === 'string' ? pair.dm : '',
     }));
+  }
+
+  /**
+   * Account-level (Page) variant of the trigger-pair payload. Core shape plus
+   * the per-pair `product_from_caption` flag (coerced to a strict boolean) that
+   * only exists on the Page-level automation defaults — not on individual posts.
+   * When no product is captured from the caption, the pair's own `dm` is used.
+   */
+  private normalizeTagAndValuePair(input: any) {
+    const pairs = Array.isArray(input) ? input : [];
+    return this.normalizeBaseTagAndValuePair(input).map((pair, index) => ({
+      ...pair,
+      product_from_caption: pairs[index]?.product_from_caption === true,
+    }));
+  }
+
+  /**
+   * Post-level (media) variant of the trigger-pair payload. Core shape plus the
+   * per-pair Shopify product selection that only exists on individual posts
+   * (not on the Page-level automation defaults):
+   *   - `is_shopify_enabled` is coerced to a strict boolean.
+   *   - `shopify_data` is normalized to `{ products: [{ id, title, image }] }`
+   *     (see `normalizeShopifyData`).
+   */
+  private normalizeMediaTagAndValuePair(input: any) {
+    const pairs = Array.isArray(input) ? input : [];
+    return this.normalizeBaseTagAndValuePair(input).map((pair, index) => ({
+      ...pair,
+      is_shopify_enabled: pairs[index]?.is_shopify_enabled === true,
+      shopify_data: this.normalizeShopifyData(pairs[index]?.shopify_data),
+    }));
+  }
+
+  /**
+   * Normalize a per-pair `shopify_data` payload to `{ products: [...] }`, where
+   * each product keeps only `{ id, title, image }`. `id` is coerced to a string
+   * (Shopify sends both bare numeric ids and `gid://shopify/Product/...` gids);
+   * products without an id are dropped.
+   */
+  private normalizeShopifyData(input: any) {
+    const products = Array.isArray(input?.products) ? input.products : [];
+    return {
+      products: products
+        .map((product: any) => ({
+          id:
+            typeof product?.id === 'string'
+              ? product.id
+              : product?.id != null
+                ? String(product.id)
+                : '',
+          title: typeof product?.title === 'string' ? product.title : '',
+          image: typeof product?.image === 'string' ? product.image : '',
+        }))
+        .filter((product: { id: string }) => product.id !== ''),
+    };
   }
 
   /** Store the account-level automation defaults for a Facebook Page. */
@@ -509,31 +589,103 @@ export class FacebookAccountService {
   }
 
   // ---------------------------------------------------------------------------
+  // Shopify (product search) — mirror of InstagramAccountService
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Shopify connection status for a Facebook Page.
+   * Mirrors `InstagramAccountService.getShopifyConnection`, reading the
+   * `facebook_shopify_connection_repository` table (PK `facebook_account_id`).
+   */
+  async getShopifyConnection(accountId: string) {
+    try {
+      const connection =
+        await this.facebookShopifyConnectionsRepositoryService.getShopifyConnection(
+          accountId,
+        );
+
+      if (
+        !connection?.access_token ||
+        (!connection?.shop_name && !connection?.shopify_domain)
+      ) {
+        throw Object.assign(
+          new Error(`Shopify is not connected for account ${accountId}`),
+          { code: 'SHOPIFY_NOT_CONNECTED' },
+        );
+      }
+
+      return {
+        shop_name: connection.shop_name || connection.shopify_domain,
+      };
+    } catch (error) {
+      if (error instanceof Error && (error as any).code === 'SHOPIFY_NOT_CONNECTED')
+        throw error;
+      console.error(
+        `Failed to fetch the shopify connection for account ${accountId}:`,
+        error,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Live product search against the Page's connected Shopify store.
+   * Read-only proxy — nothing is persisted. Accepts either `sku` or
+   * `title` / `product_name` in the request body (see `ShopifyApiService`).
+   * Mirrors `InstagramAccountService.getShopifySearch`.
+   */
+  async getShopifySearch(accountId: string, query: Record<string, any>) {
+    try {
+      const connection =
+        await this.facebookShopifyConnectionsRepositoryService.getShopifyConnection(
+          accountId,
+        );
+
+      if (
+        !connection?.access_token ||
+        (!connection?.shop_name && !connection?.shopify_domain)
+      ) {
+        throw Object.assign(
+          new Error(`Shopify is not connected for account ${accountId}`),
+          { code: 'SHOPIFY_NOT_CONNECTED' },
+        );
+      }
+
+      const shopName = connection.shop_name || connection.shopify_domain;
+      return await this.shopifyApiService.searchProducts(
+        shopName,
+        connection.access_token,
+        query,
+      );
+    } catch (error) {
+      if (error instanceof Error && (error as any).code === 'SHOPIFY_NOT_CONNECTED')
+        throw error;
+      console.error(
+        `Failed to search shopify products for account ${accountId}:`,
+        error,
+      );
+      throw error;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Helpers
   // ---------------------------------------------------------------------------
 
   /**
-   * A post counts as "automated" if any ai_enabled category has a mode other
-   * than `leave_comment`, OR it has at least one tag/value trigger pair.
-   * Identical to InstagramAccountService.isAutomatedPost.
+   * A post/Page counts as "automated" when any automation lever is engaged:
+   * `hide_negative` is on, `reply_to_all` is on, or there is at least one
+   * keyword trigger pair with a non-empty `tag` list.
    */
   private isAutomatedPost(image: any): boolean {
-    const ai_enabled = image?.ai_enabled;
+    if (image?.hide_negative === true) return true;
+    if (image?.reply_to_all === true) return true;
+
     const tag_and_value_pair = image?.tag_and_value_pair;
-
-    if (ai_enabled && typeof ai_enabled === 'object') {
-      for (const category of Object.values(ai_enabled)) {
-        if (category && typeof category === 'object') {
-          const mode = (category as any)?.mode;
-          if (mode && mode !== 'leave_comment') {
-            return true;
-          }
-        }
-      }
-    }
-
-    if (Array.isArray(tag_and_value_pair) && tag_and_value_pair.length > 0) {
-      return true;
+    if (Array.isArray(tag_and_value_pair)) {
+      return tag_and_value_pair.some(
+        (pair) => Array.isArray(pair?.tag) && pair.tag.length > 0,
+      );
     }
 
     return false;
