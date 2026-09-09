@@ -38,6 +38,12 @@ export class InstagramUrlService {
     return url;
   }
 
+  getMediaFieldsUrl(mediaId: string) {
+    const baseURL = this.getInstagramBaseURL();
+    const url = baseURL + `/${mediaId}`;
+    return url;
+  }
+
   getExchangeTokenUrl() {
     const baseURL = this.getInstagramBaseURL();
     const url = baseURL + '/access_token';

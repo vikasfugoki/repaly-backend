@@ -184,6 +184,31 @@ export class InstagramApiService {
     }
   }
 
+  /**
+   * Resolves a single media's permanent instagram.com URL. Used to link a
+   * comment back to its post when the media isn't in our own media repository
+   * (only automation media is stored there). Returns `null` when the media no
+   * longer exists / has no permalink, so callers can cache the negative result.
+   */
+  async getMediaPermalink(
+    mediaId: string,
+    access_token: string,
+  ): Promise<string | null> {
+    const url = this.urlService.getMediaFieldsUrl(mediaId);
+    try {
+      const response = await axios.get<{ permalink?: string }>(url, {
+        params: { fields: 'permalink', access_token },
+      });
+      return response.data.permalink ?? null;
+    } catch (error) {
+      console.log(
+        `Failed to fetch permalink for media ${mediaId}:`,
+        (error as Error).message,
+      );
+      return null;
+    }
+  }
+
   async getMediaCount(accountId: string, accessToken: string): Promise<number> {
     if (!accountId || !accessToken) {
       throw new Error('Account ID and access token are required');

@@ -732,6 +732,29 @@ export class InstagramAccountController {
     }
   }
 
+  // Resolves a single post's permanent instagram.com URL on demand (backs the
+  // "open post" icon next to each comment in the account-wide comments list).
+  // Cached per media, so a given post costs at most one Graph API call ever.
+  @InstagramResourceType('account')
+  @Get(':accountId/media/:mediaId/permalink')
+  async getMediaPermalink(
+    @Param('accountId') accountId: string,
+    @Param('mediaId') mediaId: string,
+  ) {
+    try {
+      return await this.instagramCommentAnalyticsService.getMediaPermalink(
+        accountId,
+        mediaId,
+      );
+    } catch (error) {
+      console.log(
+        `Failed to resolve permalink for media ${mediaId} in account ${accountId}:`,
+        (error as Error).message,
+      );
+      throw error;
+    }
+  }
+
   // Paginated comments across the whole account, optionally filtered by category
   @InstagramResourceType('account')
   @Get(':accountId/comments-list')
