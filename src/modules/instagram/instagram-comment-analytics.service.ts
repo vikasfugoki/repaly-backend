@@ -7,6 +7,7 @@ import {
 import { InstagramCommentAnalyticsRepositoryService } from '@database/dynamodb/repository-services/instagram.commentAnalytics.service';
 import { InstagramMediaRepositoryService } from '@database/dynamodb/repository-services/instagram.media.service';
 import { InstagramAccountRepositoryService } from '@database/dynamodb/repository-services/instagram.account.service';
+import { InstagramApiService } from '../utils/instagram/api.service';
 import {
   CommentAnalyticsQueryDto,
   CommentsListQueryDto,
@@ -38,6 +39,7 @@ export class InstagramCommentAnalyticsService {
     private readonly commentAnalyticsRepositoryService: InstagramCommentAnalyticsRepositoryService,
     private readonly instagramMediaRepositoryService: InstagramMediaRepositoryService,
     private readonly instagramAccountRepositoryService: InstagramAccountRepositoryService,
+    private readonly instagramApiService: InstagramApiService,
   ) {}
 
   /**
@@ -201,6 +203,52 @@ export class InstagramCommentAnalyticsService {
       ...comment,
       media_permalink: permalinkById.get(comment.media_id as string) ?? null,
     }));
+  }
+
+  /**
+   * On-demand resolver for a single post's permanent instagram.com URL, backing
+   * the "open post" icon next to each comment in the account-wide comments list.
+   * Called only when the user actually clicks the icon; the UI then opens the
+   * returned `permalink` in a new tab.
+   *
+   * Resolution order (first hit wins):
+   *   1. `instagram_media_repository` – automation media, no API call
+   *   2. Instagram Graph API          – `GET /{mediaId}?fields=permalink`
+   */
+  async getMediaPermalink(
+    accountId: string,
+    mediaId: string,
+  ): Promise<{ media_id: string; permalink: string | null; source: string }> {
+    if (!mediaId) {
+      throw new BadRequestException('mediaId is required');
+    }
+
+    // 1. Automation media is already stored with its permalink.
+    const repoResult =
+      await this.instagramMediaRepositoryService.getMedia(mediaId);
+    const repoPermalink = repoResult?.Item?.permalink as string | undefined;
+    if (repoPermalink) {
+      return { media_id: mediaId, permalink: repoPermalink, source: 'repository' };
+    }
+
+    // 2. Resolve via Graph API using the owning account's token.
+    const account =
+      await this.instagramAccountRepositoryService.getAccount(accountId);
+    if (!account) {
+      throw new NotFoundException(`Account ${accountId} not found`);
+    }
+    if (!account.access_token) {
+      throw new BadRequestException(
+        `access_token is not present for account ${accountId}`,
+      );
+    }
+
+    const permalink = await this.instagramApiService.getMediaPermalink(
+      mediaId,
+      account.access_token,
+    );
+
+    return { media_id: mediaId, permalink, source: 'graph' };
   }
 
   /**
