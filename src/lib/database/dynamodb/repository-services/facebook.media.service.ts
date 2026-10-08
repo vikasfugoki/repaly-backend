@@ -163,6 +163,36 @@ export class FacebookMediaRepositoryService {
     }
   }
 
+  /**
+   * Remove the given attributes from an existing media row. Conditional on the
+   * row existing so a REMOVE never creates an empty item.
+   */
+  async removeMediaAttributes(id: string, attributes: string[]) {
+    if (!id) {
+      throw new Error('id is required to remove media attributes');
+    }
+    if (attributes.length === 0) {
+      throw new Error('No attributes to remove');
+    }
+
+    const expressionAttributeNames: Record<string, string> = {};
+    const removeExpression = attributes.map((attr) => {
+      expressionAttributeNames[`#${attr}`] = attr;
+      return `#${attr}`;
+    });
+
+    const params = new UpdateCommand({
+      TableName: this.tableName,
+      Key: { id },
+      UpdateExpression: `REMOVE ${removeExpression.join(', ')}`,
+      ConditionExpression: 'attribute_exists(id)',
+      ExpressionAttributeNames: expressionAttributeNames,
+    });
+
+    await this.dynamoDbService.dynamoDBDocumentClient.send(params);
+    return { success: true, message: 'Media attributes removed successfully' };
+  }
+
   // delete all media for a given accountId (Facebook Page)
   async deleteAccount(accountId: string) {
     try {

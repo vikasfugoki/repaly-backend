@@ -98,6 +98,43 @@ export class FacebookAccountRepositoryService {
     return this.dynamoDbService.dynamoDBDocumentClient.send(params);
   }
 
+  /**
+   * Remove the given attributes from an existing account row and bump
+   * `updated_time`. Conditional on the row existing so a REMOVE never creates
+   * an empty item.
+   */
+  async removeAccountAttributes(id: string, attributes: string[]) {
+    if (!id) {
+      throw new Error('account_id is required to remove account attributes');
+    }
+    if (attributes.length === 0) {
+      throw new Error('No attributes to remove');
+    }
+
+    const expressionAttributeNames: Record<string, string> = {
+      '#updated_time': 'updated_time',
+    };
+    const removeExpression = attributes.map((attr) => {
+      expressionAttributeNames[`#${attr}`] = attr;
+      return `#${attr}`;
+    });
+
+    const params = new UpdateCommand({
+      TableName: this.tableName,
+      Key: { id },
+      UpdateExpression: `SET #updated_time = :updated_time REMOVE ${removeExpression.join(', ')}`,
+      ConditionExpression: 'attribute_exists(id)',
+      ExpressionAttributeNames: expressionAttributeNames,
+      ExpressionAttributeValues: { ':updated_time': new Date().toISOString() },
+    });
+
+    await this.dynamoDbService.dynamoDBDocumentClient.send(params);
+    return {
+      success: true,
+      message: 'Account attributes removed successfully',
+    };
+  }
+
   async updateAccountDetails(accountDetails: Record<string, any>) {
     try {
       const { id: account_id, ...updateFields } = accountDetails;
