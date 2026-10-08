@@ -154,6 +154,22 @@ export class FacebookController {
   }
 
   @FacebookResourceType('media')
+  @Delete(':mediaId/remove-automation')
+  async removeAutomation(@Param('mediaId') mediaId: string) {
+    try {
+      return await this.facebookAccountService.removeFacebookMediaAutomation(
+        mediaId,
+      );
+    } catch (error) {
+      if ((error as any)?.code === 'MEDIA_NOT_FOUND') {
+        throw new HttpException((error as Error).message, HttpStatus.NOT_FOUND);
+      }
+      console.log('Failed to remove automation:', (error as Error).message);
+      throw new Error('Failed to remove automation');
+    }
+  }
+
+  @FacebookResourceType('media')
   @Put(':mediaId/response-type')
   async updateMediaResponseType(
     @Param('mediaId') mediaId: string,
@@ -291,6 +307,27 @@ export class FacebookController {
       );
       throw new Error(
         `Failed PUT the facebook level post automation: ${accountId}`,
+      );
+    }
+  }
+
+  @FacebookResourceType('account')
+  @Delete(':accountId/remove-post-account-automation')
+  async removePostAccountAutomation(@Param('accountId') accountId: string) {
+    try {
+      return await this.facebookAccountService.removeAccountPostAutomation(
+        accountId,
+      );
+    } catch (error) {
+      if ((error as any)?.code === 'ACCOUNT_NOT_FOUND') {
+        throw new HttpException((error as Error).message, HttpStatus.NOT_FOUND);
+      }
+      console.log(
+        `Failed to remove the facebook level post automation: ${accountId}:`,
+        (error as Error).message,
+      );
+      throw new Error(
+        `Failed to remove the facebook level post automation: ${accountId}`,
       );
     }
   }

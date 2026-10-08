@@ -70,6 +70,28 @@ export class FacebookAccountService {
     }
   }
 
+  /**
+   * Turn off automation for a single Facebook post by removing
+   * `tag_and_value_pair`, `reply_to_all`, `hide_negative` and `ai_enabled` from its row.
+   * Throws an error with `code = 'MEDIA_NOT_FOUND'` if the row doesn't exist.
+   */
+  async removeFacebookMediaAutomation(mediaId: string) {
+    try {
+      return await this.facebookMediaRepositoryService.removeMediaAttributes(
+        mediaId,
+        ['tag_and_value_pair', 'reply_to_all', 'hide_negative', 'ai_enabled'],
+      );
+    } catch (error) {
+      if ((error as any)?.name === 'ConditionalCheckFailedException') {
+        const notFound = new Error(`Media ${mediaId} not found`);
+        (notFound as any).code = 'MEDIA_NOT_FOUND';
+        throw notFound;
+      }
+      console.error(`Error removing automation for ${mediaId}:`, error);
+      throw error;
+    }
+  }
+
   /** Store the response-type / config for a single Facebook post. */
   async updateMediaResponseTypeOnTable(
     mediaId: string,
@@ -582,6 +604,31 @@ export class FacebookAccountService {
     } catch (error) {
       console.log(
         `Failed to Put the account level automation ${accountId}:`,
+        error,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Turn off account-level automation for a Facebook Page by removing
+   * `tag_and_value_pair`, `reply_to_all`, `hide_negative` and `ai_enabled` from its row.
+   * Throws an error with `code = 'ACCOUNT_NOT_FOUND'` if the row doesn't exist.
+   */
+  async removeAccountPostAutomation(accountId: string) {
+    try {
+      return await this.facebookAccountRepositoryService.removeAccountAttributes(
+        accountId,
+        ['tag_and_value_pair', 'reply_to_all', 'hide_negative', 'ai_enabled'],
+      );
+    } catch (error) {
+      if ((error as any)?.name === 'ConditionalCheckFailedException') {
+        const notFound = new Error(`Account ${accountId} not found`);
+        (notFound as any).code = 'ACCOUNT_NOT_FOUND';
+        throw notFound;
+      }
+      console.log(
+        `Failed to remove the account level automation ${accountId}:`,
         error,
       );
       throw error;
