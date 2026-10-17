@@ -12,7 +12,14 @@ export class InstagramAccountRepositoryDTO {
   platformName: string;
   pro_user_id: string;
   tag_and_value_pair?: object;
-  ai_enabled?: object; 
+  ai_enabled?: object;
+  access_restrictions?: Record<string, InstagramAccessRestrictionDTO>; // keyed by influex user_id
+}
+
+export class InstagramAccessRestrictionDTO {
+  blocked_sections: string[];
+  updated_by: string;
+  updated_time: string;
 }
 
 export class OmitInstagramAccountRepositoryDTO {
@@ -27,4 +34,5 @@ export class OmitInstagramAccountRepositoryDTO {
   updated_time: string;
   platformName: string;
   access_token: string;
+  blocked_sections?: string[]; // sections blocked for the requesting user
 }

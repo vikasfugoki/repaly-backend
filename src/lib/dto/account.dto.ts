@@ -17,3 +17,23 @@ export class LinkedUsersResponseDTO {
   admin: LinkedUserDTO | null;
   users: LinkedUserDTO[];
 }
+
+export class AccessRestrictedUserDTO extends LinkedUserDTO {
+  blocked_sections: string[];
+  updated_by: string | null;
+  updated_time: string | null;
+}
+
+export class AccessRestrictionsResponseDTO {
+  account_id: string;
+  username: string;
+  available_sections: string[];
+  users: AccessRestrictedUserDTO[];
+}
+
+export class SetAccessRestrictionsRequestDTO {
+  accountId?: string;
+  instagramUsername?: string;
+  emails: string[];
+  blockedSections: string[];
+}

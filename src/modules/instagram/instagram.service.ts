@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { InstagramApiService } from '../utils/instagram/api.service';
 import { InstagramAccountRepositoryService } from '@database/dynamodb/repository-services/instagram.account.service';
+import { InstagramAccountLinkingRepositoryService } from '@database/dynamodb/repository-services/instagram.account.linking.service';
 import { InstagramMediaRepositoryService } from '@database/dynamodb/repository-services/instagram.media.service';
 import {
   InstagramAccountResponse,
@@ -52,6 +53,7 @@ export class InstagramAccountService {
     private readonly instagramMediaAnalyticsRepositoryService: InstagramMediaAnalyticsRepositoryService,
     private readonly instagramApiService: InstagramApiService,
     private readonly instagramAccountRepositoryService: InstagramAccountRepositoryService,
+    private readonly instagramAccountLinkingRepositoryService: InstagramAccountLinkingRepositoryService,
     private readonly instagramMediaRepositoryService: InstagramMediaRepositoryService,
     private readonly instagramStoryRepositoryService: InstagramStoryRepositoryService,
     private readonly instagramStoryAnalyticsRepositoryService: InstagramStoryAnalyticsRepositoryService,
@@ -595,8 +597,18 @@ export class InstagramAccountService {
   }
 
   // function to delete the Instagram account
-  async deleteInstagramAccount(accountId: string) {
+  async deleteInstagramAccount(accountId: string, callerUserId?: string) {
     try {
+      // The account row is shared by every linked user, so a linked (non-admin)
+      // user only removes their own link instead of deleting it for everyone.
+      const account = await this.instagramAccountRepositoryService.getAccount(accountId);
+      if (account && account.user_id !== callerUserId) {
+        if (!callerUserId) throw new Error('Unable to resolve the requesting user');
+        await this.instagramAccountLinkingRepositoryService.removeLink(callerUserId, accountId);
+        console.log(`unlinked user ${callerUserId} from account ${accountId}`);
+        return { success: true, message: `account has been removed.` };
+      }
+
       // delete the entries from the 'instagram_account_repository'
       await this.instagramAccountRepositoryService.deleteAccount(accountId);
       console.log(`deleted from 'instagram_account_repository'`);

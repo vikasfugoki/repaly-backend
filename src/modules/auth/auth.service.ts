@@ -338,7 +338,8 @@ async loginWithGoogleCode(code: string, origin: string) {
   async checkOwnership(
     userId: string, resourceId: string,
     type: 'conversation' | 'media' | 'story' | 'account' | 'ad',
-    loginSource: 'google' | 'facebook'
+    loginSource: 'google' | 'facebook',
+    sections: string[] = [],
   ): Promise<boolean>  {
 
 
@@ -395,11 +396,48 @@ async loginWithGoogleCode(code: string, origin: string) {
     if (!targetInstagramAccountId || !linkedInstagramAccountIds.includes(targetInstagramAccountId)) {
       throw new ForbiddenException('You do not have access to this resource');
     }
-    
 
-  
+    if (sections.length > 0) {
+      await this.assertSectionAccess(userId, loginSource, targetInstagramAccountId, sections);
+    }
+
     return true;
 
+  }
+
+  /**
+   * Throws 403 if the account admin has blocked any of `sections` for this user
+   * (see `access_restrictions` on the Instagram account record).
+   */
+  async assertSectionAccess(
+    userId: string,
+    loginSource: 'google' | 'facebook',
+    instagramAccountId: string,
+    sections: string[],
+  ): Promise<void> {
+    const influexUserId = await this.getInfluexUserId(userId, loginSource);
+    const account = await this.instagramAccountRepositoryService.getAccount(instagramAccountId);
+    const blocked = (influexUserId && account?.access_restrictions?.[influexUserId]?.blocked_sections) || [];
+    const blockedSection = sections.find((section) => blocked.includes(section));
+
+    if (blockedSection) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        code: 'SECTION_BLOCKED',
+        section: blockedSection,
+        message: 'Your access to this section has been blocked by the account admin',
+      });
+    }
+  }
+
+  async getInfluexUserId(userId: string, loginSource: 'google' | 'facebook'): Promise<string | undefined> {
+    if (loginSource === 'google') {
+      return (await this.googleUserRepository.getGoogleUser(userId)).Item?.user_id;
+    }
+    if (loginSource === 'facebook') {
+      return (await this.facebookUserRepository.getFacebookUser(userId)).Item?.user_id;
+    }
+    return undefined;
   }
 
   async getInstagramAccountIdFromGoogleUserId(userId: string): Promise<string[]> {
