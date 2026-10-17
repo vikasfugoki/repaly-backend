@@ -1,5 +1,6 @@
-import { AccountByUserId, GetAccountResponse, LinkedUserDTO, LinkedUsersResponseDTO } from '@lib/dto';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { AccessRestrictionsResponseDTO, AccountByUserId, GetAccountResponse, LinkedUserDTO, LinkedUsersResponseDTO } from '@lib/dto';
+import { INSTAGRAM_SECTIONS } from '../auth/instagram-section.decorator';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InstagramAccountRepositoryService } from '@database/dynamodb/repository-services/instagram.account.service';
 import { InstagramAccountLinkingRepositoryService } from '@database/dynamodb/repository-services/instagram.account.linking.service';
 import { FacebookAccountRepositoryService } from '@database/dynamodb/repository-services/facebook.account.service';
@@ -84,8 +85,10 @@ async getInstagramAccount(userId: string): Promise<OmitInstagramAccountRepositor
     return true;
   });
 
-  return unique.map((account) => ({
+  // Expose only this user's own blocked sections, never the full restrictions map.
+  return unique.map(({ access_restrictions, ...account }) => ({
     ...account,
+    blocked_sections: access_restrictions?.[userId]?.blocked_sections ?? [],
     platformName: 'instagram',
   }));
   }
@@ -192,6 +195,110 @@ async getInstagramAccount(userId: string): Promise<OmitInstagramAccountRepositor
       admin,
       users: resolvedUsers.filter(Boolean) as LinkedUserDTO[],
     };
+  }
+
+  /**
+   * Admin-only: lists every linked user of an Instagram account with the
+   * dashboard sections blocked for them. The account can be given by id or username.
+   */
+  async getAccessRestrictions(
+    callerUserId: string,
+    ref: { accountId?: string; instagramUsername?: string },
+  ): Promise<AccessRestrictionsResponseDTO> {
+    const account = await this.resolveInstagramAccountAsAdmin(callerUserId, ref);
+    const { users } = await this.getLinkedUsersForAccount(account.id);
+
+    return {
+      account_id: account.id,
+      username: account.username,
+      available_sections: [...INSTAGRAM_SECTIONS],
+      users: users.map((user) => {
+        const restriction = account.access_restrictions?.[user.user_id];
+        return {
+          ...user,
+          blocked_sections: restriction?.blocked_sections ?? [],
+          updated_by: restriction?.updated_by ?? null,
+          updated_time: restriction?.updated_time ?? null,
+        };
+      }),
+    };
+  }
+
+  /**
+   * Admin-only: replaces the blocked sections for the given linked users
+   * (identified by email). An empty `blockedSections` unblocks them.
+   */
+  async setAccessRestrictions(
+    callerUserId: string,
+    ref: { accountId?: string; instagramUsername?: string },
+    emails: string[],
+    blockedSections: string[],
+  ): Promise<AccessRestrictionsResponseDTO> {
+    if (!Array.isArray(emails) || emails.length === 0) {
+      throw new BadRequestException('emails must be a non-empty array');
+    }
+    if (!Array.isArray(blockedSections)) {
+      throw new BadRequestException('blockedSections must be an array (empty to unblock)');
+    }
+    const invalidSections = blockedSections.filter(
+      (section) => !(INSTAGRAM_SECTIONS as readonly string[]).includes(section),
+    );
+    if (invalidSections.length > 0) {
+      throw new BadRequestException(
+        `Invalid sections: ${invalidSections.join(', ')}. Allowed: ${INSTAGRAM_SECTIONS.join(', ')}`,
+      );
+    }
+
+    const account = await this.resolveInstagramAccountAsAdmin(callerUserId, ref);
+    const { admin, users } = await this.getLinkedUsersForAccount(account.id);
+
+    const normalizedEmails = [...new Set(emails.map((email) => email.trim().toLowerCase()))];
+    if (admin && normalizedEmails.includes(admin.email.toLowerCase())) {
+      throw new BadRequestException('The account admin cannot be blocked');
+    }
+    const usersByEmail = new Map(users.map((user) => [user.email.toLowerCase(), user]));
+    const unknownEmails = normalizedEmails.filter((email) => !usersByEmail.has(email));
+    if (unknownEmails.length > 0) {
+      throw new BadRequestException(
+        `Not linked to @${account.username}: ${unknownEmails.join(', ')}`,
+      );
+    }
+
+    const restriction = {
+      blocked_sections: [...new Set(blockedSections)],
+      updated_by: admin?.email ?? callerUserId,
+      updated_time: new Date().toISOString(),
+    };
+    for (const email of normalizedEmails) {
+      await this.instagramAccountRepositoryService.setAccessRestriction(
+        account.id,
+        usersByEmail.get(email)!.user_id,
+        restriction,
+      );
+    }
+
+    return this.getAccessRestrictions(callerUserId, { accountId: account.id });
+  }
+
+  private async resolveInstagramAccountAsAdmin(
+    callerUserId: string,
+    ref: { accountId?: string; instagramUsername?: string },
+  ): Promise<InstagramAccountRepositoryDTO> {
+    const username = ref.instagramUsername?.trim().replace(/^@/, '').toLowerCase();
+    if (!ref.accountId && !username) {
+      throw new BadRequestException('accountId or instagramUsername is required');
+    }
+
+    const account = ref.accountId
+      ? await this.instagramAccountRepositoryService.getAccount(ref.accountId)
+      : await this.instagramAccountRepositoryService.getAccountByUsername(username!);
+    if (!account) {
+      throw new NotFoundException(`Instagram account ${ref.accountId ?? '@' + username} not found`);
+    }
+    if (account.user_id !== callerUserId) {
+      throw new ForbiddenException('Only the account admin can manage access');
+    }
+    return account;
   }
 
   private async resolveEmailByInfluexUserId(userId: string): Promise<LinkedUserDTO | null> {

@@ -8,13 +8,16 @@ import {
   Post,
   Put,
   Query,
+  Req,
   UseGuards,
   HttpException, HttpStatus
 } from '@nestjs/common';
 import { ApiTags, ApiBody, ApiParam } from '@nestjs/swagger';
 import { InstagramAccountService } from './instagram.service';
 import { InstagramOwnershipGuard } from '../auth/instagram-ownership.guard';
+import { AuthService } from '../auth/auth.service';
 import { InstagramResourceType } from '../auth/instagram-resource-type.decorator';
+import { InstagramSection } from '../auth/instagram-section.decorator';
 import { PaginatedResponse, PaginationQueryDto } from '@database/dto/pagination.dto';
 import { InstagramMediaPaginationService } from './instagram-media-pagination.service';
 import { InstagramStoryPaginationService } from './instagram-story-pagination.service';
@@ -33,9 +36,11 @@ export class InstagramAccountController {
     private readonly instagramMediaPaginationService: InstagramMediaPaginationService,
     private readonly instagramStoryPaginationService: InstagramStoryPaginationService,
     private readonly instagramCommentAnalyticsService: InstagramCommentAnalyticsService,
+    private readonly authService: AuthService,
   ) {}
 
   @InstagramResourceType('account')
+  @InstagramSection('media')
   @Post(':accountId/media')
   async getAccountMedia(@Param('accountId') accountId: string) {
     try {
@@ -84,6 +89,7 @@ export class InstagramAccountController {
   // }
 
   @InstagramResourceType('account')
+  @InstagramSection('media')
   @Get(':accountId/recent-media')
   async getAccountRecentMedia(@Param('accountId') accountId: string) {
     try {
@@ -97,6 +103,7 @@ export class InstagramAccountController {
   }
 
   @InstagramResourceType('media')
+  @InstagramSection('media')
   @Put(':mediaId/apply-automation')
   async putAutomation(
     @Param('mediaId') mediaId: string,
@@ -130,6 +137,7 @@ export class InstagramAccountController {
   }
 
   @InstagramResourceType('account')
+  @InstagramSection('media')
   @Put(':accountId/update-media')
   async updateAccountMedia(@Param('accountId') accountId: string) {
     try {
@@ -146,6 +154,7 @@ export class InstagramAccountController {
   }
 
   @InstagramResourceType('media')
+  @InstagramSection('media')
   @Get(':mediaId/tag-value')
   async getTagAndValueFromTable(@Param('mediaId') mediaId: string) {
     try {
@@ -162,6 +171,7 @@ export class InstagramAccountController {
   }
 
   @InstagramResourceType('media')
+  @InstagramSection('media')
   @Put(':mediaId/response-type')
   async updateMediaResponseType(
     @Param('mediaId') mediaId: string,
@@ -182,6 +192,7 @@ export class InstagramAccountController {
   }
 
   @InstagramResourceType('media')
+  @InstagramSection('media')
   @Get(':mediaId/media-details')
   async getMediaResponseType(@Param('mediaId') mediaId: string) {
     try {
@@ -195,6 +206,7 @@ export class InstagramAccountController {
   }
 
   @InstagramResourceType("account")
+  @InstagramSection('media')
   @Post(':accountId/media/search')
   async searchMedia(@Param('accountId') accountId: string, @Body() input: { permalink: string}) {
     console.log("searching media!!!!!")
@@ -202,6 +214,7 @@ export class InstagramAccountController {
   }
 
   @InstagramResourceType('media')
+  @InstagramSection('media')
   @Get(':mediaId/ai-enabled')
   async getAIEnabledFromTable(@Param('mediaId') mediaId: string) {
     try {
@@ -283,11 +296,13 @@ export class InstagramAccountController {
 
   @InstagramResourceType('account')
   @Delete(':accountId/delete-account')
-  async deleteAccount(@Param('accountId') accountId: string) {
+  async deleteAccount(@Param('accountId') accountId: string, @Req() req) {
     try {
-      // delete the instagram account attached to the user
+      // admin: deletes the account; linked user: only removes their own link
+      const callerUserId = await this.authService.getInfluexUserId(req.user.id, req.user.loginSource);
       return await this.instagramAccountService.deleteInstagramAccount(
         accountId,
+        callerUserId,
       );
     } catch (error) {
       console.log(
@@ -300,6 +315,7 @@ export class InstagramAccountController {
 
   //  STORY Api
   @InstagramResourceType('account')
+  @InstagramSection('stories')
   @Put(':accountId/update-story')
   async updateAccountStory(@Param('accountId') accountId: string) {
     try {
@@ -333,6 +349,7 @@ export class InstagramAccountController {
   // }
 
   @InstagramResourceType('account')
+  @InstagramSection('stories')
   @Get(':accountId/get-story')
   async getAccountStoryPaginated(
     @Param('accountId') accountId: string,
@@ -345,6 +362,7 @@ export class InstagramAccountController {
   }
 
   @InstagramResourceType('story')
+  @InstagramSection('stories')
   @Get(':storyId/story-details')
   async getStoryDetails(@Param('storyId') mediaId: string) {
     try {
@@ -358,6 +376,7 @@ export class InstagramAccountController {
   }
 
   @InstagramResourceType('story')
+  @InstagramSection('stories')
   @Put(':storyId/apply-automation-story')
   async putStoryAutomation(
     @Param('storyId') storyId: string,
@@ -450,6 +469,7 @@ export class InstagramAccountController {
 
   // Ads api
   @InstagramResourceType('account')
+  @InstagramSection('ads')
   @Get(':accountId/get-ads')
   async getAds(@Param('accountId') accountId: string) {
     try {
@@ -464,6 +484,7 @@ export class InstagramAccountController {
 
   // Ads api
   @InstagramResourceType('account')
+  @InstagramSection('ads')
   @Post(':accountId/update-ads')
   async updateAdsStory(
     @Param('accountId') accountId: string,
@@ -494,6 +515,7 @@ export class InstagramAccountController {
   }
 
   @InstagramResourceType('ad')
+  @InstagramSection('ads')
   @Get(':adId/get-ad')
   async getAdDetails(@Param('adId') adId: string) {
     try {
@@ -505,6 +527,7 @@ export class InstagramAccountController {
   }
 
   @InstagramResourceType('ad')
+  @InstagramSection('ads')
   @Put(':adId/apply-automation-ad')
   async putAutomationAd(
     @Param('adId') mediaId: string,
@@ -998,6 +1021,7 @@ export class InstagramAccountController {
 
   /// DM Automation
   @InstagramResourceType('account')
+  @InstagramSection('dm_automation')
   @Put(':accountId/flowstate')
   async putFlowstate(
     @Param('accountId') accountId: string,
@@ -1018,6 +1042,7 @@ export class InstagramAccountController {
   }
 
   @InstagramResourceType('account')
+  @InstagramSection('dm_automation')
   @Get(':accountId/flowstates')
   async getFlowStates(@Param('accountId') accountId: string) {
     try {
@@ -1031,6 +1056,7 @@ export class InstagramAccountController {
   }
 
   @InstagramResourceType('account')
+  @InstagramSection('dm_automation')
   @Delete(':accountId/flowstate/:flowstateId')
   async deleteFlowstate(
     @Param('accountId') accountId: string,
@@ -1050,6 +1076,7 @@ export class InstagramAccountController {
   }
 
   @InstagramResourceType('account')
+  @InstagramSection('dm_automation')
   @Get(':accountId/flowstate/:flowstateId')
   async getFlowState(
     @Param('accountId') accountId: string,
@@ -1066,6 +1093,7 @@ export class InstagramAccountController {
   }
 
   @InstagramResourceType('account')
+  @InstagramSection('dm_automation')
   @Get(':accountId/dm-automation-stats/:block_node_id')
   async getDMAutomationStats(
     @Param('accountId') accountId: string,
@@ -1088,6 +1116,7 @@ export class InstagramAccountController {
   }
 
   @InstagramResourceType('account')
+  @InstagramSection('dm_automation')
   @Get(':accountId/text-block-stats/:block_node_id')
   async getTextQuestionStats(
     @Param('accountId') accountId: string,
@@ -1110,6 +1139,7 @@ export class InstagramAccountController {
   }
 
   @InstagramResourceType('account')
+  @InstagramSection('dm_automation')
   @Get(':accountId/flow_node_analytics/:flow_id')
   async getFlowNodeAnalytics(
     @Param('accountId') accountId: string,
@@ -1132,6 +1162,7 @@ export class InstagramAccountController {
   }
 
   @InstagramResourceType('account')
+  @InstagramSection('media')
   @Put(':accountId/post-account-automation')
   async putPostAccountAutomation(@Param('accountId') accountId: string,
     @Body() input: Record<string, any>) {
@@ -1150,6 +1181,7 @@ export class InstagramAccountController {
   }
 
   @InstagramResourceType('account')
+  @InstagramSection('media')
   @Get(':accountId/post-account-automation')
   async getPostAccountAutomation(@Param('accountId') accountId: string) {
     try {

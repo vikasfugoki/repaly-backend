@@ -83,6 +83,73 @@ export class InstagramAccountRepositoryService {
     return this.dynamoDbService.dynamoDBDocumentClient.send(params);
   }
 
+  async getAccountByUsername(
+    username: string,
+  ): Promise<InstagramAccountRepositoryDTO | undefined> {
+    let ExclusiveStartKey: Record<string, any> | undefined;
+    do {
+      const response = await this.dynamoDbService.dynamoDBDocumentClient.send(
+        new ScanCommand({
+          TableName: this.tableName,
+          FilterExpression: 'username = :username',
+          ExpressionAttributeValues: { ':username': username },
+          ExclusiveStartKey,
+        }),
+      );
+      if (response.Items?.length) {
+        return response.Items[0] as InstagramAccountRepositoryDTO;
+      }
+      ExclusiveStartKey = response.LastEvaluatedKey;
+    } while (ExclusiveStartKey);
+    return undefined;
+  }
+
+  /**
+   * Sets (or clears, when blocked_sections is empty) one user's entry in the
+   * account's `access_restrictions` map without touching other users' entries.
+   */
+  async setAccessRestriction(
+    accountId: string,
+    userId: string,
+    restriction: { blocked_sections: string[]; updated_by: string; updated_time: string },
+  ) {
+    const client = this.dynamoDbService.dynamoDBDocumentClient;
+
+    if (restriction.blocked_sections.length === 0) {
+      return client.send(
+        new UpdateCommand({
+          TableName: this.tableName,
+          Key: { id: accountId },
+          UpdateExpression: 'REMOVE access_restrictions.#uid',
+          ConditionExpression: 'attribute_exists(access_restrictions)',
+          ExpressionAttributeNames: { '#uid': userId },
+        }),
+      ).catch((error) => {
+        if (error?.name !== 'ConditionalCheckFailedException') throw error;
+      });
+    }
+
+    // Nested SET fails if the parent map is missing, so make sure it exists first.
+    await client.send(
+      new UpdateCommand({
+        TableName: this.tableName,
+        Key: { id: accountId },
+        UpdateExpression: 'SET access_restrictions = if_not_exists(access_restrictions, :empty)',
+        ConditionExpression: 'attribute_exists(id)',
+        ExpressionAttributeValues: { ':empty': {} },
+      }),
+    );
+    return client.send(
+      new UpdateCommand({
+        TableName: this.tableName,
+        Key: { id: accountId },
+        UpdateExpression: 'SET access_restrictions.#uid = :restriction',
+        ExpressionAttributeNames: { '#uid': userId },
+        ExpressionAttributeValues: { ':restriction': restriction },
+      }),
+    );
+  }
+
   deleteAccount(id: string) {
     const params = new DeleteCommand({
       TableName: this.tableName,

@@ -27,6 +27,8 @@ import {
         handler,
       );
       
+      const sections = this.reflector.get<string[]>('instagramSection', handler) ?? [];
+
       const request = context.switchToHttp().getRequest();
       // const user = request.user.user.sub; // assumes you've authenticated and attached user
       console.log("request inside instagram guard:", request);
@@ -57,7 +59,7 @@ import {
 
       console.log(user, resourceId, resourceType);
   
-      const ownsResource = await this.authService.checkOwnership(user, resourceId, resourceType, loginSource);
+      const ownsResource = await this.authService.checkOwnership(user, resourceId, resourceType, loginSource, sections);
   
       if (!ownsResource) {
         throw new UnauthorizedException('You do not own this resource');
