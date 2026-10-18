@@ -20,6 +20,7 @@ export class LinkedUsersResponseDTO {
 
 export class AccessRestrictedUserDTO extends LinkedUserDTO {
   access_level: 'full' | 'limited';
+  on_full_access_list: boolean;
   added_by: string | null;
   added_time: string | null;
 }
@@ -29,7 +30,7 @@ export class AccessRestrictionsResponseDTO {
   username: string;
   restricted: boolean; // false = every linked user has full access
   limited_sections: string[]; // sections hidden from limited users
-  admin: LinkedUserDTO | null;
+  admin: (LinkedUserDTO & { access_level: 'full'; on_full_access_list: boolean }) | null;
   users: AccessRestrictedUserDTO[];
 }
 

@@ -217,12 +217,17 @@ async getInstagramAccount(userId: string): Promise<OmitInstagramAccountRepositor
       username: account.username,
       restricted: !!account.full_access_users,
       limited_sections: [...INSTAGRAM_SECTIONS],
-      admin,
+      admin: admin && {
+        ...admin,
+        access_level: 'full' as const,
+        on_full_access_list: !!account.full_access_users?.[admin.user_id],
+      },
       users: users.map((user) => {
         const entry = account.full_access_users?.[user.user_id];
         return {
           ...user,
           access_level: getBlockedSections(account, user.user_id).length ? 'limited' : 'full',
+          on_full_access_list: !!entry,
           added_by: entry?.added_by ?? null,
           added_time: entry?.added_time ?? null,
         };
@@ -246,12 +251,14 @@ async getInstagramAccount(userId: string): Promise<OmitInstagramAccountRepositor
     const account = await this.resolveInstagramAccountAsAdmin(callerUserId, ref);
     const { admin, users } = await this.getLinkedUsersForAccount(account.id);
 
-    // The admin always has full access, so they don't need to be on the list.
-    const adminEmail = admin?.email.toLowerCase();
+    // The admin always has full access, but may still be listed so access survives
+    // a change of admin.
     const normalizedEmails = [
       ...new Set(fullAccessEmails.map((email) => email.trim().toLowerCase())),
-    ].filter((email) => email !== adminEmail);
-    const usersByEmail = new Map(users.map((user) => [user.email.toLowerCase(), user]));
+    ];
+    const usersByEmail = new Map(
+      [...(admin ? [admin] : []), ...users].map((user) => [user.email.toLowerCase(), user]),
+    );
     const unknownEmails = normalizedEmails.filter((email) => !usersByEmail.has(email));
     if (unknownEmails.length > 0) {
       throw new BadRequestException(
