@@ -105,47 +105,24 @@ export class InstagramAccountRepositoryService {
   }
 
   /**
-   * Sets (or clears, when blocked_sections is empty) one user's entry in the
-   * account's `access_restrictions` map without touching other users' entries.
+   * Replaces the account's full-access list (null turns restrictions off for the
+   * account). Also drops the old per-user `access_restrictions` map if present.
    */
-  async setAccessRestriction(
+  setFullAccessUsers(
     accountId: string,
-    userId: string,
-    restriction: { blocked_sections: string[]; updated_by: string; updated_time: string },
+    fullAccessUsers: Record<string, { added_by: string; added_time: string }> | null,
   ) {
-    const client = this.dynamoDbService.dynamoDBDocumentClient;
-
-    if (restriction.blocked_sections.length === 0) {
-      return client.send(
-        new UpdateCommand({
-          TableName: this.tableName,
-          Key: { id: accountId },
-          UpdateExpression: 'REMOVE access_restrictions.#uid',
-          ConditionExpression: 'attribute_exists(access_restrictions)',
-          ExpressionAttributeNames: { '#uid': userId },
-        }),
-      ).catch((error) => {
-        if (error?.name !== 'ConditionalCheckFailedException') throw error;
-      });
-    }
-
-    // Nested SET fails if the parent map is missing, so make sure it exists first.
-    await client.send(
+    return this.dynamoDbService.dynamoDBDocumentClient.send(
       new UpdateCommand({
         TableName: this.tableName,
         Key: { id: accountId },
-        UpdateExpression: 'SET access_restrictions = if_not_exists(access_restrictions, :empty)',
         ConditionExpression: 'attribute_exists(id)',
-        ExpressionAttributeValues: { ':empty': {} },
-      }),
-    );
-    return client.send(
-      new UpdateCommand({
-        TableName: this.tableName,
-        Key: { id: accountId },
-        UpdateExpression: 'SET access_restrictions.#uid = :restriction',
-        ExpressionAttributeNames: { '#uid': userId },
-        ExpressionAttributeValues: { ':restriction': restriction },
+        ...(fullAccessUsers
+          ? {
+              UpdateExpression: 'SET full_access_users = :users REMOVE access_restrictions',
+              ExpressionAttributeValues: { ':users': fullAccessUsers },
+            }
+          : { UpdateExpression: 'REMOVE full_access_users, access_restrictions' }),
       }),
     );
   }

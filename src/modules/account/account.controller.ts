@@ -1,8 +1,8 @@
-import { Body, Controller, Get, Put, Query, Req, HttpException, HttpStatus } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Put, Query, Req, HttpException, HttpStatus } from '@nestjs/common';
 import { AccountService } from './account.service';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { InstagramAccountRepositoryDTO, OmitInstagramAccountRepositoryDTO } from '../../lib/database/dto/instagram.account.repository.dto';
-import { AccessRestrictionsResponseDTO, LinkedUsersResponseDTO, SetAccessRestrictionsRequestDTO } from '@lib/dto';
+import { AccessRestrictionsResponseDTO, LinkedUsersResponseDTO, SetFullAccessUsersRequestDTO } from '@lib/dto';
 import {UserRepositoryService} from '@database/dynamodb/repository-services/user.service';
 
 @ApiTags('Account')
@@ -53,7 +53,7 @@ export class AccountController {
   @ApiOkResponse({
     description:
       'Admin only. Lists linked users of an Instagram account (by accountId or instagramUsername) ' +
-      'with the dashboard sections blocked for each.',
+      'with their access level (full / limited).',
     type: AccessRestrictionsResponseDTO,
   })
   async getAccessRestrictions(
@@ -68,21 +68,34 @@ export class AccountController {
   @Put('access-restrictions')
   @ApiOkResponse({
     description:
-      'Admin only. Sets the blocked sections (media, stories, dm_automation, ads) for the given ' +
-      'linked users of an Instagram account. An empty blockedSections unblocks them.',
+      'Admin only. Sets the users with full access on an Instagram account; every other linked ' +
+      'user is limited (no media, stories, dm_automation, ads). Replaces the whole list.',
     type: AccessRestrictionsResponseDTO,
   })
-  async setAccessRestrictions(
+  async setFullAccessUsers(
     @Req() req,
-    @Body() body: SetAccessRestrictionsRequestDTO,
+    @Body() body: SetFullAccessUsersRequestDTO,
   ): Promise<AccessRestrictionsResponseDTO> {
     const callerUserId = await this.getInfluexUserId(req);
-    return this.accountService.setAccessRestrictions(
+    return this.accountService.setFullAccessUsers(
       callerUserId,
       { accountId: body?.accountId, instagramUsername: body?.instagramUsername },
-      body?.emails,
-      body?.blockedSections,
+      body?.fullAccessEmails,
     );
+  }
+
+  @Delete('access-restrictions')
+  @ApiOkResponse({
+    description: 'Admin only. Turns restrictions off: every linked user gets full access.',
+    type: AccessRestrictionsResponseDTO,
+  })
+  async clearFullAccessUsers(
+    @Req() req,
+    @Query('accountId') accountId?: string,
+    @Query('instagramUsername') instagramUsername?: string,
+  ): Promise<AccessRestrictionsResponseDTO> {
+    const callerUserId = await this.getInfluexUserId(req);
+    return this.accountService.clearFullAccessUsers(callerUserId, { accountId, instagramUsername });
   }
 
   private async getInfluexUserId(req): Promise<string> {
