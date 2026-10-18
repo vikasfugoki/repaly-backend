@@ -1,4 +1,5 @@
 import { Injectable, ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import { getBlockedSections } from './instagram-section.decorator';
 import { JwtService } from '@nestjs/jwt';
 import * as jwt from 'jsonwebtoken';
 import axios from 'axios';
@@ -406,8 +407,8 @@ async loginWithGoogleCode(code: string, origin: string) {
   }
 
   /**
-   * Throws 403 if the account admin has blocked any of `sections` for this user
-   * (see `access_restrictions` on the Instagram account record).
+   * Throws 403 if any of `sections` is blocked for this user, i.e. the account has a
+   * `full_access_users` list and the user is neither the admin nor on it.
    */
   async assertSectionAccess(
     userId: string,
@@ -417,7 +418,7 @@ async loginWithGoogleCode(code: string, origin: string) {
   ): Promise<void> {
     const influexUserId = await this.getInfluexUserId(userId, loginSource);
     const account = await this.instagramAccountRepositoryService.getAccount(instagramAccountId);
-    const blocked = (influexUserId && account?.access_restrictions?.[influexUserId]?.blocked_sections) || [];
+    const blocked: string[] = getBlockedSections(account, influexUserId);
     const blockedSection = sections.find((section) => blocked.includes(section));
 
     if (blockedSection) {
