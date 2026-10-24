@@ -32,6 +32,19 @@ interface PhoneNumbersResponse {
   error?: { message?: string };
 }
 
+interface PhoneNumberStatusResponse {
+  is_on_biz_app?: boolean;
+  platform_type?: string;
+  error?: { message?: string };
+}
+
+// Coexistence sync types, in the order Meta wants them (contacts first), and
+// the account-row field prefix each one's request is recorded under.
+const COEXISTENCE_SYNCS = [
+  { sync_type: 'smb_app_state_sync', field: 'contacts_sync' },
+  { sync_type: 'history', field: 'history_sync' },
+] as const;
+
 /**
  * WhatsApp Business accounts as first-class connected accounts — owned by the
  * influex user, with no dependency on any Instagram account. This mirrors
@@ -69,6 +82,9 @@ export class WhatsappAccountService {
    *      token's granular scopes (debug_token)
    *   4. list every phone number on the WABA and upsert one account row each
    *   5. subscribe our app to the WABA for webhooks (non-fatal)
+   *   6. coexistence numbers (also live in the WhatsApp Business app): start
+   *      the contacts + chat-history sync, which Meta only allows within 24h
+   *      of onboarding (non-fatal)
    */
   async connectAccounts(
     providerUserId: string,
@@ -174,10 +190,14 @@ export class WhatsappAccountService {
     }
 
     const connected: Array<Record<string, any>> = [];
+    const toSync: Array<Record<string, any>> = [];
     for (const phone of phoneNumbers) {
+      const status = await this.getPhoneNumberStatus(phone.id, accessToken);
+
       // Partial update so re-connecting never wipes fields the connect flow
-      // does not send (e.g. `is_registered`).
-      await this.whatsappBusinessAccountRepositoryService.updateAccountDetails({
+      // does not send (e.g. `is_registered`). Status fields are only written
+      // when the lookup succeeded, for the same reason.
+      const saved = await this.whatsappBusinessAccountRepositoryService.updateAccountDetails({
         id: phone.id,
         user_id: influexUserId,
         waba_id,
@@ -190,7 +210,18 @@ export class WhatsappAccountService {
         quality_rating: phone.quality_rating ?? null,
         code_verification_status: phone.code_verification_status ?? null,
         connected_at: new Date().toISOString(),
+        ...(status && {
+          is_coexistence: status.is_on_biz_app === true,
+          platform_type: status.platform_type ?? null,
+        }),
+        // Already on Cloud API (coexistence numbers are registered by Meta
+        // during onboarding), so /register must not be offered.
+        ...((status?.is_on_biz_app || status?.platform_type === 'CLOUD_API') && {
+          is_registered: true,
+        }),
       });
+
+      if (saved?.is_coexistence) toSync.push(saved);
 
       connected.push({
         id: phone.id,
@@ -198,6 +229,7 @@ export class WhatsappAccountService {
         display_phone_number: phone.display_phone_number ?? null,
         verified_name: phone.verified_name ?? null,
         business_name: business_name || phone.verified_name || null,
+        is_coexistence: saved?.is_coexistence ?? false,
       });
     }
 
@@ -214,6 +246,11 @@ export class WhatsappAccountService {
       }
     } catch (e) {
       console.warn('Failed to subscribe app to WABA webhooks (non-fatal):', e);
+    }
+
+    // Step 6 — after subscribing, so the sync's webhooks have somewhere to go.
+    for (const account of toSync) {
+      await this.startCoexistenceSync(account, accessToken);
     }
 
     console.log(
@@ -299,8 +336,16 @@ export class WhatsappAccountService {
    * for numbers that are already registered or carry their own PIN.
    */
   async registerPhoneNumber(accountId: string, pin: string) {
-    const { accessToken } = await this.requireConnection(accountId);
+    const { account, accessToken } = await this.requireConnection(accountId);
 
+    if (account?.is_coexistence) {
+      throw Object.assign(
+        new Error(
+          'This number is connected through the WhatsApp Business app and is already registered.',
+        ),
+        { code: 'BAD_REQUEST' },
+      );
+    }
     if (!pin) {
       throw Object.assign(new Error('pin is required.'), { code: 'BAD_REQUEST' });
     }
@@ -615,6 +660,77 @@ export class WhatsappAccountService {
   }
 
   /**
+   * `is_on_biz_app` is true when the number is also live in the WhatsApp
+   * Business app (coexistence). Fetched per number rather than on the
+   * `phone_numbers` listing so an unsupported field can only cost this
+   * lookup, never the connect. Returns null when the lookup fails.
+   */
+  private async getPhoneNumberStatus(
+    phoneNumberId: string,
+    accessToken: string,
+  ): Promise<PhoneNumberStatusResponse | null> {
+    try {
+      const status = await this.graphGet<PhoneNumberStatusResponse>(
+        `${GRAPH_BASE}/${phoneNumberId}?fields=is_on_biz_app,platform_type` +
+          `&access_token=${encodeURIComponent(accessToken)}`,
+      );
+      if (status.error) {
+        console.warn(
+          `Phone number status lookup failed for ${phoneNumberId} (non-fatal):`,
+          JSON.stringify(status.error),
+        );
+        return null;
+      }
+      return status;
+    } catch (e) {
+      console.warn(`Phone number status lookup failed for ${phoneNumberId} (non-fatal):`, e);
+      return null;
+    }
+  }
+
+  /**
+   * Ask Meta to replay the WhatsApp Business app's contacts and chat history
+   * as webhooks. Each sync type is requested once per number: types already
+   * recorded on the row are skipped, so a re-connect only retries the ones
+   * that failed. Non-fatal throughout.
+   */
+  private async startCoexistenceSync(
+    account: Record<string, any>,
+    accessToken: string,
+  ) {
+    for (const { sync_type, field } of COEXISTENCE_SYNCS) {
+      if (account[`${field}_requested_at`]) continue;
+
+      try {
+        const res = await fetch(`${GRAPH_BASE}/${account.id}/smb_app_data`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ messaging_product: 'whatsapp', sync_type }),
+        });
+        const data = (await res.json()) as { request_id?: string; error?: unknown };
+        if (!res.ok) {
+          console.warn(
+            `Coexistence ${sync_type} sync failed for ${account.id} (non-fatal):`,
+            JSON.stringify(data),
+          );
+          continue;
+        }
+
+        await this.whatsappBusinessAccountRepositoryService.updateAccountDetails({
+          id: account.id,
+          [`${field}_requested_at`]: new Date().toISOString(),
+          [`${field}_request_id`]: data?.request_id ?? null,
+        });
+      } catch (e) {
+        console.warn(`Coexistence ${sync_type} sync failed for ${account.id} (non-fatal):`, e);
+      }
+    }
+  }
+
+  /**
    * Strip the access token before returning to the client, and carry the same
    * generic keys the Instagram entries use (`name` / `username` /
    * `profile_picture_url` / timestamps) so the unified `GET /account` list can
@@ -638,6 +754,9 @@ export class WhatsappAccountService {
       quality_rating: a.quality_rating ?? null,
       code_verification_status: a.code_verification_status ?? null,
       is_registered: a.is_registered ?? false,
+      // true => number also lives in the WhatsApp Business app: never offer
+      // /register, and re-connect through the coexistence signup flow.
+      is_coexistence: a.is_coexistence ?? false,
       token_status: a.token_status ?? 'active',
       needs_reconnect: (a.token_status ?? 'active') === 'expired',
       connected_at: a.connected_at ?? a.created_time ?? null,
