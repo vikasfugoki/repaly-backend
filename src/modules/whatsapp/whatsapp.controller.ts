@@ -85,6 +85,20 @@ export class WhatsappController {
   }
 
   // ---------------------------------------------------------------------------
+  // Saved contacts
+  // ---------------------------------------------------------------------------
+
+  @WhatsappResourceType('account')
+  @Get(':accountId/contacts')
+  async getContacts(@Param('accountId') accountId: string) {
+    try {
+      return await this.whatsappAccountService.getContacts(accountId);
+    } catch (error) {
+      throw this.toHttpException(error, 'Failed to get WhatsApp contacts');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Message templates
   // ---------------------------------------------------------------------------
 

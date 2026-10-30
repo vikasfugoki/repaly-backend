@@ -1,6 +1,7 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { EnvironmentService } from '../utils/environment/environment.service';
 import { WhatsappBusinessAccountRepositoryService } from '@database/dynamodb/repository-services/whatsapp.business.account.service';
+import { WhatsappContactRepositoryService } from '@database/dynamodb/repository-services/whatsapp.contact.service';
 import { GoogleUserRepositoryService } from '@database/dynamodb/repository-services/google.user.service';
 import { FacebookUserRepositoryService } from '@database/dynamodb/repository-services/facebook.user.service';
 
@@ -59,6 +60,7 @@ const COEXISTENCE_SYNCS = [
 export class WhatsappAccountService {
   constructor(
     private readonly whatsappBusinessAccountRepositoryService: WhatsappBusinessAccountRepositoryService,
+    private readonly whatsappContactRepositoryService: WhatsappContactRepositoryService,
     private readonly googleUserRepository: GoogleUserRepositoryService,
     private readonly facebookUserRepository: FacebookUserRepositoryService,
     private readonly environmentService: EnvironmentService,
@@ -374,6 +376,49 @@ export class WhatsappAccountService {
     });
 
     return { success: true };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Saved contacts — read from `wa_contacts`, written by the webhook Lambdas
+  // ---------------------------------------------------------------------------
+
+  /**
+   * The number's saved contacts (its WhatsApp Business app address book).
+   * Meta only shares these for coexistence numbers, as `smb_app_state_sync`
+   * webhooks a few minutes after connect and on every later add/remove, so the
+   * list can be empty right after connecting. People who only messaged the
+   * number are never included.
+   */
+  async getContacts(accountId: string) {
+    const { account } = await this.requireConnection(accountId);
+
+    const rows =
+      await this.whatsappContactRepositoryService.getContactsByPhoneNumberId(
+        accountId,
+      );
+    const contacts = rows
+      .filter((r) => r?.phone)
+      .map((r) => ({
+        phone: r.phone as string,
+        full_name: r.full_name ?? null,
+        first_name: r.first_name ?? null,
+      }))
+      .sort((a, b) =>
+        (a.full_name || a.first_name || a.phone).localeCompare(
+          b.full_name || b.first_name || b.phone,
+          undefined,
+          { sensitivity: 'base' },
+        ),
+      );
+
+    return {
+      success: true,
+      count: contacts.length,
+      // false => the number has no WhatsApp Business app, so no saved contacts
+      // will ever arrive; true with an empty list => sync still in progress.
+      is_coexistence: account?.is_coexistence ?? false,
+      contacts,
+    };
   }
 
   // ---------------------------------------------------------------------------
