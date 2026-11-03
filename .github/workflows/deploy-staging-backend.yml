@@ -71,6 +71,7 @@ jobs:
           SHOPIFY_REDIRECT_URI='https://sb7dfmogp4.execute-api.us-west-1.amazonaws.com/repaly-test/shopify/callback'
           FRONTEND_URL='https://influex-staging-vikas.vercel.app'
           WHATSAPP_REDIRECT_URI='https://influex-staging-vikas.vercel.app/exchange-code/whatsapp'
+          WHATSAPP_BROADCAST_QUEUE_URL='https://sqs.us-west-1.amazonaws.com/225989378089/whatsapp-broadcast-queue'
           EOF
 
       - name: Build Docker image
