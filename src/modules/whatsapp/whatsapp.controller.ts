@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { WhatsappAccountService } from './whatsapp.service';
+import { WhatsappBroadcastService } from './whatsapp-broadcast.service';
 import { WhatsappOwnershipGuard } from '../auth/whatsapp-ownership.guard';
 import { WhatsappResourceType } from '../auth/whatsapp-resource-type.decorator';
 
@@ -25,7 +26,10 @@ import { WhatsappResourceType } from '../auth/whatsapp-resource-type.decorator';
 @Controller('whatsapp')
 @UseGuards(WhatsappOwnershipGuard)
 export class WhatsappController {
-  constructor(private readonly whatsappAccountService: WhatsappAccountService) {}
+  constructor(
+    private readonly whatsappAccountService: WhatsappAccountService,
+    private readonly whatsappBroadcastService: WhatsappBroadcastService,
+  ) {}
 
   // ---------------------------------------------------------------------------
   // Connection (onboarding) — user-scoped
@@ -166,6 +170,75 @@ export class WhatsappController {
       return await this.whatsappAccountService.sendTemplate(accountId, body);
     } catch (error) {
       throw this.toHttpException(error, 'Failed to send WhatsApp template');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Excel broadcasts (one batch = one uploaded Excel file)
+  // ---------------------------------------------------------------------------
+
+  @WhatsappResourceType('account')
+  @Post(':accountId/broadcasts/preview')
+  async previewBroadcast(
+    @Param('accountId') accountId: string,
+    @Body() body: { templateName: string; language: string; fileBase64: string },
+  ) {
+    try {
+      return await this.whatsappBroadcastService.preview(accountId, body);
+    } catch (error) {
+      throw this.toHttpException(error, 'Failed to preview WhatsApp broadcast');
+    }
+  }
+
+  @WhatsappResourceType('account')
+  @Post(':accountId/broadcasts/:batchId/send')
+  async sendBroadcast(
+    @Param('accountId') accountId: string,
+    @Param('batchId') batchId: string,
+  ) {
+    try {
+      return await this.whatsappBroadcastService.send(accountId, batchId);
+    } catch (error) {
+      throw this.toHttpException(error, 'Failed to send WhatsApp broadcast');
+    }
+  }
+
+  @WhatsappResourceType('account')
+  @Get(':accountId/broadcasts/:batchId')
+  async getBroadcast(
+    @Param('accountId') accountId: string,
+    @Param('batchId') batchId: string,
+  ) {
+    try {
+      return await this.whatsappBroadcastService.getBatch(accountId, batchId);
+    } catch (error) {
+      throw this.toHttpException(error, 'Failed to get WhatsApp broadcast');
+    }
+  }
+
+  @WhatsappResourceType('account')
+  @Get(':accountId/broadcasts/:batchId/recipients')
+  async getBroadcastRecipients(
+    @Param('accountId') accountId: string,
+    @Param('batchId') batchId: string,
+  ) {
+    try {
+      return await this.whatsappBroadcastService.getRecipients(accountId, batchId);
+    } catch (error) {
+      throw this.toHttpException(error, 'Failed to get WhatsApp broadcast recipients');
+    }
+  }
+
+  @WhatsappResourceType('account')
+  @Post(':accountId/broadcasts/:batchId/cancel')
+  async cancelBroadcast(
+    @Param('accountId') accountId: string,
+    @Param('batchId') batchId: string,
+  ) {
+    try {
+      return await this.whatsappBroadcastService.cancel(accountId, batchId);
+    } catch (error) {
+      throw this.toHttpException(error, 'Failed to cancel WhatsApp broadcast');
     }
   }
 

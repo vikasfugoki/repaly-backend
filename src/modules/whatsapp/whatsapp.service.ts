@@ -448,6 +448,44 @@ export class WhatsappAccountService {
     return { success: true, templates: body?.data ?? [] };
   }
 
+  /** Finds one template with its components, and refuses it unless it is approved. */
+  async getApprovedTemplate(accountId: string, name: string, language: string) {
+    const { accessToken, wabaId } = await this.requireConnection(accountId);
+
+    const url =
+      `${GRAPH_BASE}/${wabaId}/message_templates` +
+      `?name=${encodeURIComponent(name)}&fields=${this.TEMPLATE_FIELDS}&limit=100`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+    const body = await res.json();
+
+    if (!res.ok) {
+      throw Object.assign(
+        new Error(body?.error?.message || 'Failed to fetch template from WhatsApp'),
+        { code: 'META_API_ERROR', details: body?.error },
+      );
+    }
+
+    // `name=` matches loosely, so confirm an exact name + language match here.
+    const template = (body?.data ?? []).find(
+      (t: any) => t?.name === name && t?.language === language,
+    );
+    if (!template) {
+      throw Object.assign(new Error(`Template "${name}" (${language}) was not found.`), {
+        code: 'BAD_REQUEST',
+      });
+    }
+    if (String(template.status).toUpperCase() !== 'APPROVED') {
+      throw Object.assign(
+        new Error(
+          `Template "${name}" (${language}) is not approved (status: ${String(template.status).toLowerCase()}).`,
+        ),
+        { code: 'BAD_REQUEST' },
+      );
+    }
+
+    return template;
+  }
+
   async getTemplate(accountId: string, templateId: string) {
     const { accessToken } = await this.requireConnection(accountId);
 
