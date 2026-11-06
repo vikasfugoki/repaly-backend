@@ -117,6 +117,25 @@ export class WhatsappController {
   }
 
   @WhatsappResourceType('account')
+  @Get(':accountId/template-presets')
+  getTemplatePresets() {
+    return this.whatsappAccountService.getTemplatePresets();
+  }
+
+  @WhatsappResourceType('account')
+  @Post(':accountId/templates/from-preset')
+  async createTemplateFromPreset(
+    @Param('accountId') accountId: string,
+    @Body() body: { presetId: string; fields: Record<string, unknown> },
+  ) {
+    try {
+      return await this.whatsappAccountService.createTemplateFromPreset(accountId, body);
+    } catch (error) {
+      throw this.toHttpException(error, 'Failed to create WhatsApp template from preset');
+    }
+  }
+
+  @WhatsappResourceType('account')
   @Get(':accountId/templates/:templateId')
   async getTemplate(
     @Param('accountId') accountId: string,
