@@ -5,13 +5,30 @@ import { WhatsappBroadcastBatchRepositoryService } from '@database/dynamodb/repo
 import { WhatsappBroadcastRecipientRepositoryService } from '@database/dynamodb/repository-services/whatsapp.broadcast.recipient.service';
 import { EnvironmentService } from '../utils/environment/environment.service';
 import { WhatsappAccountService } from './whatsapp.service';
-import { parseBroadcastExcel } from './whatsapp-broadcast.excel';
+import {
+  BroadcastRecipient,
+  MAX_BROADCAST_NUMBERS,
+  parseBroadcastExcel,
+} from './whatsapp-broadcast.excel';
 
 const NUMBERS_PER_SQS_MESSAGE = 50;
 const VARIABLE_PATTERN = /\{\{\s*(\w+)\s*\}\}/g;
 
 function badRequest(message: string) {
   return Object.assign(new Error(message), { code: 'BAD_REQUEST' });
+}
+
+/** A contact picked in the contacts popup, as the contacts API returned it. */
+export interface SelectedContact {
+  phone: string;
+  name?: string | null;
+}
+
+interface BroadcastTemplate {
+  template: any; // the approved template as Meta returned it
+  bodyText: string;
+  hasVariable: boolean;
+  variableName: string | null;
 }
 
 /**
@@ -61,9 +78,10 @@ export function readBroadcastTemplate(template: any) {
 }
 
 /**
- * Bulk template sending from an Excel file. This backend only prepares the batch
- * and queues it; the worker Lambda in the AWS console does the actual sending and
- * writes each result to DynamoDB.
+ * Bulk template sending to the numbers of an Excel file or to contacts the user
+ * selected. This backend only prepares the batch and queues it; the worker
+ * Lambda in the AWS console does the actual sending and writes each result to
+ * DynamoDB.
  */
 @Injectable()
 export class WhatsappBroadcastService {
@@ -90,6 +108,72 @@ export class WhatsappBroadcastService {
     accountId: string,
     body: { templateName: string; language: string; fileBase64: string },
   ) {
+    const template = await this.getBroadcastTemplate(accountId, body);
+    const { valid, invalid } = await parseBroadcastExcel(
+      body.fileBase64,
+      template.hasVariable,
+    );
+
+    return {
+      ...(await this.saveDraft(accountId, body, template, valid)),
+      invalidCount: invalid.length,
+      invalidRows: invalid,
+    };
+  }
+
+  /**
+   * Same as `preview`, but the numbers are contacts the user selected. They come
+   * from our own contacts list, so only the count and missing names are checked.
+   */
+  async previewFromContacts(
+    accountId: string,
+    body: {
+      templateName: string;
+      language: string;
+      contacts: SelectedContact[];
+    },
+  ) {
+    const contacts = Array.isArray(body?.contacts) ? body.contacts : [];
+    if (contacts.length === 0) {
+      throw badRequest('Select at least one contact.');
+    }
+    if (contacts.length > MAX_BROADCAST_NUMBERS) {
+      throw badRequest(
+        `You can select at most ${MAX_BROADCAST_NUMBERS} contacts.`,
+      );
+    }
+
+    const template = await this.getBroadcastTemplate(accountId, body);
+
+    // Meta rejects a template whose name variable is empty, so skip those contacts.
+    const valid: BroadcastRecipient[] = [];
+    const invalid: { phone: string; reason: string }[] = [];
+    for (const contact of contacts) {
+      const name = (contact.name ?? '').trim();
+      if (template.hasVariable && !name) {
+        invalid.push({ phone: contact.phone, reason: 'Name is missing' });
+      } else {
+        valid.push({ number: contact.phone, name });
+      }
+    }
+    if (valid.length === 0) {
+      throw badRequest(
+        'This template needs a name, and none of the selected contacts has one.',
+      );
+    }
+
+    return {
+      ...(await this.saveDraft(accountId, body, template, valid)),
+      invalidCount: invalid.length,
+      invalidContacts: invalid,
+    };
+  }
+
+  /** Fetches the approved template and checks the worker can send it. */
+  private async getBroadcastTemplate(
+    accountId: string,
+    body: { templateName: string; language: string },
+  ): Promise<BroadcastTemplate> {
     if (!body?.templateName || !body?.language) {
       throw badRequest('templateName and language are required.');
     }
@@ -99,13 +183,16 @@ export class WhatsappBroadcastService {
       body.templateName,
       body.language,
     );
-    const { bodyText, hasVariable, variableName } =
-      readBroadcastTemplate(template);
-    const { valid, invalid } = await parseBroadcastExcel(
-      body.fileBase64,
-      hasVariable,
-    );
+    return { template, ...readBroadcastTemplate(template) };
+  }
 
+  /** Saves the numbers and a `draft` batch for them. */
+  private async saveDraft(
+    accountId: string,
+    body: { templateName: string; language: string },
+    { template, bodyText, hasVariable, variableName }: BroadcastTemplate,
+    valid: BroadcastRecipient[],
+  ) {
     const batch_id = randomUUID();
 
     // Numbers first: if this fails midway, no batch exists that could be sent.
@@ -135,8 +222,6 @@ export class WhatsappBroadcastService {
       success: true,
       batchId: batch_id,
       validCount: valid.length,
-      invalidCount: invalid.length,
-      invalidRows: invalid,
       sampleMessage: bodyText.replace(VARIABLE_PATTERN, () => valid[0].name),
       template: {
         name: template.name,

@@ -13,7 +13,10 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { WhatsappAccountService } from './whatsapp.service';
-import { WhatsappBroadcastService } from './whatsapp-broadcast.service';
+import {
+  SelectedContact,
+  WhatsappBroadcastService,
+} from './whatsapp-broadcast.service';
 import { WhatsappOwnershipGuard } from '../auth/whatsapp-ownership.guard';
 import { WhatsappResourceType } from '../auth/whatsapp-resource-type.decorator';
 
@@ -193,7 +196,7 @@ export class WhatsappController {
   }
 
   // ---------------------------------------------------------------------------
-  // Excel broadcasts (one batch = one uploaded Excel file)
+  // Broadcasts (one batch = one uploaded Excel file or one contact selection)
   // ---------------------------------------------------------------------------
 
   @WhatsappResourceType('account')
@@ -206,6 +209,22 @@ export class WhatsappController {
       return await this.whatsappBroadcastService.preview(accountId, body);
     } catch (error) {
       throw this.toHttpException(error, 'Failed to preview WhatsApp broadcast');
+    }
+  }
+
+  @WhatsappResourceType('account')
+  @Post(':accountId/broadcasts/from-contacts')
+  async previewBroadcastFromContacts(
+    @Param('accountId') accountId: string,
+    @Body() body: { templateName: string; language: string; contacts: SelectedContact[] },
+  ) {
+    try {
+      return await this.whatsappBroadcastService.previewFromContacts(accountId, body);
+    } catch (error) {
+      throw this.toHttpException(
+        error,
+        'Failed to preview WhatsApp broadcast from contacts',
+      );
     }
   }
 
