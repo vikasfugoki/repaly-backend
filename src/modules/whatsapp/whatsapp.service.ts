@@ -5,6 +5,7 @@ import { WhatsappContactRepositoryService } from '@database/dynamodb/repository-
 import { GoogleUserRepositoryService } from '@database/dynamodb/repository-services/google.user.service';
 import { FacebookUserRepositoryService } from '@database/dynamodb/repository-services/facebook.user.service';
 import { buildPresetTemplate, listTemplatePresets } from './whatsapp-template-presets';
+import { listAiReplyFields, parseAiReply, toPublicAiReply } from './whatsapp-ai-reply';
 
 const GRAPH_VERSION = 'v23.0';
 const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_VERSION}`;
@@ -420,6 +421,44 @@ export class WhatsappAccountService {
       is_coexistence: account?.is_coexistence ?? false,
       contacts,
     };
+  }
+
+  // ---------------------------------------------------------------------------
+  // AI auto-reply settings — saved on the account row, read by the
+  // `whatsapp_processor` Lambda when a customer messages the number
+  // ---------------------------------------------------------------------------
+
+  /** The seller's saved AI reply settings and the form fields to show. */
+  async getAiReply(accountId: string) {
+    const account =
+      await this.whatsappBusinessAccountRepositoryService.getAccount(accountId);
+    if (!account) {
+      throw Object.assign(
+        new Error(`WhatsApp account ${accountId} is not connected`),
+        { code: 'WHATSAPP_NOT_CONNECTED' },
+      );
+    }
+    return {
+      success: true,
+      fields: listAiReplyFields(),
+      ai_reply: toPublicAiReply(account.ai_reply),
+    };
+  }
+
+  /** Replaces the seller's AI reply settings. Nothing else on the row changes. */
+  async saveAiReply(accountId: string, body: unknown) {
+    const aiReply = parseAiReply(body);
+    const saved = await this.whatsappBusinessAccountRepositoryService.setAiReply(
+      accountId,
+      aiReply,
+    );
+    if (!saved) {
+      throw Object.assign(
+        new Error(`WhatsApp account ${accountId} is not connected`),
+        { code: 'WHATSAPP_NOT_CONNECTED' },
+      );
+    }
+    return { success: true, ai_reply: toPublicAiReply(aiReply) };
   }
 
   // ---------------------------------------------------------------------------

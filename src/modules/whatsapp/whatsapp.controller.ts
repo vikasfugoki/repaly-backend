@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Param,
   Post,
+  Put,
   Query,
   Req,
   UseGuards,
@@ -102,6 +103,30 @@ export class WhatsappController {
       return await this.whatsappAccountService.getContacts(accountId);
     } catch (error) {
       throw this.toHttpException(error, 'Failed to get WhatsApp contacts');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // AI auto-reply settings
+  // ---------------------------------------------------------------------------
+
+  @WhatsappResourceType('account')
+  @Get(':accountId/ai-reply')
+  async getAiReply(@Param('accountId') accountId: string) {
+    try {
+      return await this.whatsappAccountService.getAiReply(accountId);
+    } catch (error) {
+      throw this.toHttpException(error, 'Failed to get WhatsApp AI reply settings');
+    }
+  }
+
+  @WhatsappResourceType('account')
+  @Put(':accountId/ai-reply')
+  async saveAiReply(@Param('accountId') accountId: string, @Body() body: unknown) {
+    try {
+      return await this.whatsappAccountService.saveAiReply(accountId, body);
+    } catch (error) {
+      throw this.toHttpException(error, 'Failed to save WhatsApp AI reply settings');
     }
   }
 
