@@ -4,6 +4,8 @@ import { WhatsappBusinessAccountRepositoryService } from '@database/dynamodb/rep
 import { WhatsappContactRepositoryService } from '@database/dynamodb/repository-services/whatsapp.contact.service';
 import { GoogleUserRepositoryService } from '@database/dynamodb/repository-services/google.user.service';
 import { FacebookUserRepositoryService } from '@database/dynamodb/repository-services/facebook.user.service';
+import { buildPresetTemplate, listTemplatePresets } from './whatsapp-template-presets';
+import { listAiReplyFields, parseAiReply, toPublicAiReply } from './whatsapp-ai-reply';
 
 const GRAPH_VERSION = 'v23.0';
 const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_VERSION}`;
@@ -422,6 +424,44 @@ export class WhatsappAccountService {
   }
 
   // ---------------------------------------------------------------------------
+  // AI auto-reply settings — saved on the account row, read by the
+  // `whatsapp_processor` Lambda when a customer messages the number
+  // ---------------------------------------------------------------------------
+
+  /** The seller's saved AI reply settings and the form fields to show. */
+  async getAiReply(accountId: string) {
+    const account =
+      await this.whatsappBusinessAccountRepositoryService.getAccount(accountId);
+    if (!account) {
+      throw Object.assign(
+        new Error(`WhatsApp account ${accountId} is not connected`),
+        { code: 'WHATSAPP_NOT_CONNECTED' },
+      );
+    }
+    return {
+      success: true,
+      fields: listAiReplyFields(),
+      ai_reply: toPublicAiReply(account.ai_reply),
+    };
+  }
+
+  /** Replaces the seller's AI reply settings. Nothing else on the row changes. */
+  async saveAiReply(accountId: string, body: unknown) {
+    const aiReply = parseAiReply(body);
+    const saved = await this.whatsappBusinessAccountRepositoryService.setAiReply(
+      accountId,
+      aiReply,
+    );
+    if (!saved) {
+      throw Object.assign(
+        new Error(`WhatsApp account ${accountId} is not connected`),
+        { code: 'WHATSAPP_NOT_CONNECTED' },
+      );
+    }
+    return { success: true, ai_reply: toPublicAiReply(aiReply) };
+  }
+
+  // ---------------------------------------------------------------------------
   // Message templates — sourced statelessly from Meta, nothing mirrored in DDB
   // ---------------------------------------------------------------------------
 
@@ -531,6 +571,25 @@ export class WhatsappAccountService {
     }
 
     return { success: true, template: result };
+  }
+
+  getTemplatePresets() {
+    return { success: true, presets: listTemplatePresets() };
+  }
+
+  /** Creates a template from a ready-made preset; the user only fills its blanks. */
+  async createTemplateFromPreset(
+    accountId: string,
+    body: { presetId: string; fields: Record<string, unknown> },
+  ) {
+    const templateData = buildPresetTemplate(body?.presetId, body?.fields);
+    const { template } = await this.createTemplate(accountId, templateData);
+
+    // Meta returns only id, status and category, so add the name needed to send it.
+    return {
+      success: true,
+      template: { name: templateData.name, language: templateData.language, ...template },
+    };
   }
 
   async deleteTemplate(accountId: string, templateId: string, templateName: string) {
