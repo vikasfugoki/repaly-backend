@@ -81,7 +81,7 @@ async function bootstrap() {
   });
 
   // Explicitly tell Express to parse JSON body
-  expressApp.use(express.json());
+  expressApp.use(express.json({ limit: '2mb' }));
 
   // Enable CORS
   app.enableCors({

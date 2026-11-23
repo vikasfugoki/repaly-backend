@@ -126,6 +126,42 @@ this) · `502` with Meta's message (e.g. already registered / wrong PIN).
 
 ---
 
+## 5a. Saved contacts
+
+`GET /whatsapp/:accountId/contacts`
+
+Intent: the "Contacts" button. Returns every contact saved in the number's
+WhatsApp Business app address book, in one response (no pagination), sorted by
+name. Only saved contacts — people who merely messaged the number are not
+included. Read from our DB, which the webhook pipeline keeps up to date as
+contacts are added/removed in the app, so calling it again always gives the
+latest list.
+
+```jsonc
+// response 200
+{
+  "success": true,
+  "count": 2,
+  "is_coexistence": true,
+  "contacts": [
+    { "phone": "918888822222", "full_name": "Priya", "first_name": "Priya" },
+    { "phone": "919999911111", "full_name": "Rahul Sharma", "first_name": "Rahul" }
+  ]
+}
+```
+
+- `phone` is digits only with country code — use it as-is for `to` when sending.
+- Display name: `full_name` → `first_name` → `phone` (names can be `null`).
+- Empty `contacts`:
+  - `is_coexistence: false` → number is not on the WhatsApp Business app, so
+    saved contacts are not available for it.
+  - `is_coexistence: true` → Meta is still syncing (takes a few minutes after
+    connect); show "syncing, try again shortly".
+
+Errors: `400` not connected · `401/403` not your account · `500` unexpected.
+
+---
+
 ## 6. Templates
 
 All template data is read **live from Meta** — nothing is cached backend-side.

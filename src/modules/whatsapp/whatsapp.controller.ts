@@ -7,12 +7,17 @@ import {
   HttpStatus,
   Param,
   Post,
+  Put,
   Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { WhatsappAccountService } from './whatsapp.service';
+import {
+  SelectedContact,
+  WhatsappBroadcastService,
+} from './whatsapp-broadcast.service';
 import { WhatsappOwnershipGuard } from '../auth/whatsapp-ownership.guard';
 import { WhatsappResourceType } from '../auth/whatsapp-resource-type.decorator';
 
@@ -25,7 +30,10 @@ import { WhatsappResourceType } from '../auth/whatsapp-resource-type.decorator';
 @Controller('whatsapp')
 @UseGuards(WhatsappOwnershipGuard)
 export class WhatsappController {
-  constructor(private readonly whatsappAccountService: WhatsappAccountService) {}
+  constructor(
+    private readonly whatsappAccountService: WhatsappAccountService,
+    private readonly whatsappBroadcastService: WhatsappBroadcastService,
+  ) {}
 
   // ---------------------------------------------------------------------------
   // Connection (onboarding) — user-scoped
@@ -85,6 +93,44 @@ export class WhatsappController {
   }
 
   // ---------------------------------------------------------------------------
+  // Saved contacts
+  // ---------------------------------------------------------------------------
+
+  @WhatsappResourceType('account')
+  @Get(':accountId/contacts')
+  async getContacts(@Param('accountId') accountId: string) {
+    try {
+      return await this.whatsappAccountService.getContacts(accountId);
+    } catch (error) {
+      throw this.toHttpException(error, 'Failed to get WhatsApp contacts');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // AI auto-reply settings
+  // ---------------------------------------------------------------------------
+
+  @WhatsappResourceType('account')
+  @Get(':accountId/ai-reply')
+  async getAiReply(@Param('accountId') accountId: string) {
+    try {
+      return await this.whatsappAccountService.getAiReply(accountId);
+    } catch (error) {
+      throw this.toHttpException(error, 'Failed to get WhatsApp AI reply settings');
+    }
+  }
+
+  @WhatsappResourceType('account')
+  @Put(':accountId/ai-reply')
+  async saveAiReply(@Param('accountId') accountId: string, @Body() body: unknown) {
+    try {
+      return await this.whatsappAccountService.saveAiReply(accountId, body);
+    } catch (error) {
+      throw this.toHttpException(error, 'Failed to save WhatsApp AI reply settings');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Message templates
   // ---------------------------------------------------------------------------
 
@@ -95,6 +141,25 @@ export class WhatsappController {
       return await this.whatsappAccountService.getTemplates(accountId);
     } catch (error) {
       throw this.toHttpException(error, 'Failed to get WhatsApp templates');
+    }
+  }
+
+  @WhatsappResourceType('account')
+  @Get(':accountId/template-presets')
+  getTemplatePresets() {
+    return this.whatsappAccountService.getTemplatePresets();
+  }
+
+  @WhatsappResourceType('account')
+  @Post(':accountId/templates/from-preset')
+  async createTemplateFromPreset(
+    @Param('accountId') accountId: string,
+    @Body() body: { presetId: string; fields: Record<string, unknown> },
+  ) {
+    try {
+      return await this.whatsappAccountService.createTemplateFromPreset(accountId, body);
+    } catch (error) {
+      throw this.toHttpException(error, 'Failed to create WhatsApp template from preset');
     }
   }
 
@@ -152,6 +217,91 @@ export class WhatsappController {
       return await this.whatsappAccountService.sendTemplate(accountId, body);
     } catch (error) {
       throw this.toHttpException(error, 'Failed to send WhatsApp template');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Broadcasts (one batch = one uploaded Excel file or one contact selection)
+  // ---------------------------------------------------------------------------
+
+  @WhatsappResourceType('account')
+  @Post(':accountId/broadcasts/preview')
+  async previewBroadcast(
+    @Param('accountId') accountId: string,
+    @Body() body: { templateName: string; language: string; fileBase64: string },
+  ) {
+    try {
+      return await this.whatsappBroadcastService.preview(accountId, body);
+    } catch (error) {
+      throw this.toHttpException(error, 'Failed to preview WhatsApp broadcast');
+    }
+  }
+
+  @WhatsappResourceType('account')
+  @Post(':accountId/broadcasts/from-contacts')
+  async previewBroadcastFromContacts(
+    @Param('accountId') accountId: string,
+    @Body() body: { templateName: string; language: string; contacts: SelectedContact[] },
+  ) {
+    try {
+      return await this.whatsappBroadcastService.previewFromContacts(accountId, body);
+    } catch (error) {
+      throw this.toHttpException(
+        error,
+        'Failed to preview WhatsApp broadcast from contacts',
+      );
+    }
+  }
+
+  @WhatsappResourceType('account')
+  @Post(':accountId/broadcasts/:batchId/send')
+  async sendBroadcast(
+    @Param('accountId') accountId: string,
+    @Param('batchId') batchId: string,
+  ) {
+    try {
+      return await this.whatsappBroadcastService.send(accountId, batchId);
+    } catch (error) {
+      throw this.toHttpException(error, 'Failed to send WhatsApp broadcast');
+    }
+  }
+
+  @WhatsappResourceType('account')
+  @Get(':accountId/broadcasts/:batchId')
+  async getBroadcast(
+    @Param('accountId') accountId: string,
+    @Param('batchId') batchId: string,
+  ) {
+    try {
+      return await this.whatsappBroadcastService.getBatch(accountId, batchId);
+    } catch (error) {
+      throw this.toHttpException(error, 'Failed to get WhatsApp broadcast');
+    }
+  }
+
+  @WhatsappResourceType('account')
+  @Get(':accountId/broadcasts/:batchId/recipients')
+  async getBroadcastRecipients(
+    @Param('accountId') accountId: string,
+    @Param('batchId') batchId: string,
+  ) {
+    try {
+      return await this.whatsappBroadcastService.getRecipients(accountId, batchId);
+    } catch (error) {
+      throw this.toHttpException(error, 'Failed to get WhatsApp broadcast recipients');
+    }
+  }
+
+  @WhatsappResourceType('account')
+  @Post(':accountId/broadcasts/:batchId/cancel')
+  async cancelBroadcast(
+    @Param('accountId') accountId: string,
+    @Param('batchId') batchId: string,
+  ) {
+    try {
+      return await this.whatsappBroadcastService.cancel(accountId, batchId);
+    } catch (error) {
+      throw this.toHttpException(error, 'Failed to cancel WhatsApp broadcast');
     }
   }
 

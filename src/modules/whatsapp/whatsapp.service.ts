@@ -1,8 +1,11 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { EnvironmentService } from '../utils/environment/environment.service';
 import { WhatsappBusinessAccountRepositoryService } from '@database/dynamodb/repository-services/whatsapp.business.account.service';
+import { WhatsappContactRepositoryService } from '@database/dynamodb/repository-services/whatsapp.contact.service';
 import { GoogleUserRepositoryService } from '@database/dynamodb/repository-services/google.user.service';
 import { FacebookUserRepositoryService } from '@database/dynamodb/repository-services/facebook.user.service';
+import { buildPresetTemplate, listTemplatePresets } from './whatsapp-template-presets';
+import { listAiReplyFields, parseAiReply, toPublicAiReply } from './whatsapp-ai-reply';
 
 const GRAPH_VERSION = 'v23.0';
 const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_VERSION}`;
@@ -59,6 +62,7 @@ const COEXISTENCE_SYNCS = [
 export class WhatsappAccountService {
   constructor(
     private readonly whatsappBusinessAccountRepositoryService: WhatsappBusinessAccountRepositoryService,
+    private readonly whatsappContactRepositoryService: WhatsappContactRepositoryService,
     private readonly googleUserRepository: GoogleUserRepositoryService,
     private readonly facebookUserRepository: FacebookUserRepositoryService,
     private readonly environmentService: EnvironmentService,
@@ -377,6 +381,87 @@ export class WhatsappAccountService {
   }
 
   // ---------------------------------------------------------------------------
+  // Saved contacts — read from `wa_contacts`, written by the webhook Lambdas
+  // ---------------------------------------------------------------------------
+
+  /**
+   * The number's saved contacts (its WhatsApp Business app address book).
+   * Meta only shares these for coexistence numbers, as `smb_app_state_sync`
+   * webhooks a few minutes after connect and on every later add/remove, so the
+   * list can be empty right after connecting. People who only messaged the
+   * number are never included.
+   */
+  async getContacts(accountId: string) {
+    const { account } = await this.requireConnection(accountId);
+
+    const rows =
+      await this.whatsappContactRepositoryService.getContactsByPhoneNumberId(
+        accountId,
+      );
+    const contacts = rows
+      .filter((r) => r?.phone)
+      .map((r) => ({
+        phone: r.phone as string,
+        full_name: r.full_name ?? null,
+        first_name: r.first_name ?? null,
+      }))
+      .sort((a, b) =>
+        (a.full_name || a.first_name || a.phone).localeCompare(
+          b.full_name || b.first_name || b.phone,
+          undefined,
+          { sensitivity: 'base' },
+        ),
+      );
+
+    return {
+      success: true,
+      count: contacts.length,
+      // false => the number has no WhatsApp Business app, so no saved contacts
+      // will ever arrive; true with an empty list => sync still in progress.
+      is_coexistence: account?.is_coexistence ?? false,
+      contacts,
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // AI auto-reply settings — saved on the account row, read by the
+  // `whatsapp_processor` Lambda when a customer messages the number
+  // ---------------------------------------------------------------------------
+
+  /** The seller's saved AI reply settings and the form fields to show. */
+  async getAiReply(accountId: string) {
+    const account =
+      await this.whatsappBusinessAccountRepositoryService.getAccount(accountId);
+    if (!account) {
+      throw Object.assign(
+        new Error(`WhatsApp account ${accountId} is not connected`),
+        { code: 'WHATSAPP_NOT_CONNECTED' },
+      );
+    }
+    return {
+      success: true,
+      fields: listAiReplyFields(),
+      ai_reply: toPublicAiReply(account.ai_reply),
+    };
+  }
+
+  /** Replaces the seller's AI reply settings. Nothing else on the row changes. */
+  async saveAiReply(accountId: string, body: unknown) {
+    const aiReply = parseAiReply(body);
+    const saved = await this.whatsappBusinessAccountRepositoryService.setAiReply(
+      accountId,
+      aiReply,
+    );
+    if (!saved) {
+      throw Object.assign(
+        new Error(`WhatsApp account ${accountId} is not connected`),
+        { code: 'WHATSAPP_NOT_CONNECTED' },
+      );
+    }
+    return { success: true, ai_reply: toPublicAiReply(aiReply) };
+  }
+
+  // ---------------------------------------------------------------------------
   // Message templates — sourced statelessly from Meta, nothing mirrored in DDB
   // ---------------------------------------------------------------------------
 
@@ -401,6 +486,44 @@ export class WhatsappAccountService {
     }
 
     return { success: true, templates: body?.data ?? [] };
+  }
+
+  /** Finds one template with its components, and refuses it unless it is approved. */
+  async getApprovedTemplate(accountId: string, name: string, language: string) {
+    const { accessToken, wabaId } = await this.requireConnection(accountId);
+
+    const url =
+      `${GRAPH_BASE}/${wabaId}/message_templates` +
+      `?name=${encodeURIComponent(name)}&fields=${this.TEMPLATE_FIELDS}&limit=100`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+    const body = await res.json();
+
+    if (!res.ok) {
+      throw Object.assign(
+        new Error(body?.error?.message || 'Failed to fetch template from WhatsApp'),
+        { code: 'META_API_ERROR', details: body?.error },
+      );
+    }
+
+    // `name=` matches loosely, so confirm an exact name + language match here.
+    const template = (body?.data ?? []).find(
+      (t: any) => t?.name === name && t?.language === language,
+    );
+    if (!template) {
+      throw Object.assign(new Error(`Template "${name}" (${language}) was not found.`), {
+        code: 'BAD_REQUEST',
+      });
+    }
+    if (String(template.status).toUpperCase() !== 'APPROVED') {
+      throw Object.assign(
+        new Error(
+          `Template "${name}" (${language}) is not approved (status: ${String(template.status).toLowerCase()}).`,
+        ),
+        { code: 'BAD_REQUEST' },
+      );
+    }
+
+    return template;
   }
 
   async getTemplate(accountId: string, templateId: string) {
@@ -448,6 +571,25 @@ export class WhatsappAccountService {
     }
 
     return { success: true, template: result };
+  }
+
+  getTemplatePresets() {
+    return { success: true, presets: listTemplatePresets() };
+  }
+
+  /** Creates a template from a ready-made preset; the user only fills its blanks. */
+  async createTemplateFromPreset(
+    accountId: string,
+    body: { presetId: string; fields: Record<string, unknown> },
+  ) {
+    const templateData = buildPresetTemplate(body?.presetId, body?.fields);
+    const { template } = await this.createTemplate(accountId, templateData);
+
+    // Meta returns only id, status and category, so add the name needed to send it.
+    return {
+      success: true,
+      template: { name: templateData.name, language: templateData.language, ...template },
+    };
   }
 
   async deleteTemplate(accountId: string, templateId: string, templateName: string) {

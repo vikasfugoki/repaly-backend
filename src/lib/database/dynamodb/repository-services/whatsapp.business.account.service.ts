@@ -111,6 +111,36 @@ export class WhatsappBusinessAccountRepositoryService {
     }
   }
 
+  /**
+   * Sets only the `ai_reply` map, so the access token and every field the
+   * connect flow wrote stay as they are. Returns false instead of creating a
+   * new row when the number is not connected (e.g. disconnected meanwhile).
+   */
+  async setAiReply(id: string, aiReply: Record<string, unknown>): Promise<boolean> {
+    const params = new UpdateCommand({
+      TableName: this.tableName,
+      Key: { id },
+      UpdateExpression: 'SET ai_reply = :ai_reply, updated_time = :updated_time',
+      ConditionExpression: 'attribute_exists(#id)',
+      ExpressionAttributeNames: { '#id': 'id' },
+      ExpressionAttributeValues: {
+        ':ai_reply': aiReply,
+        ':updated_time': new Date().toISOString(),
+      },
+    });
+
+    try {
+      await this.dynamoDbService.dynamoDBDocumentClient.send(params);
+      return true;
+    } catch (error) {
+      if ((error as Error)?.name === 'ConditionalCheckFailedException') {
+        return false;
+      }
+      console.error('Error saving WhatsApp AI reply settings:', error);
+      throw new Error('Failed to save WhatsApp AI reply settings');
+    }
+  }
+
   getAllAccount() {
     const params = new ScanCommand({
       TableName: this.tableName,
