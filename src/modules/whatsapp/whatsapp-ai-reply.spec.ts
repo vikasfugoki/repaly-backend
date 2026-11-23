@@ -70,8 +70,46 @@ describe('parseAiReply', () => {
       parseAiReply({ enabled: false, business_name: 'a'.repeat(101) }, NOW),
     ).toThrow('Business name must be at most 100 characters.');
     expect(
-      parseAiReply({ enabled: false, about: 'a'.repeat(1000) }, NOW).about,
-    ).toHaveLength(1000);
+      parseAiReply({ enabled: false, about: 'a'.repeat(100000) }, NOW).about,
+    ).toHaveLength(100000);
+    expect(() =>
+      parseAiReply({ enabled: false, about: 'a'.repeat(100001) }, NOW),
+    ).toThrow('About your business must be at most 100000 characters.');
+  });
+
+  it('rejects details that together are too big for the database row', () => {
+    const body = {
+      enabled: false,
+      about: 'a'.repeat(100000),
+      products: 'a'.repeat(100000),
+      timings: 'a'.repeat(100000),
+      address: 'a',
+    };
+    expect(() => parseAiReply(body, NOW)).toThrow(
+      'All details together are too long to save. Please shorten some of them.',
+    );
+    // Non-English text takes more bytes per character: 110,000 Hindi
+    // characters are 330,000 bytes.
+    expect(() =>
+      parseAiReply(
+        {
+          enabled: false,
+          about: 'क'.repeat(60000),
+          products: 'क'.repeat(50000),
+        },
+        NOW,
+      ),
+    ).toThrow('All details together are too long to save.');
+    expect(
+      parseAiReply(
+        {
+          enabled: false,
+          about: 'a'.repeat(100000),
+          products: 'a'.repeat(100000),
+        },
+        NOW,
+      ).products,
+    ).toHaveLength(100000);
   });
 
   it('cannot be turned on with no details, but can be saved off', () => {

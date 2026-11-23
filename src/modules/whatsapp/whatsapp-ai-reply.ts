@@ -21,14 +21,19 @@ export interface StoredAiReply {
 
 const FIELDS: AiReplyField[] = [
   { key: 'business_name', label: 'Business name', placeholder: 'Your business name', maxLength: 100 },
-  { key: 'about', label: 'About your business', placeholder: 'What your business does', maxLength: 1000 },
-  { key: 'products', label: 'Products and prices', placeholder: 'Products you sell and their prices', maxLength: 1000 },
-  { key: 'timings', label: 'Business hours', placeholder: 'Days and hours you are open', maxLength: 1000 },
-  { key: 'address', label: 'Address', placeholder: 'Shop or pickup address', maxLength: 1000 },
+  { key: 'about', label: 'About your business', placeholder: 'What your business does', maxLength: 100000 },
+  { key: 'products', label: 'Products and prices', placeholder: 'Products you sell and their prices', maxLength: 100000 },
+  { key: 'timings', label: 'Business hours', placeholder: 'Days and hours you are open', maxLength: 100000 },
+  { key: 'address', label: 'Address', placeholder: 'Shop or pickup address', maxLength: 100000 },
   { key: 'website', label: 'Website or Instagram link', placeholder: 'Link customers can visit', maxLength: 200 },
-  { key: 'policies', label: 'Delivery, return and payment policy', placeholder: 'Delivery, return and payment rules', maxLength: 1000 },
-  { key: 'extra_info', label: 'Anything else', placeholder: 'Other things customers often ask', maxLength: 1000 },
+  { key: 'policies', label: 'Delivery, return and payment policy', placeholder: 'Delivery, return and payment rules', maxLength: 100000 },
+  { key: 'extra_info', label: 'Anything else', placeholder: 'Other things customers often ask', maxLength: 100000 },
 ];
+
+// DynamoDB rejects an item over 400 KB, and the account row also holds the
+// access token and connect details. Each field may be up to its own limit,
+// but all of them together must fit in this many UTF-8 bytes.
+export const MAX_TOTAL_BYTES = 300_000;
 
 // The GET response includes this, so a form that sends the object back as it
 // is must not be rejected for it. The backend always sets it itself.
@@ -84,6 +89,18 @@ export function parseAiReply(
       );
     }
     if (value) saved[field.key] = value;
+  }
+
+  const totalBytes = FIELDS.reduce((sum, field) => {
+    const value = saved[field.key];
+    return typeof value === 'string'
+      ? sum + Buffer.byteLength(value, 'utf8')
+      : sum;
+  }, 0);
+  if (totalBytes > MAX_TOTAL_BYTES) {
+    throw badRequest(
+      'All details together are too long to save. Please shorten some of them.',
+    );
   }
 
   // The Lambda sends no AI reply without any business info, so "on" would be a lie.
