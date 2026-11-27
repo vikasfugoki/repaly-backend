@@ -7,7 +7,7 @@ import {
 import {
   Injectable,
   BadRequestException,
-  InternalServerErrorException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InstagramApiService } from '../utils/instagram/api.service';
 import { InstagramAccountRepositoryService } from '@database/dynamodb/repository-services/instagram.account.service';
@@ -1097,6 +1097,69 @@ export class InstagramAccountService {
   //   }
   // }
 
+  // Refresh the stored long-lived token when it has less than this much life left.
+  private readonly FB_TOKEN_REFRESH_WINDOW_SECONDS = 30 * 24 * 60 * 60;
+
+  /**
+   * Return a usable Facebook token for the account, refreshing it first when
+   * it is within FB_TOKEN_REFRESH_WINDOW_SECONDS of expiry (or has no
+   * expires_at, i.e. a row stored before expiry tracking existed).
+   * - Meta says the token is dead (code 190): throw 401 FB_TOKEN_INVALID so the
+   *   frontend can ask the user to reconnect.
+   * - Any other refresh failure: log it and keep using the stored token.
+   */
+  async refreshFacebookToken(accountId: string) {
+    const row = (
+      await this.instagramFbAccessTokenService.getFacebookDetails(accountId)
+    )?.Item;
+    if (!row?.access_token) {
+      throw new BadRequestException(
+        'Facebook is not connected for this account',
+      );
+    }
+
+    const nowSec = Math.floor(Date.now() / 1000);
+    const secondsLeft = row.expires_at ? row.expires_at - nowSec : 0;
+
+    if (secondsLeft > this.FB_TOKEN_REFRESH_WINDOW_SECONDS) {
+      return {
+        refreshed: false,
+        access_token: row.access_token,
+        expires_at: row.expires_at,
+      };
+    }
+
+    try {
+      const fresh = await this.facebookApiService.exchangeForLongLivedToken(
+        row.access_token,
+      );
+      await this.instagramFbAccessTokenService.insertFacebookDetails({
+        id: accountId,
+        access_token: fresh.access_token,
+        expires_at: fresh.expires_at,
+        updated_at: new Date().toISOString(),
+      });
+      console.log('Facebook token refreshed for account:', accountId);
+      return { refreshed: true, ...fresh };
+    } catch (error: any) {
+      if (error?.response?.data?.error?.code === 190) {
+        throw new UnauthorizedException({
+          code: 'FB_TOKEN_INVALID',
+          message: 'Facebook connection expired. Please reconnect Facebook.',
+        });
+      }
+      console.error(
+        'Facebook token refresh failed, using stored token:',
+        error?.response?.data || error?.message,
+      );
+      return {
+        refreshed: false,
+        access_token: row.access_token,
+        expires_at: row.expires_at,
+      };
+    }
+  }
+
   async updateAdsOnTable(accountId: string, input: Record<string, any>) {
     try {
       const isAccountIdPresent =
@@ -1105,35 +1168,32 @@ export class InstagramAccountService {
       console.log('isAccountIdPresent:', isAccountIdPresent);
 
       // 1. Get access token
-      if (!isAccountIdPresent) {
-        console.log('Account ID not present, input code:', input);
-        if (!input?.code) {
-          throw new BadRequestException(
-            'Missing authorization code for new account',
-          );
-        }
-
+      // A fresh authorization code always wins: on (re)connect we exchange it for a
+      // new long-lived token and overwrite whatever is stored, so an expired or
+      // invalidated token never blocks a reconnect.
+      if (input?.code) {
         const tokenResponse = await this.facebookApiService.getAccessTokenAds(
           input.code,
         );
         accessToken = tokenResponse.access_token;
+        const tokenRecord = {
+          id: accountId,
+          access_token: accessToken,
+          expires_at: tokenResponse.expires_at,
+          updated_at: new Date().toISOString(),
+        };
 
-        // await this.instagramFbAccessTokenService.insertFacebookDetails({
-        //   id: accountId,
-        //   access_token: accessToken,
-        // });
+        await this.instagramFbAccessTokenService.insertFacebookDetails(tokenRecord);
+        console.log('New long-lived Facebook token stored for account:', accountId);
+      } else if (!isAccountIdPresent) {
+        console.log('Account ID not present and no code given, input:', input);
+        throw new BadRequestException(
+          'Missing authorization code for new account',
+        );
       } else {
-        const facebookItem =
-          await this.instagramFbAccessTokenService.getFacebookDetails(
-            accountId,
-          );
-        accessToken = facebookItem?.Item?.access_token;
-
-        if (!accessToken) {
-          throw new InternalServerErrorException(
-            'Access token not found for existing account',
-          );
-        }
+        // Stored token: refresh it first if it is close to expiry.
+        const token = await this.refreshFacebookToken(accountId);
+        accessToken = token.access_token;
       }
 
       let adsProcessed: number = 0;
@@ -1218,12 +1278,9 @@ export class InstagramAccountService {
         }
       }
 
+      // Token row is already stored above (on connect/reconnect) with its
+      // expires_at; re-putting only {id, access_token} here would wipe it.
       if (adsProcessed > 0) {
-        await this.instagramFbAccessTokenService.insertFacebookDetails({
-          id: accountId,
-          access_token: accessToken,
-        });
-
         console.log('Ads, creatives, and insights inserted successfully!');
         return { success: true, message: 'Ads inserted successfully!' };
       }
