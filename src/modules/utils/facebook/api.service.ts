@@ -17,6 +17,23 @@ export class FacebookApiService {
         private readonly environmentService: EnvironmentService,
     ) {}  // need to remove the console
 
+    /**
+     * Map a Graph API failure to the right HTTP error. Meta error code 190
+     * means the access token is dead (expired, password changed, app removed,
+     * session reset); the user must reconnect Facebook, so the frontend gets a
+     * 401 with a stable code instead of a generic 500.
+     */
+    private handleGraphError(error: any, fallbackMessage: string): never {
+      const fbError = error?.response?.data?.error;
+      if (fbError?.code === 190) {
+        throw new UnauthorizedException({
+          code: 'FB_TOKEN_INVALID',
+          message: 'Facebook connection expired. Please reconnect Facebook.',
+        });
+      }
+      throw new InternalServerErrorException(fallbackMessage);
+    }
+
     async getUserDetails(access_token: string): Promise<FacebookUserInfoResponse> {
          
         try {
@@ -52,7 +69,7 @@ export class FacebookApiService {
           return allAccounts;
         } catch (error) {
           console.error('Error fetching ad accounts:', error?.response?.data || error.message);
-          throw new InternalServerErrorException('Failed to retrieve Facebook ad accounts');
+          this.handleGraphError(error, 'Failed to retrieve Facebook ad accounts');
         }
       }
 
@@ -72,7 +89,7 @@ export class FacebookApiService {
           return allCreatives;
         } catch (error) {
           console.error('Error fetching ad creatives:', error?.response?.data || error.message);
-          throw new InternalServerErrorException('Failed to retrieve ad creatives');
+          this.handleGraphError(error, 'Failed to retrieve ad creatives');
         }
       }
 
@@ -92,7 +109,7 @@ export class FacebookApiService {
           return allAds;
         } catch (error) {
           console.error('Error fetching ads with creatives:', error?.response?.data || error.message);
-          throw new InternalServerErrorException('Failed to retrieve ads with creatives');
+          this.handleGraphError(error, 'Failed to retrieve ads with creatives');
         }
       }
 
@@ -138,7 +155,7 @@ export class FacebookApiService {
           return allCreatives;
         } catch (error: any) {
           console.error('Error fetching creatives from /ads:', error?.response?.data || error.message);
-          throw new InternalServerErrorException('Failed to retrieve creatives via ads API');
+          this.handleGraphError(error, 'Failed to retrieve creatives via ads API');
         }
       }
 
@@ -255,7 +272,7 @@ export class FacebookApiService {
           return allAds;
         } catch (error) {
           console.error('Error fetching ads or creatives:', error?.response?.data || error.message);
-          throw new InternalServerErrorException('Failed to retrieve ads with creatives and insights');
+          this.handleGraphError(error, 'Failed to retrieve ads with creatives and insights');
         }
       }
       
@@ -340,9 +357,31 @@ export class FacebookApiService {
         }
       }
 
-      async getAccessTokenAds(code: string): Promise<{ access_token: string }> {
+      /**
+       * Exchange a short-lived user token for a long-lived one (~60 days).
+       * Returns the token and its expiry as a unix timestamp in seconds.
+       */
+      async exchangeForLongLivedToken(token: string): Promise<{ access_token: string; expires_at: number }> {
+        const response = await axios.get<FacebookAccessTokenResponse>(this.environmentService.getEnvVariable('FACEBOOK_OAUTH_URL'), {
+          params: {
+            grant_type: 'fb_exchange_token',
+            client_id: this.environmentService.getEnvVariable('FACEBOOK_CLIENT_ID'),
+            client_secret: this.environmentService.getEnvVariable('FACEBOOK_CLIENT_SECRET'),
+            fb_exchange_token: token,
+          },
+        });
+
+        // Meta may omit expires_in for an already long-lived token; default to 60 days.
+        const expiresIn = response.data.expires_in || 60 * 24 * 60 * 60;
+        const expiresAt = Math.floor(Date.now() / 1000) + expiresIn;
+        console.log('facebook long-lived token expires_in:', expiresIn);
+
+        return { access_token: response.data.access_token, expires_at: expiresAt };
+      }
+
+      async getAccessTokenAds(code: string): Promise<{ access_token: string; expires_at: number }> {
         try {
-          
+
             const tokenResponse = await axios.get<FacebookAccessTokenResponse>(this.environmentService.getEnvVariable('FACEBOOK_OAUTH_URL'), {
                 params: {
                   client_id: this.environmentService.getEnvVariable('FACEBOOK_CLIENT_ID'),
@@ -352,8 +391,9 @@ export class FacebookApiService {
                 },
               });
 
-              console.log('facebook token response:', tokenResponse.data);
-              return {"access_token": tokenResponse.data.access_token};
+              console.log('facebook short-lived token received, exchanging for long-lived token');
+              // The code exchange gives a short-lived token (1-2 hours); convert it to a 60-day one.
+              return await this.exchangeForLongLivedToken(tokenResponse.data.access_token);
 
         } catch (error) {
           console.error('Error getting Facebook access token:', error?.response?.data || error.message);
